@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Imágenes de casos: carpeta casos/{casoId}/{fileName}
+    // Se permite lectura/escritura solo a usuarios autenticados presentes en la allowlist.
+    // La ownership fina (owner del caso == uid del usuario) se valida en Firestore;
+    // aquí sólo acotamos el acceso al conjunto de cirujanos autorizados.
+    match /casos/{casoId}/{fileName} {
+      allow read, write: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/allowlist/$(request.auth.token.email));
+    }
+  }
+}
