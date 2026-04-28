@@ -4,6 +4,7 @@ import { firebaseEnabled, db, storage, auth, googleProvider } from "./firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { onAuthStateChanged, signInWithPopup, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import LandmarkAnnotator from "./landmarkAnnotator";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES
@@ -21,7 +22,7 @@ const MEDIDORES = [
 ];
 const TIPOS_CIRUGIA = ["Instrumentación lumbar anterior", "Instrumentación lumbar posterior"];
 const SEGMENTOS = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"];
-const CATEGORIAS_FOTO = ["Radiografía lateral", "Radiografía AP", "Planificación", "Otra"];
+const CATEGORIAS_FOTO = ["Radiografía lateral", "Radiografía AP", "Radiografía anotada", "Planificación", "Otra"];
 const STORAGE_KEY = "gap_calculator_casos";
 
 const REFERENCIAS = [
@@ -945,6 +946,8 @@ export default function GAPCalculator() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPwd, setLoginPwd] = useState("");
   const [loginError, setLoginError] = useState("");
+  // Anotador de landmarks
+  const [showAnnotator, setShowAnnotator] = useState(false);
 
   // Splash inicial — dos etapas: 1) VML  2) Dr. Samano
   const [splashStage, setSplashStage] = useState("vml"); // "vml" | "samano" | "done"
@@ -1807,7 +1810,12 @@ export default function GAPCalculator() {
 
         {/* Mediciones */}
         <Card>
-          <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 6px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Mediciones radiográficas</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Mediciones radiográficas</h2>
+            <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+            </button>
+          </div>
           <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>
             Ingresa <strong>2 de 3</strong> entre PI · SS · PT y la app calcula el tercero (relación: <strong>PI = PT + SS</strong>).
           </p>
@@ -2037,16 +2045,19 @@ export default function GAPCalculator() {
           </Card>
         )}
 
-        {/* Aviso Surgimap — solo en modo público (cuando no hay sesión clínica) */}
+        {/* Anotador integrado — disponible en modo público y clínico */}
         {!canEdit && (
           <Card>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
               <div style={{ fontSize: 22, lineHeight: 1 }}>📐</div>
               <div style={{ flex: 1, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>
-                  Sugerencia de aplicación para mediciones radiográficas
+                  ¿No tienes los ángulos medidos todavía?
                 </div>
-                Si aún no tienes los parámetros espinopélvicos, recomendamos <a href="https://www.surgimap.com" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.accentDark, fontWeight: 700, textDecoration: "underline" }}>Surgimap</a> (Nemaris Inc., gratis para Windows/Mac). Permite cargar radiografías DICOM o JPEG y obtener IP, PT, SS, LL, T4PA, L1PA y GAP Score con asistentes guiados.
+                Carga una teleradiografía lateral y marca <strong>9 puntos guiados</strong>; la app calcula PI, SS, PT, L1-S1, L4-S1 y GT por trigonometría. No necesitas software externo.
+                <button onClick={() => setShowAnnotator(true)} style={{ marginTop: 10, padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>📐</span> Abrir anotador de radiografía
+                </button>
               </div>
             </div>
           </Card>
@@ -2416,6 +2427,28 @@ export default function GAPCalculator() {
           busy={authBusy}
         />
       )}
+
+      <LandmarkAnnotator
+        open={showAnnotator}
+        onClose={() => setShowAnnotator(false)}
+        canEdit={canEdit}
+        onSaveAnnotated={(dataUrl) => {
+          const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+          const foto = { id: uid(), name: `anotada_${stamp}.jpg`, dataUrl, categoria: "Radiografía anotada" };
+          setFotos(prev => [...prev, foto]);
+          showToast("Imagen anotada agregada al caso ✓");
+        }}
+        onApply={(v) => {
+          if (v.pi !== undefined) setPI(v.pi);
+          if (v.ss !== undefined) setSS(v.ss);
+          if (v.pt !== undefined) setPT(v.pt);
+          if (v.l1s1 !== undefined) setL1S1(v.l1s1);
+          if (v.l4s1 !== undefined) setL4S1(v.l4s1);
+          if (v.gt !== undefined) setGT(v.gt);
+          const count = Object.keys(v).length;
+          showToast(`${count} medición${count === 1 ? "" : "es"} aplicada${count === 1 ? "" : "s"} al formulario ✓`);
+        }}
+      />
       </div>
     </div>
   );
