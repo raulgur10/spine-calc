@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import { firebaseEnabled, db, storage, auth, googleProvider } from "./firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES
@@ -43,8 +43,6 @@ const CONSENT_CONTACT = "raulguillen@cardioanestesia.com.mx";
 const PUBLIC_CONSENT_VERSION = "1.0";
 const PUBLIC_CONSENT_LS_KEY = "gap_public_consent";
 const PUBLIC_CASES_LS_KEY = "gap_my_public_cases";
-const DEMO_LS_KEY = "gap_demo_user";
-const DEMO_CREDENTIALS = { email: "prueba@mail.com", password: "1234" };
 // Feature flag: en modo simplificado solo se muestra C2 tilt directo en la sección de tilts.
 // Cambia a true para reactivar CPA, T1 tilt directo, T1PA, L1 tilt directo (Hills 2022 completo).
 const TILTS_FULL_MODE = true;
@@ -815,22 +813,22 @@ function PdfSaveModal({ onSaveAndDownload, onDownloadOnly, onCancel, busy }) {
   );
 }
 
-function DemoLoginModal({ email, password, onEmailChange, onPasswordChange, onSubmit, onCancel, error }) {
+function EmailLoginModal({ email, password, onEmailChange, onPasswordChange, onSubmit, onCancel, error, busy }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <form onSubmit={onSubmit} style={{ background: COLORS.card, borderRadius: 16, maxWidth: 420, width: "100%", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
         <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-          <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 4px", color: COLORS.accentDark }}>🧪 Modo demostración</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>Sesión simulada · sin conexión a Firebase · datos solo en este dispositivo</p>
+          <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 4px", color: COLORS.accentDark }}>🔐 Acceso clínico</h2>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>Inicia sesión con tu correo y contraseña</p>
         </div>
         <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>Correo</label>
-            <input type="email" value={email} onChange={e => onEmailChange(e.target.value)} placeholder="prueba@mail.com" autoFocus style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
+            <input type="email" value={email} onChange={e => onEmailChange(e.target.value)} autoComplete="username" autoFocus disabled={busy} style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>Contraseña</label>
-            <input type="password" value={password} onChange={e => onPasswordChange(e.target.value)} placeholder="1234" style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'JetBrains Mono', monospace" }} />
+            <input type="password" value={password} onChange={e => onPasswordChange(e.target.value)} autoComplete="current-password" disabled={busy} style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'JetBrains Mono', monospace" }} />
           </div>
           {error && <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.redBg, border: `1px solid ${COLORS.red}44`, color: COLORS.red, fontSize: 12, fontWeight: 600 }}>{error}</div>}
           <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5, fontStyle: "italic" }}>
@@ -838,8 +836,8 @@ function DemoLoginModal({ email, password, onEmailChange, onPasswordChange, onSu
           </div>
         </div>
         <div style={{ padding: 16, borderTop: `1px solid ${COLORS.cardBorder}`, display: "flex", gap: 10 }}>
-          <button type="button" onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-          <button type="submit" style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Entrar al demo</button>
+          <button type="button" onClick={onCancel} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>Cancelar</button>
+          <button type="submit" disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? "Verificando..." : "Iniciar sesión"}</button>
         </div>
       </form>
     </div>
@@ -942,12 +940,11 @@ export default function GAPCalculator() {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
-  // Modo demo (sin Firebase Auth real, persiste a localStorage)
-  const [demoUser, setDemoUser] = useState(null);
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [demoEmail, setDemoEmail] = useState("");
-  const [demoPwd, setDemoPwd] = useState("");
-  const [demoError, setDemoError] = useState("");
+  // Login email/password (alterno al de Google)
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPwd, setLoginPwd] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   // Splash inicial — dos etapas: 1) VML  2) Dr. Samano
   const [splashStage, setSplashStage] = useState("vml"); // "vml" | "samano" | "done"
@@ -1100,7 +1097,7 @@ export default function GAPCalculator() {
     } catch (e) {}
   };
 
-  const canEdit = !firebaseEnabled || !!demoUser || (!!user && allowlisted && consentAccepted);
+  const canEdit = !firebaseEnabled || (!!user && allowlisted && consentAccepted);
   const paciente = canEdit
     ? nombreCompleto(apellidos, nombre)
     : (iniciales ? `${iniciales} (${casoId})` : casoId);
@@ -1129,43 +1126,40 @@ export default function GAPCalculator() {
     setAuthBusy(false);
   };
 
-  // ─── Modo demo ───────────────────────────────────────────────────────────
-  // Bootstrap: rehidrata sesión demo desde localStorage al cargar
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(DEMO_LS_KEY);
-      if (saved) {
-        const d = JSON.parse(saved);
-        if (d && d.email) setDemoUser(d);
-      }
-    } catch (e) {}
-  }, []);
-
-  // Cargar casos locales cuando se activa demo
-  useEffect(() => {
-    if (demoUser) loadLocalCasos();
-  }, [demoUser]);
-
-  const handleDemoLogin = (e) => {
+  // ─── Login con email/password (Firebase Auth) ────────────────────────────
+  const handleEmailLogin = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    setDemoError("");
-    if (demoEmail.trim().toLowerCase() !== DEMO_CREDENTIALS.email || demoPwd !== DEMO_CREDENTIALS.password) {
-      setDemoError("Credenciales inválidas.");
+    setLoginError("");
+    const email = loginEmail.trim().toLowerCase();
+    if (!email || !loginPwd) {
+      setLoginError("Completa correo y contraseña.");
       return;
     }
-    const fake = { email: DEMO_CREDENTIALS.email, uid: "demo-user", displayName: "Usuario demo", isDemo: true };
-    setDemoUser(fake);
-    try { localStorage.setItem(DEMO_LS_KEY, JSON.stringify(fake)); } catch (err) {}
-    setShowDemoModal(false);
-    setDemoEmail(""); setDemoPwd(""); setDemoError("");
-    showToast("Modo demostración activado ✓");
-  };
-
-  const handleDemoLogout = () => {
-    setDemoUser(null);
-    try { localStorage.removeItem(DEMO_LS_KEY); } catch (e) {}
-    setCasosGuardados([]);
-    showToast("Sesión demo cerrada");
+    if (!firebaseEnabled || !auth) {
+      setLoginError("Servicio no disponible.");
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, loginPwd);
+      // onAuthStateChanged dispara el flujo de allowlist + consentimiento.
+      setShowLoginModal(false);
+      setLoginEmail(""); setLoginPwd(""); setLoginError("");
+      showToast("Sesión iniciada ✓");
+    } catch (err) {
+      console.error("Email login error:", err);
+      const code = err && err.code;
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found" || code === "auth/invalid-email") {
+        setLoginError("Credenciales inválidas.");
+      } else if (code === "auth/too-many-requests") {
+        setLoginError("Demasiados intentos. Espera unos minutos.");
+      } else if (code === "auth/network-request-failed") {
+        setLoginError("Sin conexión. Reintenta.");
+      } else {
+        setLoginError("Error al iniciar sesión.");
+      }
+    }
+    setAuthBusy(false);
   };
 
   const acceptConsent = async () => {
@@ -1389,8 +1383,8 @@ export default function GAPCalculator() {
 
   const saveCaso = async () => {
     if (!result) { showToast("Completa las mediciones primero", false); return; }
-    if (firebaseEnabled && !demoUser) {
-      if (!user) { handleLogin(); return; }
+    if (firebaseEnabled) {
+      if (!user) { setShowLoginModal(true); return; }
       if (!allowlisted) { showToast("Tu cuenta aún no está autorizada. Contacta al administrador.", false); return; }
       if (!consentAccepted) { setShowConsentModal(true); return; }
     }
@@ -1431,7 +1425,7 @@ export default function GAPCalculator() {
       } : null
     };
 
-    if (firebaseEnabled && db && storage && !demoUser) {
+    if (firebaseEnabled && db && storage) {
       try {
         const docRef = await addDoc(collection(db, "casos"), { ...casoBase, fotos: [] });
         const fotosFirebase = [];
@@ -1448,11 +1442,11 @@ export default function GAPCalculator() {
       } catch (e) { console.error(e); showToast("Error guardando en Firebase.", false); }
     } else {
       try {
-        const caso = { id: uid(), ...casoBase, fotos, ...(demoUser ? { demo: true } : {}) };
+        const caso = { id: uid(), ...casoBase, fotos };
         const updated = [caso, ...casosGuardados];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         setCasosGuardados(updated);
-        showToast(`Caso ${demoUser ? "demo " : ""}guardado localmente (${updated.length} totales)`);
+        showToast(`Caso guardado localmente (${updated.length} totales)`);
       } catch (e) { showToast("Error: almacenamiento lleno (fotos pesadas).", false); }
     }
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 4000);
@@ -1675,15 +1669,7 @@ export default function GAPCalculator() {
       {/* Barra de autenticación */}
       {firebaseEnabled && authReady && (
         <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {demoUser ? (
-            <>
-              <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
-                <div style={{ fontWeight: 700, color: COLORS.yellow, fontSize: 12 }}>🧪 {demoUser.email}</div>
-                <div style={{ fontSize: 10, color: COLORS.yellow, fontWeight: 600 }}>Modo demostración · datos locales</div>
-              </div>
-              <button onClick={handleDemoLogout} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Salir del demo</button>
-            </>
-          ) : user ? (
+          {user ? (
             <>
               <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
                 <div style={{ fontWeight: 600, color: COLORS.text, fontSize: 12 }}>{user.displayName || user.email}</div>
@@ -1697,11 +1683,11 @@ export default function GAPCalculator() {
             </>
           ) : (
             <>
-              <button onClick={() => setShowDemoModal(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.yellow}66`, background: COLORS.yellowBg, color: COLORS.yellow, fontSize: 12, cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 14 }}>🧪</span> Modo demo
+              <button onClick={() => setShowLoginModal(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 14 }}>🔐</span> Acceso clínico
               </button>
-              <button onClick={handleLogin} disabled={authBusy} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 12, cursor: authBusy ? "wait" : "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 14 }}>🔐</span> Iniciar sesión (cirujanos)
+              <button onClick={handleLogin} disabled={authBusy} title="Iniciar sesión con Google (admin)" style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13 }}>🅖</span> Google
               </button>
             </>
           )}
@@ -2418,15 +2404,16 @@ export default function GAPCalculator() {
         />
       )}
 
-      {showDemoModal && (
-        <DemoLoginModal
-          email={demoEmail}
-          password={demoPwd}
-          onEmailChange={setDemoEmail}
-          onPasswordChange={setDemoPwd}
-          onSubmit={handleDemoLogin}
-          onCancel={() => { setShowDemoModal(false); setDemoError(""); setDemoEmail(""); setDemoPwd(""); }}
-          error={demoError}
+      {showLoginModal && (
+        <EmailLoginModal
+          email={loginEmail}
+          password={loginPwd}
+          onEmailChange={setLoginEmail}
+          onPasswordChange={setLoginPwd}
+          onSubmit={handleEmailLogin}
+          onCancel={() => { setShowLoginModal(false); setLoginError(""); setLoginEmail(""); setLoginPwd(""); }}
+          error={loginError}
+          busy={authBusy}
         />
       )}
       </div>
