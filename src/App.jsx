@@ -43,9 +43,11 @@ const CONSENT_CONTACT = "raulguillen@cardioanestesia.com.mx";
 const PUBLIC_CONSENT_VERSION = "1.0";
 const PUBLIC_CONSENT_LS_KEY = "gap_public_consent";
 const PUBLIC_CASES_LS_KEY = "gap_my_public_cases";
+const DEMO_LS_KEY = "gap_demo_user";
+const DEMO_CREDENTIALS = { email: "prueba@mail.com", password: "1234" };
 // Feature flag: en modo simplificado solo se muestra C2 tilt directo en la sección de tilts.
 // Cambia a true para reactivar CPA, T1 tilt directo, T1PA, L1 tilt directo (Hills 2022 completo).
-const TILTS_FULL_MODE = false;
+const TILTS_FULL_MODE = true;
 const PUBLIC_CONSENT_TEXT = `Acepto que se guarden los datos de este cálculo (parámetros radiográficos, resultados, edad y antropometría) en una base de datos en la nube, con dos fines:
 
 1) Asistencia propia: poder recuperar el caso después usando el ID generado (formato GAP-AAAA-XXXX) desde cualquier dispositivo, y volver a generar el reporte.
@@ -265,8 +267,14 @@ const computeTilt = (key, direct, pa, pt) => {
 // ═══════════════════════════════════════════════════════════════════════════
 // PDF
 // ═══════════════════════════════════════════════════════════════════════════
+// Helper: formatea un número con grado, o "-"
+function fmtDeg(v) {
+  if (v === null || v === undefined || v === "" || Number.isNaN(Number(v))) return "—";
+  return `${Number(v).toFixed(1)}°`;
+}
+
 function buildPDF(inputs, result) {
-  const { age, pi, ss, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult } = inputs;
+  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey } = inputs;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210, M = 18, CW = W - M * 2;
   let y = 18;
@@ -317,9 +325,19 @@ function buildPDF(inputs, result) {
   }
 
   doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text("MEDICIONES", M + 3, y + 4.8); y += 10;
-  const med = [["Incidencia Pelv. (IP)", `${pi}°`], ["Pendiente Sacra (SS)", `${ss}°`], ["Lordosis L1-S1", `${l1s1}°`], ["Lordosis L4-S1", `${l4s1}°`], ["Inclinacion Global (GT)", `${gt}°`]];
-  if (l1pa !== "" && l1pa !== undefined) med.push(["L1 Pelvic Angle (L1PA)", `${l1pa}°`]);
-  if (t4pa !== "" && t4pa !== undefined) med.push(["T4 Pelvic Angle (T4PA)", `${t4pa}°`]);
+  const piTag = derivedKey === "pi" ? " (auto)" : "";
+  const ssTag = derivedKey === "ss" ? " (auto)" : "";
+  const ptTag = derivedKey === "pt" ? " (auto)" : "";
+  const med = [
+    [`Incidencia Pelv. (PI)${piTag}`, fmtDeg(pi)],
+    [`Pendiente Sacra (SS)${ssTag}`, fmtDeg(ss)],
+    [`Version Pelvica (PT)${ptTag}`, fmtDeg(pt)],
+    ["Lordosis L1-S1", fmtDeg(l1s1)],
+    ["Lordosis L4-S1", fmtDeg(l4s1)],
+    ["Inclinacion Global (GT)", fmtDeg(gt)]
+  ];
+  if (l1pa !== "" && l1pa !== undefined) med.push(["L1 Pelvic Angle (L1PA)", fmtDeg(l1pa)]);
+  if (t4pa !== "" && t4pa !== undefined) med.push(["T4 Pelvic Angle (T4PA)", fmtDeg(t4pa)]);
   const half = Math.ceil(med.length / 2);
   med.forEach(([k, v], i) => { const col = i < half ? 0 : 1; const row = i < half ? i : i - half; const x = M + col * (CW / 2); const yy = y + row * 7; doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236); doc.rect(x, yy, CW / 2 - 1, 6.5, "F"); doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text(k, x + 2, yy + 4.2); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.text(v, x + CW / 2 - 3, yy + 4.2, { align: "right" }); });
   y += half * 7 + 6;
@@ -480,13 +498,12 @@ function casosToCSV(casos) {
     "ID", "Fecha guardado", "Fecha estudio", "Fecha cirugia", "Tipo evaluacion", "Dias diferencia", "Tiempo calculado",
     "Apellidos", "Nombre", "Edad", "Peso kg", "Talla cm", "IMC", "Categoria IMC",
     "Cirujano", "Cirugias",
-    "IP", "SS", "L1-S1", "L4-S1", "GT",
+    "PI", "SS", "PT", "Derivado (PI/SS/PT)", "L1-S1", "L4-S1", "GT",
     "L1PA", "T4PA",
     "Ideal SS", "Ideal L1-S1", "Ideal L4-S1", "Ideal GT",
     "Correccion SS", "Correccion L1-S1", "Correccion L4-S1", "Correccion GT",
     "Ideal L1PA (Hills)", "Delta L1PA", "Ideal L1-S1 (Hills)", "Correccion L1-S1 Hills",
     "T4PA-L1PA", "Eje T4-L1-cadera",
-    "PT (PI-SS)",
     "C2 tilt directo", "CPA", "C2 tilt derivado", "C2 tilt delta", "C2 tilt categoria",
     "T1 tilt directo", "T1PA", "T1 tilt derivado", "T1 tilt delta", "T1 tilt categoria",
     "L1 tilt directo", "L1 tilt derivado", "L1 tilt delta", "L1 tilt categoria",
@@ -515,8 +532,8 @@ function casosToCSV(casos) {
     const corrLL_H = hasL1PA ? (idealLL_H - m.l1s1) : null;
     const ejeDiff = (hasL1PA && hasT4PA) ? (m.t4pa - m.l1pa) : null;
     const ejeLabel = ejeDiff === null ? "" : Math.abs(ejeDiff) <= 4 ? "Alineado" : Math.abs(ejeDiff) <= 8 ? "Desalineacion moderada" : "Desalineacion severa";
-    // Tilts (Hills 2022): re-derivar desde mediciones para casos antiguos
-    const pt = (m.pi !== undefined && m.ss !== undefined) ? (Number(m.pi) - Number(m.ss)) : null;
+    // PT: usar valor guardado, o derivar de PI − SS para casos legados
+    const pt = (m.pt !== undefined && m.pt !== null && m.pt !== "") ? Number(m.pt) : ((m.pi !== undefined && m.ss !== undefined) ? (Number(m.pi) - Number(m.ss)) : null);
     const tiltVal = (k) => m[k] !== undefined && m[k] !== null && m[k] !== "" ? Number(m[k]) : null;
     const tiltCsv = (key, directKey, paKey) => {
       const norm = TILT_NORMS[key];
@@ -554,7 +571,7 @@ function casosToCSV(casos) {
       imcCat,
       c.medico || "",
       cirugiasTexto(c.cirugias || []),
-      m.pi ?? "", m.ss ?? "", m.l1s1 ?? "", m.l4s1 ?? "", m.gt ?? "",
+      m.pi ?? "", m.ss ?? "", pt !== null ? pt.toFixed(1) : "", m.derivedKey ?? "", m.l1s1 ?? "", m.l4s1 ?? "", m.gt ?? "",
       hasL1PA ? m.l1pa : "", hasT4PA ? m.t4pa : "",
       idealSS.toFixed(1), idealLL.toFixed(1), idealL4S1.toFixed(1), idealGT.toFixed(1),
       (idealSS - m.ss).toFixed(1),
@@ -567,7 +584,6 @@ function casosToCSV(casos) {
       corrLL_H !== null ? corrLL_H.toFixed(1) : "",
       ejeDiff !== null ? ejeDiff.toFixed(1) : "",
       ejeLabel,
-      pt !== null ? pt.toFixed(1) : "",
       c2t.direct, c2t.pa, c2t.derived, c2t.delta, c2t.cat,
       t1t.direct, t1t.pa, t1t.derived, t1t.delta, t1t.cat,
       l1t.direct, l1t.derived, l1t.delta, l1t.cat,
@@ -615,8 +631,8 @@ function InputField({ label, tooltip, value, onChange, unit = "°", min, max, ty
   const isTextLike = type === "text" || type === "date";
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>{label}</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minWidth: 0 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</label>
         {tooltip && <InfoTooltip text={tooltip} />}
       </div>
       <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${focused ? COLORS.inputFocus : COLORS.inputBorder}`, overflow: "hidden", transition: "border-color 0.15s" }}>
@@ -799,6 +815,37 @@ function PdfSaveModal({ onSaveAndDownload, onDownloadOnly, onCancel, busy }) {
   );
 }
 
+function DemoLoginModal({ email, password, onEmailChange, onPasswordChange, onSubmit, onCancel, error }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <form onSubmit={onSubmit} style={{ background: COLORS.card, borderRadius: 16, maxWidth: 420, width: "100%", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
+        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+          <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 4px", color: COLORS.accentDark }}>🧪 Modo demostración</h2>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>Sesión simulada · sin conexión a Firebase · datos solo en este dispositivo</p>
+        </div>
+        <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>Correo</label>
+            <input type="email" value={email} onChange={e => onEmailChange(e.target.value)} placeholder="prueba@mail.com" autoFocus style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>Contraseña</label>
+            <input type="password" value={password} onChange={e => onPasswordChange(e.target.value)} placeholder="1234" style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'JetBrains Mono', monospace" }} />
+          </div>
+          {error && <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.redBg, border: `1px solid ${COLORS.red}44`, color: COLORS.red, fontSize: 12, fontWeight: 600 }}>{error}</div>}
+          <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5, fontStyle: "italic" }}>
+            Acceso restringido. Si necesitas credenciales, contacta al administrador del proyecto.
+          </div>
+        </div>
+        <div style={{ padding: 16, borderTop: `1px solid ${COLORS.cardBorder}`, display: "flex", gap: 10 }}>
+          <button type="button" onClick={onCancel} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+          <button type="submit" style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Entrar al demo</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function PublicConsentModal({ onAccept, onCancel, busy }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -864,11 +911,15 @@ export default function GAPCalculator() {
   const [cirugias, setCirugias] = useState([]);
   const [pi, setPI] = useState("");
   const [ss, setSS] = useState("");
+  const [pt, setPT] = useState("");
   const [l1s1, setL1S1] = useState("");
   const [l4s1, setL4S1] = useState("");
   const [gt, setGT] = useState("");
   const [l1pa, setL1PA] = useState("");
   const [t4pa, setT4PA] = useState("");
+  // Cards colapsables (Hills 2022) — secciones opcionales
+  const [hillsOpen, setHillsOpen] = useState(false);
+  const [tiltsOpen, setTiltsOpen] = useState(false);
   // Tilts vertebrales (Hills 2022) — opcionales
   const [c2tiltDirect, setC2TiltDirect] = useState("");
   const [cpa, setCPA] = useState("");
@@ -891,6 +942,12 @@ export default function GAPCalculator() {
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
+  // Modo demo (sin Firebase Auth real, persiste a localStorage)
+  const [demoUser, setDemoUser] = useState(null);
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [demoEmail, setDemoEmail] = useState("");
+  const [demoPwd, setDemoPwd] = useState("");
+  const [demoError, setDemoError] = useState("");
 
   // Splash inicial — dos etapas: 1) VML  2) Dr. Samano
   const [splashStage, setSplashStage] = useState("vml"); // "vml" | "samano" | "done"
@@ -1043,7 +1100,7 @@ export default function GAPCalculator() {
     } catch (e) {}
   };
 
-  const canEdit = !firebaseEnabled || (!!user && allowlisted && consentAccepted);
+  const canEdit = !firebaseEnabled || !!demoUser || (!!user && allowlisted && consentAccepted);
   const paciente = canEdit
     ? nombreCompleto(apellidos, nombre)
     : (iniciales ? `${iniciales} (${casoId})` : casoId);
@@ -1070,6 +1127,45 @@ export default function GAPCalculator() {
       showToast("Sesión cerrada");
     } catch (e) { console.error(e); }
     setAuthBusy(false);
+  };
+
+  // ─── Modo demo ───────────────────────────────────────────────────────────
+  // Bootstrap: rehidrata sesión demo desde localStorage al cargar
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DEMO_LS_KEY);
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d && d.email) setDemoUser(d);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Cargar casos locales cuando se activa demo
+  useEffect(() => {
+    if (demoUser) loadLocalCasos();
+  }, [demoUser]);
+
+  const handleDemoLogin = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setDemoError("");
+    if (demoEmail.trim().toLowerCase() !== DEMO_CREDENTIALS.email || demoPwd !== DEMO_CREDENTIALS.password) {
+      setDemoError("Credenciales inválidas.");
+      return;
+    }
+    const fake = { email: DEMO_CREDENTIALS.email, uid: "demo-user", displayName: "Usuario demo", isDemo: true };
+    setDemoUser(fake);
+    try { localStorage.setItem(DEMO_LS_KEY, JSON.stringify(fake)); } catch (err) {}
+    setShowDemoModal(false);
+    setDemoEmail(""); setDemoPwd(""); setDemoError("");
+    showToast("Modo demostración activado ✓");
+  };
+
+  const handleDemoLogout = () => {
+    setDemoUser(null);
+    try { localStorage.removeItem(DEMO_LS_KEY); } catch (e) {}
+    setCasosGuardados([]);
+    showToast("Sesión demo cerrada");
   };
 
   const acceptConsent = async () => {
@@ -1100,20 +1196,38 @@ export default function GAPCalculator() {
 
   const imc = useMemo(() => calcularIMC(peso, talla), [peso, talla]);
   const diffInfo = useMemo(() => calcularDiferencia(fechaEstudio, fechaCirugia, tipoEvaluacion), [fechaEstudio, fechaCirugia, tipoEvaluacion]);
-  const allFilled = pi !== "" && ss !== "" && l1s1 !== "" && l4s1 !== "" && gt !== "" && age !== "";
+
+  // Derivación PI = PT + SS: el usuario puede llenar 2 de 3 y el tercero se calcula
+  const spinopelvic = useMemo(() => {
+    const piN = pi !== "" && pi !== null && !Number.isNaN(Number(pi)) ? Number(pi) : null;
+    const ssN = ss !== "" && ss !== null && !Number.isNaN(Number(ss)) ? Number(ss) : null;
+    const ptN = pt !== "" && pt !== null && !Number.isNaN(Number(pt)) ? Number(pt) : null;
+    const filledCount = [piN, ssN, ptN].filter(v => v !== null).length;
+    let effPI = piN, effSS = ssN, effPT = ptN, derivedKey = null, inconsistencyDelta = null;
+    if (piN !== null && ssN !== null && ptN === null) { effPT = piN - ssN; derivedKey = "pt"; }
+    else if (piN !== null && ptN !== null && ssN === null) { effSS = piN - ptN; derivedKey = "ss"; }
+    else if (ssN !== null && ptN !== null && piN === null) { effPI = ssN + ptN; derivedKey = "pi"; }
+    else if (filledCount === 3) {
+      inconsistencyDelta = piN - (ssN + ptN);
+    }
+    return { effPI, effSS, effPT, derivedKey, inconsistencyDelta, filledCount };
+  }, [pi, ss, pt]);
+
+  const allFilled = spinopelvic.effPI !== null && spinopelvic.effSS !== null && l1s1 !== "" && l4s1 !== "" && gt !== "" && age !== "";
 
   const result = useMemo(() => {
     if (!allFilled) return null;
-    const idealSS = 0.59 * pi + 9, idealLL = 0.62 * pi + 29, idealGT = 0.48 * pi - 15;
-    const rpv = rpvCalc(ss, idealSS), rll = rllCalc(l1s1, idealLL), ldi = ldiCalc(l4s1, l1s1), rsa = rsaCalc(gt, idealGT), af = afCalc(age);
+    const piE = spinopelvic.effPI, ssE = spinopelvic.effSS;
+    const idealSS = 0.59 * piE + 9, idealLL = 0.62 * piE + 29, idealGT = 0.48 * piE - 15;
+    const rpv = rpvCalc(ssE, idealSS), rll = rllCalc(l1s1, idealLL), ldi = ldiCalc(l4s1, l1s1), rsa = rsaCalc(gt, idealGT), af = afCalc(age);
     const total = rpv.score + rll.score + ldi.score + rsa.score + af.score;
-    return { idealSS, idealLL, idealGT, rpv: { ...rpv, diff: ss - idealSS }, rll: { ...rll, diff: l1s1 - idealLL }, ldi, rsa: { ...rsa, diff: gt - idealGT }, af, total, cat: classify(total) };
-  }, [age, pi, ss, l1s1, l4s1, gt, allFilled]);
+    return { idealSS, idealLL, idealGT, rpv: { ...rpv, diff: ssE - idealSS }, rll: { ...rll, diff: l1s1 - idealLL }, ldi, rsa: { ...rsa, diff: gt - idealGT }, af, total, cat: classify(total) };
+  }, [age, spinopelvic, l1s1, l4s1, gt, allFilled]);
 
   // Hills et al. 2022 — T4-L1-Hip Axis (opcional, complementa al GAP)
   const hillsResult = useMemo(() => {
-    if (pi === "" || l1pa === "") return null;
-    const piN = Number(pi), l1paN = Number(l1pa);
+    if (spinopelvic.effPI === null || l1pa === "") return null;
+    const piN = spinopelvic.effPI, l1paN = Number(l1pa);
     const idealL1PA = 0.5 * piN - 21;
     const l1paDiff = l1paN - idealL1PA;
     const idealLL_Hills = 1.4 * piN - 1.7 * l1paN - 2;
@@ -1127,7 +1241,7 @@ export default function GAPCalculator() {
       else               { ejeStatus = "bad";  ejeLabel = "Desalineación severa"; }
     }
     return { idealL1PA, l1paDiff, idealLL_Hills, idealLL_Hills_L4S1, ejeDiff, ejeStatus, ejeLabel };
-  }, [pi, l1pa, t4pa]);
+  }, [spinopelvic, l1pa, t4pa]);
 
   // Contador atómico de mediciones (una vez por sesión, al primer GAP completo)
   useEffect(() => {
@@ -1142,15 +1256,15 @@ export default function GAPCalculator() {
   }, [result, hasCountedSession, deviceId]);
 
   // Tilts vertebrales C2/T1/L1 (Hills 2022) — opcionales
-  // PT derivado: PT = PI − SS. Tilt derivado: PA − PT.
+  // PT efectivo (de spinopelvic): PI − SS, o ingresado directo, o derivado de los otros dos.
   const tiltsResult = useMemo(() => {
-    const pt = (pi !== "" && ss !== "") ? (Number(pi) - Number(ss)) : null;
-    const c2 = computeTilt("c2", c2tiltDirect, cpa, pt);
-    const t1 = computeTilt("t1", t1tiltDirect, t1pa, pt);
-    const l1 = computeTilt("l1", l1tiltDirect, l1pa, pt);
+    const ptE = spinopelvic.effPT;
+    const c2 = computeTilt("c2", c2tiltDirect, cpa, ptE);
+    const t1 = computeTilt("t1", t1tiltDirect, t1pa, ptE);
+    const l1 = computeTilt("l1", l1tiltDirect, l1pa, ptE);
     if (!c2 && !t1 && !l1) return null;
-    return { pt, c2, t1, l1 };
-  }, [pi, ss, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, l1pa]);
+    return { pt: ptE, c2, t1, l1 };
+  }, [spinopelvic, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, l1pa]);
 
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500); };
 
@@ -1176,7 +1290,7 @@ export default function GAPCalculator() {
     }
     setSubBusy(false);
   };
-  const inputs = { age, pi, ss, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult };
+  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey };
 
   const addCirugia = () => setCirugias([...cirugias, { id: uid(), tipo: "", tipoCustom: "", segmentos: [] }]);
   const updateCirugia = (id, n) => setCirugias(cirugias.map(c => c.id === id ? n : c));
@@ -1275,7 +1389,7 @@ export default function GAPCalculator() {
 
   const saveCaso = async () => {
     if (!result) { showToast("Completa las mediciones primero", false); return; }
-    if (firebaseEnabled) {
+    if (firebaseEnabled && !demoUser) {
       if (!user) { handleLogin(); return; }
       if (!allowlisted) { showToast("Tu cuenta aún no está autorizada. Contacta al administrador.", false); return; }
       if (!consentAccepted) { setShowConsentModal(true); return; }
@@ -1290,7 +1404,9 @@ export default function GAPCalculator() {
       medico, medidor, cirugias,
       ...(user ? { ownerUid: user.uid, ownerEmail: user.email } : {}),
       mediciones: {
-        pi: Number(pi), ss: Number(ss), l1s1: Number(l1s1), l4s1: Number(l4s1), gt: Number(gt),
+        pi: Number(spinopelvic.effPI), ss: Number(spinopelvic.effSS), pt: Number(spinopelvic.effPT),
+        derivedKey: spinopelvic.derivedKey,
+        l1s1: Number(l1s1), l4s1: Number(l4s1), gt: Number(gt),
         l1pa: l1pa !== "" ? Number(l1pa) : null,
         t4pa: t4pa !== "" ? Number(t4pa) : null,
         c2tilt: c2tiltDirect !== "" ? Number(c2tiltDirect) : null,
@@ -1315,7 +1431,7 @@ export default function GAPCalculator() {
       } : null
     };
 
-    if (firebaseEnabled && db && storage) {
+    if (firebaseEnabled && db && storage && !demoUser) {
       try {
         const docRef = await addDoc(collection(db, "casos"), { ...casoBase, fotos: [] });
         const fotosFirebase = [];
@@ -1332,12 +1448,12 @@ export default function GAPCalculator() {
       } catch (e) { console.error(e); showToast("Error guardando en Firebase.", false); }
     } else {
       try {
-        const caso = { id: uid(), ...casoBase, fotos };
+        const caso = { id: uid(), ...casoBase, fotos, ...(demoUser ? { demo: true } : {}) };
         const updated = [caso, ...casosGuardados];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         setCasosGuardados(updated);
-        showToast(`Caso guardado localmente (${updated.length} totales)`);
-      } catch (e) { showToast("Error: almacenamiento lleno.", false); }
+        showToast(`Caso ${demoUser ? "demo " : ""}guardado localmente (${updated.length} totales)`);
+      } catch (e) { showToast("Error: almacenamiento lleno (fotos pesadas).", false); }
     }
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 4000);
   };
@@ -1371,7 +1487,9 @@ export default function GAPCalculator() {
         consentVersion: PUBLIC_CONSENT_VERSION,
         consentAcceptedAt: serverTimestamp(),
         mediciones: {
-          pi: Number(pi), ss: Number(ss), l1s1: Number(l1s1), l4s1: Number(l4s1), gt: Number(gt),
+          pi: Number(spinopelvic.effPI), ss: Number(spinopelvic.effSS), pt: Number(spinopelvic.effPT),
+          derivedKey: spinopelvic.derivedKey,
+          l1s1: Number(l1s1), l4s1: Number(l4s1), gt: Number(gt),
           l1pa: l1pa !== "" ? Number(l1pa) : null,
           t4pa: t4pa !== "" ? Number(t4pa) : null,
           c2tilt: c2tiltDirect !== "" ? Number(c2tiltDirect) : null,
@@ -1442,6 +1560,7 @@ export default function GAPCalculator() {
       setCirugias(Array.isArray(c.cirugias) ? c.cirugias.map(x => ({ id: uid(), tipo: x.tipo || "", tipoCustom: x.tipoCustom || "", segmentos: x.segmentos || [] })) : []);
       setPI(m.pi ?? "");
       setSS(m.ss ?? "");
+      setPT(m.pt ?? "");
       setL1S1(m.l1s1 ?? "");
       setL4S1(m.l4s1 ?? "");
       setGT(m.gt ?? "");
@@ -1491,7 +1610,7 @@ export default function GAPCalculator() {
     URL.revokeObjectURL(url); showToast(`CSV exportado (${casosGuardados.length} casos)`);
   };
 
-  const clearAll = () => { setAge(""); setPeso(""); setTalla(""); setPI(""); setSS(""); setL1S1(""); setL4S1(""); setGT(""); setL1PA(""); setT4PA(""); setC2TiltDirect(""); setCPA(""); setT1TiltDirect(""); setT1PA(""); setL1TiltDirect(""); setApellidos(""); setNombre(""); setIniciales(""); setCasoId(generarCasoId()); setCirujanoSel(""); setCirujanoCustom(""); setCirugias([]); setFotos([]); setFechaCirugia(""); setFechaEstudio(hoy()); setTipoEvaluacion("preoperatorio"); setSaved(false); setSavedPublicCaseId(null); setMedidorSel(""); setMedidorCustom(""); setMedicoPublic("");};
+  const clearAll = () => { setAge(""); setPeso(""); setTalla(""); setPI(""); setSS(""); setPT(""); setL1S1(""); setL4S1(""); setGT(""); setL1PA(""); setT4PA(""); setC2TiltDirect(""); setCPA(""); setT1TiltDirect(""); setT1PA(""); setL1TiltDirect(""); setApellidos(""); setNombre(""); setIniciales(""); setCasoId(generarCasoId()); setCirujanoSel(""); setCirujanoCustom(""); setCirugias([]); setFotos([]); setFechaCirugia(""); setFechaEstudio(hoy()); setTipoEvaluacion("preoperatorio"); setSaved(false); setSavedPublicCaseId(null); setMedidorSel(""); setMedidorCustom(""); setMedicoPublic("");};
 
   const conteos = { todos: casosGuardados.length, preoperatorio: casosGuardados.filter(c => c.tipoEvaluacion === "preoperatorio").length, postoperatorio: casosGuardados.filter(c => c.tipoEvaluacion === "postoperatorio").length };
   const casosFiltrados = filtroTipo === "todos" ? casosGuardados : casosGuardados.filter(c => c.tipoEvaluacion === filtroTipo);
@@ -1555,8 +1674,16 @@ export default function GAPCalculator() {
 
       {/* Barra de autenticación */}
       {firebaseEnabled && authReady && (
-        <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10 }}>
-          {user ? (
+        <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {demoUser ? (
+            <>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
+                <div style={{ fontWeight: 700, color: COLORS.yellow, fontSize: 12 }}>🧪 {demoUser.email}</div>
+                <div style={{ fontSize: 10, color: COLORS.yellow, fontWeight: 600 }}>Modo demostración · datos locales</div>
+              </div>
+              <button onClick={handleDemoLogout} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Salir del demo</button>
+            </>
+          ) : user ? (
             <>
               <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
                 <div style={{ fontWeight: 600, color: COLORS.text, fontSize: 12 }}>{user.displayName || user.email}</div>
@@ -1569,9 +1696,14 @@ export default function GAPCalculator() {
               <button onClick={handleLogout} disabled={authBusy} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600 }}>Salir</button>
             </>
           ) : (
-            <button onClick={handleLogin} disabled={authBusy} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 12, cursor: authBusy ? "wait" : "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14 }}>🔐</span> Iniciar sesión (cirujanos)
-            </button>
+            <>
+              <button onClick={() => setShowDemoModal(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.yellow}66`, background: COLORS.yellowBg, color: COLORS.yellow, fontSize: 12, cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 14 }}>🧪</span> Modo demo
+              </button>
+              <button onClick={handleLogin} disabled={authBusy} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 12, cursor: authBusy ? "wait" : "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>🔐</span> Iniciar sesión (cirujanos)
+              </button>
+            </>
           )}
         </div>
       )}
@@ -1689,104 +1821,166 @@ export default function GAPCalculator() {
 
         {/* Mediciones */}
         <Card>
-          <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 14px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Mediciones radiográficas</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <InputField label="Incidencia Pélvica (IP)" value={pi} onChange={setPI} min={0} max={120}
-              tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: IP = SS + VP. (Legaye, Duval-Beaupère 1998)" />
+          <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 6px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Mediciones radiográficas</h2>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>
+            Ingresa <strong>2 de 3</strong> entre PI · SS · PT y la app calcula el tercero (relación: <strong>PI = PT + SS</strong>).
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+            <InputField label="Incidencia Pélvica (PI)" value={pi} onChange={setPI} min={0} max={120}
+              placeholder={spinopelvic.derivedKey === "pi" && spinopelvic.effPI !== null ? spinopelvic.effPI.toFixed(1) : ""}
+              tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: PI = SS + PT. (Legaye, Duval-Beaupère 1998)" />
             <InputField label="Pendiente Sacra (SS)" value={ss} onChange={setSS} min={-30} max={90}
+              placeholder={spinopelvic.derivedKey === "ss" && spinopelvic.effSS !== null ? spinopelvic.effSS.toFixed(1) : ""}
               tooltip="Parámetro postural. Ángulo entre el platillo superior de S1 y la horizontal. Aumenta con la anteversión pélvica y disminuye con la retroversión. Determina en buena medida la lordosis lumbar." />
+            <InputField label="Versión Pélvica (PT)" value={pt} onChange={setPT} min={-30} max={60}
+              placeholder={spinopelvic.derivedKey === "pt" && spinopelvic.effPT !== null ? spinopelvic.effPT.toFixed(1) : ""}
+              tooltip="Pelvic Tilt. Parámetro postural. Ángulo entre la vertical y la línea del centro del eje bicoxofemoral al centro del platillo superior de S1. Aumenta en retroversión pélvica (mecanismo compensatorio del desbalance sagital). Relación: PT = PI − SS." />
           </div>
+          {/* Banner de derivación / inconsistencia */}
+          {(() => {
+            if (spinopelvic.filledCount === 2 && spinopelvic.derivedKey) {
+              const labels = { pi: { name: "PI", val: spinopelvic.effPI, formula: "SS + PT" }, ss: { name: "SS", val: spinopelvic.effSS, formula: "PI − PT" }, pt: { name: "PT", val: spinopelvic.effPT, formula: "PI − SS" } };
+              const d = labels[spinopelvic.derivedKey];
+              return (
+                <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, fontSize: 12, color: COLORS.accentDark, marginTop: 4, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span>↻ <strong>{d.name}</strong> derivado automáticamente ({d.formula})</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{d.val.toFixed(1)}°</span>
+                </div>
+              );
+            }
+            if (spinopelvic.filledCount === 3 && spinopelvic.inconsistencyDelta !== null && Math.abs(spinopelvic.inconsistencyDelta) > 1) {
+              return (
+                <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.yellowBg, border: `1px solid ${COLORS.yellow}66`, fontSize: 12, color: COLORS.yellow, marginTop: 4, marginBottom: 8, fontWeight: 600 }}>
+                  ⚠️ Inconsistencia: PI debería = SS + PT (Δ {spinopelvic.inconsistencyDelta >= 0 ? "+" : ""}{spinopelvic.inconsistencyDelta.toFixed(1)}°). Revisa la medición.
+                </div>
+              );
+            }
+            if (spinopelvic.filledCount === 1) {
+              return (
+                <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, marginTop: 4, marginBottom: 8, textAlign: "center" }}>
+                  Ingresa al menos 2 de PI / SS / PT para que el GAP Score pueda calcularse.
+                </div>
+              );
+            }
+            return null;
+          })()}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <InputField label="Lordosis L1-S1" value={l1s1} onChange={setL1S1} min={0} max={120}
-              tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la IP. Meta GAP: 0.62·IP + 29°." />
+              tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la PI. Meta GAP: 0.62·PI + 29°." />
             <InputField label="Lordosis L4-S1" value={l4s1} onChange={setL4S1} min={0} max={90}
               tooltip="Lordosis lumbar distal. Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Aporta ≈ 65% de la lordosis total. Base del Índice de Distribución (ILD = L4-S1 / L1-S1 × 100; normal 50–80%)." />
           </div>
           <InputField label="Inclinación Global (GT)" value={gt} onChange={setGT} min={-30} max={70}
-            tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·IP − 15." />
+            tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·PI − 15." />
         </Card>
 
-        {/* Eje T4-L1-Cadera (Hills 2022) */}
+        {/* Eje T4-L1-Cadera (Hills 2022) — colapsable, opcional */}
         <Card>
-          <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🎯 Eje T4-L1-Cadera</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>
-            Alineación normativa según Hills et al., Spine 2022 · <em>Opcional, complementa al GAP</em>
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
-              tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·IP − 21°. (Hills, Spine 2022)" />
-            <InputField label="T4 Pelvic Angle (T4PA)" value={t4pa} onChange={setT4PA} min={-30} max={40}
-              tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)." />
-          </div>
-          {hillsResult && (
-            <div style={{ marginTop: 8 }}>
-              {/* L1PA ideal */}
-              <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, marginBottom: 10, fontSize: 12, color: COLORS.accentDark, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <span><strong>L1PA ideal</strong> = 0.5·PI − 21</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
-                  {hillsResult.idealL1PA.toFixed(1)}°
-                  <span style={{ color: Math.abs(hillsResult.l1paDiff) < 4 ? COLORS.green : Math.abs(hillsResult.l1paDiff) < 8 ? COLORS.yellow : COLORS.red, marginLeft: 8 }}>
-                    (Δ {hillsResult.l1paDiff >= 0 ? "+" : ""}{hillsResult.l1paDiff.toFixed(1)}°)
-                  </span>
-                </span>
+          <button
+            type="button"
+            onClick={() => setHillsOpen(o => !o)}
+            aria-expanded={hillsOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🎯 Eje T4-L1-Cadera</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Hills et al., Spine 2022 · <em>Opcional, complementa al GAP</em>
+              </p>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: hillsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {hillsOpen && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
+                  tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)" />
+                <InputField label="T4 Pelvic Angle (T4PA)" value={t4pa} onChange={setT4PA} min={-30} max={40}
+                  tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)." />
               </div>
-              {/* L1-S1 Hills ideal */}
-              <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.purpleBg, border: `1px solid ${COLORS.purple}44`, marginBottom: 10, fontSize: 12, color: COLORS.purple, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <span><strong>L1-S1 ideal (Hills)</strong> = 1.4·PI − 1.7·L1PA − 2</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{hillsResult.idealLL_Hills.toFixed(1)}°</span>
-              </div>
-              {/* Semáforo eje T4-L1-Hip */}
-              {hillsResult.ejeDiff !== null && (() => {
-                const c = hillsResult.ejeStatus === "ok" ? COLORS.green : hillsResult.ejeStatus === "warn" ? COLORS.yellow : COLORS.red;
-                const bg = hillsResult.ejeStatus === "ok" ? COLORS.greenBg : hillsResult.ejeStatus === "warn" ? COLORS.yellowBg : COLORS.redBg;
-                return (
-                  <div style={{ padding: "12px 14px", borderRadius: 8, background: bg, border: `1.5px solid ${c}44`, fontSize: 12, color: c, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span>🎯 {hillsResult.ejeLabel}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800 }}>
-                      T4PA − L1PA = {hillsResult.ejeDiff >= 0 ? "+" : ""}{hillsResult.ejeDiff.toFixed(1)}°
+              {hillsResult && (
+                <div style={{ marginTop: 8 }}>
+                  {/* L1PA ideal */}
+                  <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, marginBottom: 10, fontSize: 12, color: COLORS.accentDark, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span><strong>L1PA ideal</strong> = 0.5·PI − 21</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                      {hillsResult.idealL1PA.toFixed(1)}°
+                      <span style={{ color: Math.abs(hillsResult.l1paDiff) < 4 ? COLORS.green : Math.abs(hillsResult.l1paDiff) < 8 ? COLORS.yellow : COLORS.red, marginLeft: 8 }}>
+                        (Δ {hillsResult.l1paDiff >= 0 ? "+" : ""}{hillsResult.l1paDiff.toFixed(1)}°)
+                      </span>
                     </span>
                   </div>
-                );
-              })()}
+                  {/* L1-S1 Hills ideal */}
+                  <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.purpleBg, border: `1px solid ${COLORS.purple}44`, marginBottom: 10, fontSize: 12, color: COLORS.purple, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span><strong>L1-S1 ideal (Hills)</strong> = 1.4·PI − 1.7·L1PA − 2</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{hillsResult.idealLL_Hills.toFixed(1)}°</span>
+                  </div>
+                  {/* Semáforo eje T4-L1-Hip */}
+                  {hillsResult.ejeDiff !== null && (() => {
+                    const c = hillsResult.ejeStatus === "ok" ? COLORS.green : hillsResult.ejeStatus === "warn" ? COLORS.yellow : COLORS.red;
+                    const bg = hillsResult.ejeStatus === "ok" ? COLORS.greenBg : hillsResult.ejeStatus === "warn" ? COLORS.yellowBg : COLORS.redBg;
+                    return (
+                      <div style={{ padding: "12px 14px", borderRadius: 8, background: bg, border: `1.5px solid ${c}44`, fontSize: 12, color: c, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span>🎯 {hillsResult.ejeLabel}</span>
+                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800 }}>
+                          T4PA − L1PA = {hillsResult.ejeDiff >= 0 ? "+" : ""}{hillsResult.ejeDiff.toFixed(1)}°
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {!hillsResult && (
+                <div style={{ padding: 12, borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, textAlign: "center" }}>
+                  Ingresa la Incidencia Pélvica (PI) y el L1PA para activar el análisis Hills.
+                </div>
+              )}
             </div>
           )}
-          {!hillsResult && pi === "" && (
-            <div style={{ padding: 12, borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, textAlign: "center" }}>
-              Ingresa la Incidencia Pélvica (IP) y el L1PA para activar el análisis Hills.
-            </div>
-          )}
+        </Card>
 
-          {/* Tilts vertebrales C2 / T1 / L1 (opcionales, Hills 2022) */}
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px dashed ${COLORS.inputBorder}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: COLORS.text }}>Tilts vertebrales</h3>
-              <InfoTooltip text="Tilt vertebral = ángulo entre la línea del eje bicoxofemoral al centroide del cuerpo vertebral y la vertical (gravity line). Positivo si la vértebra está anterior a las cabezas femorales, negativo si posterior. Geometría: Vertebral PA = Tilt + PT. C2/T1/L1 tilt son indicadores de balance global; cuando el eje T4-L1-cadera está alineado, todos deben caer en rango normal (cone of economy de Dubousset). Hills et al., Spine 2022." />
+        {/* Tilts vertebrales (Hills 2022) — colapsable, opcional */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setTiltsOpen(o => !o)}
+            aria-expanded={tiltsOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 Tilts vertebrales</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Hills 2022 · IC 80% poblacional · <em>opcional, complementa al GAP</em>
+              </p>
             </div>
-            <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px" }}>
-              Opcional · {TILTS_FULL_MODE
-                ? <>Puedes medir el tilt directo o ingresar el Pelvic Angle correspondiente y la app deriva el tilt como <strong>PA − PT</strong> (PT = PI − SS).</>
-                : <>Captura el C2 tilt directo. Normal: <strong>−4.4° a −1.1°</strong> (Hills 2022).</>}
-            </p>
-
-            {[
-              { key: "c2", titulo: "C2", direct: c2tiltDirect, setDirect: setC2TiltDirect, pa: cpa, setPA: setCPA, paLabel: "C2 Pelvic Angle (CPA)", paTooltip: "Ángulo C2-pélvico: subtendido desde el eje bicoxofemoral al centro del platillo S1 y al centroide del cuerpo de C2. CPA = C2 tilt + PT.", directTooltip: "C2 tilt directo: ángulo entre la línea del eje bicoxofemoral al centroide del cuerpo de C2 y la vertical. Convención: positivo si C2 está anterior a las cabezas femorales, negativo si posterior. Normal: −4.4° a −1.1° (Hills 2022, IC 80%)." },
-              { key: "t1", titulo: "T1", direct: t1tiltDirect, setDirect: setT1TiltDirect, pa: t1pa, setPA: setT1PA, paLabel: "T1 Pelvic Angle (T1PA)", paTooltip: "Ángulo T1-pélvico: análogo al CPA pero al centroide de T1. T1PA = T1 tilt + PT.", directTooltip: "T1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de T1 y la vertical (positivo anterior, negativo posterior). Normal: −7.0° a −3.6° (Hills 2022, IC 80%)." },
-              { key: "l1", titulo: "L1", direct: l1tiltDirect, setDirect: setL1TiltDirect, pa: l1pa, setPA: null, paLabel: "L1PA (arriba)", paTooltip: "L1PA ya capturado arriba en este bloque.", directTooltip: "L1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de L1 y la vertical (positivo anterior, negativo posterior). Normal: −10.3° a −5.1° (Hills 2022, IC 80%)." }
-            ].filter(row => TILTS_FULL_MODE || row.key === "c2").map(row => {
-              const r = tiltsResult ? tiltsResult[row.key] : null;
-              return (
-                <div key={row.key} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: TILTS_FULL_MODE ? "1fr 1fr" : "1fr", gap: 10 }}>
-                    <InputField
-                      label={`${row.titulo} tilt directo`}
-                      value={row.direct}
-                      onChange={row.setDirect}
-                      min={-30}
-                      max={30}
-                      step={0.1}
-                      tooltip={row.directTooltip}
-                    />
-                    {TILTS_FULL_MODE && (row.setPA ? (
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: tiltsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {tiltsOpen && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px" }}>
+                Para cada nivel: mide el tilt directo en PACS o ingresa el Pelvic Angle correspondiente; la app deriva tilt = <strong>PA − PT</strong>.
+              </p>
+              {[
+                { key: "c2", titulo: "C2", direct: c2tiltDirect, setDirect: setC2TiltDirect, pa: cpa, setPA: setCPA, paLabel: "C2 Pelvic Angle (CPA)", paTooltip: "Ángulo C2-pélvico: subtendido desde el eje bicoxofemoral al centro del platillo S1 y al centroide del cuerpo de C2. CPA = C2 tilt + PT.", directTooltip: "C2 tilt directo: ángulo entre la línea del eje bicoxofemoral al centroide del cuerpo de C2 y la vertical. Convención: positivo si C2 está anterior a las cabezas femorales, negativo si posterior. Normal: −4.4° a −1.1° (Hills 2022, IC 80%)." },
+                { key: "t1", titulo: "T1", direct: t1tiltDirect, setDirect: setT1TiltDirect, pa: t1pa, setPA: setT1PA, paLabel: "T1 Pelvic Angle (T1PA)", paTooltip: "Ángulo T1-pélvico: análogo al CPA pero al centroide de T1. T1PA = T1 tilt + PT.", directTooltip: "T1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de T1 y la vertical (positivo anterior, negativo posterior). Normal: −7.0° a −3.6° (Hills 2022, IC 80%)." },
+                { key: "l1", titulo: "L1", direct: l1tiltDirect, setDirect: setL1TiltDirect, pa: l1pa, setPA: setL1PA, paLabel: "L1 Pelvic Angle (L1PA)", paTooltip: "L1PA = L1 tilt + PT. Mismo dato usado en el bloque Eje T4-L1-Cadera.", directTooltip: "L1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de L1 y la vertical (positivo anterior, negativo posterior). Normal: −10.3° a −5.1° (Hills 2022, IC 80%)." }
+              ].map(row => {
+                const r = tiltsResult ? tiltsResult[row.key] : null;
+                const norm = TILT_NORMS[row.key];
+                return (
+                  <div key={row.key} style={{ marginBottom: 14, padding: 12, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}` }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>{row.titulo}</span>
+                      <span style={{ fontSize: 11, color: COLORS.textMuted }}>{norm.normalText}</span>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <InputField
+                        label="Tilt directo"
+                        value={row.direct}
+                        onChange={row.setDirect}
+                        min={-30}
+                        max={30}
+                        step={0.1}
+                        tooltip={row.directTooltip}
+                      />
                       <InputField
                         label={row.paLabel}
                         value={row.pa}
@@ -1796,42 +1990,37 @@ export default function GAPCalculator() {
                         step={0.1}
                         tooltip={row.paTooltip}
                       />
-                    ) : (
-                      <div style={{ padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-                        Usa el L1PA capturado arriba para derivar L1 tilt
-                      </div>
-                    ))}
-                  </div>
-                  {r && (
-                    <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: 8, background: r.cls.bg, border: `1px solid ${r.cls.color}44`, fontSize: 12, color: r.cls.color }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                        <span style={{ fontWeight: 700 }}>
-                          {row.titulo} tilt · {r.cls.label}
-                        </span>
-                        <span style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>
-                          Normal {r.norm.normalText}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", gap: 14, marginTop: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: COLORS.text, flexWrap: "wrap" }}>
-                        {r.direct !== null && <span><strong>Directo:</strong> {r.direct.toFixed(1)}°</span>}
-                        {r.derived !== null && <span><strong>Derivado (PA−PT):</strong> {r.derived.toFixed(1)}°</span>}
-                        {r.delta !== null && (
-                          <span style={{ color: Math.abs(r.delta) <= 1 ? COLORS.green : Math.abs(r.delta) <= 3 ? COLORS.yellow : COLORS.red }}>
-                            <strong>Δ directo−derivado:</strong> {r.delta >= 0 ? "+" : ""}{r.delta.toFixed(1)}°
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  )}
+                    {r && (
+                      <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: 8, background: r.cls.bg, border: `1px solid ${r.cls.color}44`, fontSize: 12, color: r.cls.color }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          <span style={{ fontWeight: 700 }}>{row.titulo} tilt · {r.cls.label}</span>
+                        </div>
+                        <div style={{ display: "flex", gap: 14, marginTop: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: COLORS.text, flexWrap: "wrap" }}>
+                          {r.direct !== null && <span><strong>Directo:</strong> {r.direct.toFixed(1)}°</span>}
+                          {r.derived !== null && <span><strong>Derivado (PA−PT):</strong> {r.derived.toFixed(1)}°</span>}
+                          {r.delta !== null && (
+                            <span style={{ color: Math.abs(r.delta) <= 1 ? COLORS.green : Math.abs(r.delta) <= 3 ? COLORS.yellow : COLORS.red }}>
+                              <strong>Δ directo−derivado:</strong> {r.delta >= 0 ? "+" : ""}{r.delta.toFixed(1)}°
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {tiltsResult && tiltsResult.pt !== null ? (
+                <div style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4 }}>
+                  PT efectivo = {tiltsResult.pt.toFixed(1)}° {spinopelvic.derivedKey === "pt" ? "(derivado de PI − SS)" : ""}
                 </div>
-              );
-            })}
-            {tiltsResult && tiltsResult.pt !== null && (
-              <div style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4 }}>
-                PT derivado de PI − SS = {tiltsResult.pt.toFixed(1)}°
-              </div>
-            )}
-          </div>
+              ) : (
+                <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
+                  Para el cálculo derivado se requieren PI y SS llenos (o PT directo).
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* Fotos — solo en modo clínico (los datos se asocian a un paciente identificado) */}
@@ -2226,6 +2415,18 @@ export default function GAPCalculator() {
           }}
           onDownloadOnly={() => { setShowPdfSaveModal(false); triggerDownload(); }}
           onCancel={() => setShowPdfSaveModal(false)}
+        />
+      )}
+
+      {showDemoModal && (
+        <DemoLoginModal
+          email={demoEmail}
+          password={demoPwd}
+          onEmailChange={setDemoEmail}
+          onPasswordChange={setDemoPwd}
+          onSubmit={handleDemoLogin}
+          onCancel={() => { setShowDemoModal(false); setDemoError(""); setDemoEmail(""); setDemoPwd(""); }}
+          error={demoError}
         />
       )}
       </div>
