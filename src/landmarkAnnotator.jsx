@@ -179,6 +179,47 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     return () => window.removeEventListener("keydown", handler);
   }, [open, selectedSegId, selectedLandmarkIdx, pendingPtId, freeSegs, landmarks, step]);
 
+  // ─── Hooks de cálculo (deben ir antes de cualquier early return para
+  // respetar Rules of Hooks) ──────────────────────────────────────────────
+  const partial = useMemo(() => {
+    const [p1, p2, p3, p4, p5, p6, p7, p8, p9] = landmarks;
+    const out = {};
+    if (p1 && p2) out.femMid = midpoint(p1, p2);
+    if (p3 && p4) {
+      out.s1Mid = midpoint(p3, p4);
+      out.ss = computeSS(p3, p4, horizontalRef);
+    }
+    if (p1 && p2 && p3 && p4) {
+      out.pi = computePI(p3, p4, out.femMid);
+      out.pt = computePT(out.femMid, out.s1Mid, horizontalRef);
+      out.consistencyDelta = (out.pi !== undefined && out.pt !== undefined && out.ss !== undefined)
+        ? out.pi - (out.pt + out.ss) : null;
+    }
+    if (p3 && p4 && p7 && p8) out.l1s1 = computeL1S1(p7, p8, p3, p4);
+    if (p3 && p4 && p5 && p6) out.l4s1 = computeL4S1(p5, p6, p3, p4);
+    if (p1 && p2 && p3 && p4 && p9) out.gt = computeGT(p9, out.s1Mid, out.femMid);
+    return out;
+  }, [landmarks, horizontalRef]);
+
+  const vertexAngles = useMemo(() => {
+    const ptToSegs = {};
+    freeSegs.forEach(s => {
+      (ptToSegs[s.aId] = ptToSegs[s.aId] || []).push(s);
+      (ptToSegs[s.bId] = ptToSegs[s.bId] || []).push(s);
+    });
+    const out = [];
+    for (const ptId in ptToSegs) {
+      const ss = ptToSegs[ptId];
+      if (ss.length !== 2) continue;
+      const vertex = freePts.find(p => p.id === ptId);
+      const oA = freePts.find(p => p.id === (ss[0].aId === ptId ? ss[0].bId : ss[0].aId));
+      const oB = freePts.find(p => p.id === (ss[1].aId === ptId ? ss[1].bId : ss[1].aId));
+      if (!vertex || !oA || !oB) continue;
+      out.push({ ptId, vertex, oA, oB, angle: angleAtVertex(vertex, oA, oB) });
+    }
+    return out;
+  }, [freePts, freeSegs]);
+
   if (!open) return null;
 
   const loadFile = (file) => {
@@ -499,27 +540,6 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     setCalibratePending(null);
   };
 
-  // ─── Cálculos progresivos GAP ────────────────────────────────────────────
-  const partial = useMemo(() => {
-    const [p1, p2, p3, p4, p5, p6, p7, p8, p9] = landmarks;
-    const out = {};
-    if (p1 && p2) out.femMid = midpoint(p1, p2);
-    if (p3 && p4) {
-      out.s1Mid = midpoint(p3, p4);
-      out.ss = computeSS(p3, p4, horizontalRef);
-    }
-    if (p1 && p2 && p3 && p4) {
-      out.pi = computePI(p3, p4, out.femMid);
-      out.pt = computePT(out.femMid, out.s1Mid, horizontalRef);
-      out.consistencyDelta = (out.pi !== undefined && out.pt !== undefined && out.ss !== undefined)
-        ? out.pi - (out.pt + out.ss) : null;
-    }
-    if (p3 && p4 && p7 && p8) out.l1s1 = computeL1S1(p7, p8, p3, p4);
-    if (p3 && p4 && p5 && p6) out.l4s1 = computeL4S1(p5, p6, p3, p4);
-    if (p1 && p2 && p3 && p4 && p9) out.gt = computeGT(p9, out.s1Mid, out.femMid);
-    return out;
-  }, [landmarks, horizontalRef]);
-
   const handleApply = () => {
     const out = {};
     if (partial.pi !== undefined) out.pi = round1(partial.pi);
@@ -533,26 +553,6 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     onClose();
   };
   const anyAngle = ["pi", "ss", "pt", "l1s1", "l4s1", "gt"].some(k => partial[k] !== undefined);
-
-  // ─── Ángulos en vértices de mediciones libres ────────────────────────────
-  const vertexAngles = useMemo(() => {
-    const ptToSegs = {};
-    freeSegs.forEach(s => {
-      (ptToSegs[s.aId] = ptToSegs[s.aId] || []).push(s);
-      (ptToSegs[s.bId] = ptToSegs[s.bId] || []).push(s);
-    });
-    const out = [];
-    for (const ptId in ptToSegs) {
-      const ss = ptToSegs[ptId];
-      if (ss.length !== 2) continue;
-      const vertex = freePts.find(p => p.id === ptId);
-      const oA = freePts.find(p => p.id === (ss[0].aId === ptId ? ss[0].bId : ss[0].aId));
-      const oB = freePts.find(p => p.id === (ss[1].aId === ptId ? ss[1].bId : ss[1].aId));
-      if (!vertex || !oA || !oB) continue;
-      out.push({ ptId, vertex, oA, oB, angle: angleAtVertex(vertex, oA, oB) });
-    }
-    return out;
-  }, [freePts, freeSegs]);
 
   const fmtDist = (px) => calibration ? `${(px * calibration.mmPerPx).toFixed(1)} mm` : `${Math.round(px)} px`;
 
