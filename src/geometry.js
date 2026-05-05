@@ -88,22 +88,56 @@ export function computeGT(p9, s1Mid, femMid) {
   return angleAtVertex(femMid, p9, s1Mid);
 }
 
-// Compute all 6 GAP angles from the 9 ordered landmarks.
-// `refH` (optional) define la horizontal real; afecta SS y PT (PI/Cobb/GT son geométricos).
-// Returns null if any landmark is missing.
+// Pelvic Angle (Hills 2022): ángulo subtendido en femMid entre las rectas
+// femMid→s1Mid y femMid→centroid. Signed: positivo si el centroide queda en
+// el semiplano anterior del eje femMid–s1Mid. La dirección anterior se define
+// como el vector p3→p4 (esquina posterior → esquina anterior del platillo S1).
+// Caso típico sano: L1PA ≈ +5°, T4PA cercano al L1PA.
+export function computePA(centroid, s1Mid, femMid, p3, p4) {
+  if (!centroid || !s1Mid || !femMid || !p3 || !p4) return null;
+  const ang = angleAtVertex(femMid, centroid, s1Mid); // 0–180°, sin signo
+  // Producto cruz 2D para determinar el lado del centroide respecto al eje
+  // femMid–s1Mid; lo comparamos con el lado en el que cae la dirección anterior.
+  const refDir = { x: s1Mid.x - femMid.x, y: s1Mid.y - femMid.y };
+  const v = { x: centroid.x - femMid.x, y: centroid.y - femMid.y };
+  const ant = { x: p4.x - p3.x, y: p4.y - p3.y };
+  const cross_v = refDir.x * v.y - refDir.y * v.x;
+  const cross_ant = refDir.x * ant.y - refDir.y * ant.x;
+  // Mismo signo de cruz ⇒ centroide en el semiplano anterior ⇒ PA positivo.
+  return (cross_v * cross_ant >= 0) ? ang : -ang;
+}
+
+// Tilt vertebral signed (Hills 2022): ángulo desde la vertical real de la recta
+// femMid→centroid. Positivo si el centroide queda anterior al femMid (anterior
+// definido por p3→p4). Caso sano: tilts negativos (C2, T1, L1 levemente
+// posteriores al eje bicoxofemoral).
+export function computeVertebralTilt(centroid, femMid, p3, p4, refH = null) {
+  if (!centroid || !femMid || !p3 || !p4) return null;
+  const ang = angleFromVertical(femMid, centroid, refH); // 0–90°, sin signo
+  const v = { x: centroid.x - femMid.x, y: centroid.y - femMid.y };
+  const ant = { x: p4.x - p3.x, y: p4.y - p3.y };
+  return ((v.x * ant.x + v.y * ant.y) >= 0) ? ang : -ang;
+}
+
+// Compute all GAP + Hills angles from los landmarks ordenados.
+// Landmarks 0–8: 2 cabezas femorales, S1 post/ant, L4 post/ant, L1 post/ant, C7 (GAP).
+// Landmarks 9–11 (opcionales, Hills 2022): centroides T4, T1, C2.
+// `refH` (opcional) define la horizontal real; afecta SS, PT y los tilts.
+// Returns null si los landmarks GAP (0–8) no están todos presentes.
 export function computeAllAngles(landmarks, refH = null) {
   if (!Array.isArray(landmarks) || landmarks.length < 9) return null;
-  const [p1, p2, p3, p4, p5, p6, p7, p8, p9] = landmarks;
+  const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12] = landmarks;
   if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6 || !p7 || !p8 || !p9) return null;
   const femMid = midpoint(p1, p2);
   const s1Mid = midpoint(p3, p4);
+  const l1Mid = midpoint(p7, p8); // centroide L1 derivado de las esquinas del platillo
   const pi = computePI(p3, p4, femMid);
   const ss = computeSS(p3, p4, refH);
   const pt = computePT(femMid, s1Mid, refH);
   const l1s1 = computeL1S1(p7, p8, p3, p4);
   const l4s1 = computeL4S1(p5, p6, p3, p4);
   const gt = computeGT(p9, s1Mid, femMid);
-  return {
+  const out = {
     pi: round1(pi),
     ss: round1(ss),
     pt: round1(pt),
@@ -114,4 +148,12 @@ export function computeAllAngles(landmarks, refH = null) {
     s1Mid,
     consistencyDelta: round1(pi - (pt + ss))
   };
+  // Hills opcionales — se llenan solo si los landmarks adicionales existen.
+  // L1PA y L1 tilt no requieren landmarks extra (L1 centroide = midpoint L1 corners).
+  out.l1pa = round1(computePA(l1Mid, s1Mid, femMid, p3, p4));
+  out.l1tilt = round1(computeVertebralTilt(l1Mid, femMid, p3, p4, refH));
+  if (p10) out.t4pa = round1(computePA(p10, s1Mid, femMid, p3, p4));
+  if (p11) out.t1tilt = round1(computeVertebralTilt(p11, femMid, p3, p4, refH));
+  if (p12) out.c2tilt = round1(computeVertebralTilt(p12, femMid, p3, p4, refH));
+  return out;
 }

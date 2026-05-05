@@ -341,44 +341,65 @@ function buildPDF(inputs, result) {
   med.forEach(([k, v], i) => { const col = i < half ? 0 : 1; const row = i < half ? i : i - half; const x = M + col * (CW / 2); const yy = y + row * 7; doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236); doc.rect(x, yy, CW / 2 - 1, 6.5, "F"); doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text(k, x + 2, yy + 4.2); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.text(v, x + CW / 2 - 3, yy + 4.2, { align: "right" }); });
   y += half * 7 + 6;
 
-  const catRgb = result.total <= 2 ? [21, 128, 61] : result.total <= 6 ? [180, 83, 9] : [185, 28, 28];
-  doc.setFillColor(...catRgb); doc.roundedRect(M, y, CW, 22, 3, 3, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(28); doc.setFont("helvetica", "bold"); doc.text(String(result.total), M + 14, y + 15, { align: "center" }); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("/ 13", M + 20, y + 18); doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.text(result.cat.label, M + 30, y + 10); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(result.cat.risk, M + 30, y + 17); y += 28;
-
-  doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PARAMETROS GAP", M + 3, y + 4.8); y += 10;
-  const sc = (s) => s === 0 ? [21, 128, 61] : s <= 1 ? [180, 83, 9] : [185, 28, 28];
-  [{ name: "RPV  Version Pelvica Relativa", r: result.rpv, diff: `${result.rpv.diff >= 0 ? "+" : ""}${result.rpv.diff.toFixed(1)}°` }, { name: "RLL  Lordosis Lumbar Relativa", r: result.rll, diff: `${result.rll.diff >= 0 ? "+" : ""}${result.rll.diff.toFixed(1)}°` }, { name: "ILD  Indice de Distribucion", r: result.ldi, diff: `${result.ldi.value.toFixed(1)}%` }, { name: "ASR  Alineacion Espinopelvica", r: result.rsa, diff: `${result.rsa.diff >= 0 ? "+" : ""}${result.rsa.diff.toFixed(1)}°` }, { name: "FE   Factor de Edad", r: result.af, diff: "" }].forEach(({ name, r, diff }, i) => { const bg = i % 2 === 0 ? [250, 247, 242] : [244, 241, 236]; doc.setFillColor(...bg); doc.rect(M, y, CW - 14, 8, "F"); doc.setFillColor(...sc(r.score)); doc.rect(M + CW - 13, y, 13, 8, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(name, M + 2, y + 3.2); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.text(`${r.label}  ${diff}`, M + 2, y + 6.5); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(String(r.score), M + CW - 6.5, y + 5.5, { align: "center" }); y += 9; });
-  y += 4;
-
-  doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PLANIFICACION PREOPERATORIA", M + 3, y + 4.8); y += 10;
+  // Layout de columnas para tablas (también lo usan las secciones Hills más abajo).
   const colX = [M, M + 42, M + 90, M + 138];
-  doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(8);
-  ["Parametro", "Actual", "Ideal", "Correccion"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4.8); }); y += 8;
 
-  // Incluye L4-S1 ideal = L1-S1 ideal × 0.65
-  const idealL4S1 = result.idealLL * 0.65;
-  const planRows = [
-    { name: "SS", cur: Number(ss), ideal: result.idealSS },
-    { name: "L1-S1", cur: Number(l1s1), ideal: result.idealLL },
-    ...(hillsResult ? [{ name: "L1-S1 (Hills)", cur: Number(l1s1), ideal: hillsResult.idealLL_Hills, hills: true }] : []),
-    { name: "L4-S1", cur: Number(l4s1), ideal: idealL4S1 },
-    { name: "GT", cur: Number(gt), ideal: result.idealGT }
-  ];
-  planRows.forEach(({ name, cur, ideal, hills }, i) => {
-    const corr = ideal - cur;
-    const cc = Math.abs(corr) < 5 ? [21, 128, 61] : Math.abs(corr) < 15 ? [180, 83, 9] : [185, 28, 28];
-    doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236);
-    doc.rect(M, y, CW, 7, "F");
-    if (hills) doc.setTextColor(109, 40, 217); else doc.setTextColor(17, 94, 89);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text(name, colX[0] + 2, y + 4.8);
-    doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
-    doc.text(`${cur.toFixed(1)}°`, colX[1], y + 4.8);
-    doc.setTextColor(21, 128, 61);
-    doc.text(`${ideal.toFixed(1)}°`, colX[2], y + 4.8);
-    doc.setTextColor(...cc); doc.setFont("helvetica", "bold");
-    doc.text(`${corr >= 0 ? "+" : ""}${corr.toFixed(1)}°`, colX[3], y + 4.8);
-    y += 7;
-  });
+  // Las secciones GAP (categoría, parámetros, planificación) requieren result completo.
+  if (result) {
+    const catRgb = result.total <= 2 ? [21, 128, 61] : result.total <= 6 ? [180, 83, 9] : [185, 28, 28];
+    doc.setFillColor(...catRgb); doc.roundedRect(M, y, CW, 22, 3, 3, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(28); doc.setFont("helvetica", "bold"); doc.text(String(result.total), M + 14, y + 15, { align: "center" }); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("/ 13", M + 20, y + 18); doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.text(result.cat.label, M + 30, y + 10); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(result.cat.risk, M + 30, y + 17); y += 28;
+
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PARAMETROS GAP", M + 3, y + 4.8); y += 10;
+    const sc = (s) => s === 0 ? [21, 128, 61] : s <= 1 ? [180, 83, 9] : [185, 28, 28];
+    [{ name: "RPV  Version Pelvica Relativa", r: result.rpv, diff: `${result.rpv.diff >= 0 ? "+" : ""}${result.rpv.diff.toFixed(1)}°` }, { name: "RLL  Lordosis Lumbar Relativa", r: result.rll, diff: `${result.rll.diff >= 0 ? "+" : ""}${result.rll.diff.toFixed(1)}°` }, { name: "ILD  Indice de Distribucion", r: result.ldi, diff: `${result.ldi.value.toFixed(1)}%` }, { name: "ASR  Alineacion Espinopelvica", r: result.rsa, diff: `${result.rsa.diff >= 0 ? "+" : ""}${result.rsa.diff.toFixed(1)}°` }, { name: "FE   Factor de Edad", r: result.af, diff: "" }].forEach(({ name, r, diff }, i) => { const bg = i % 2 === 0 ? [250, 247, 242] : [244, 241, 236]; doc.setFillColor(...bg); doc.rect(M, y, CW - 14, 8, "F"); doc.setFillColor(...sc(r.score)); doc.rect(M + CW - 13, y, 13, 8, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(name, M + 2, y + 3.2); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.text(`${r.label}  ${diff}`, M + 2, y + 6.5); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(String(r.score), M + CW - 6.5, y + 5.5, { align: "center" }); y += 9; });
+    y += 4;
+
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PLANIFICACION PREOPERATORIA", M + 3, y + 4.8); y += 10;
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(8);
+    ["Parametro", "Actual", "Ideal", "Correccion"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4.8); }); y += 8;
+
+    // Incluye L4-S1 ideal = L1-S1 ideal × 0.65
+    const idealL4S1 = result.idealLL * 0.65;
+    const planRows = [
+      { name: "SS", cur: Number(ss), ideal: result.idealSS },
+      { name: "L1-S1", cur: Number(l1s1), ideal: result.idealLL },
+      ...(hillsResult ? [{ name: "L1-S1 (Hills)", cur: Number(l1s1), ideal: hillsResult.idealLL_Hills, hills: true }] : []),
+      { name: "L4-S1", cur: Number(l4s1), ideal: idealL4S1 },
+      { name: "GT", cur: Number(gt), ideal: result.idealGT }
+    ];
+    planRows.forEach(({ name, cur, ideal, hills }, i) => {
+      const corr = ideal - cur;
+      const cc = Math.abs(corr) < 5 ? [21, 128, 61] : Math.abs(corr) < 15 ? [180, 83, 9] : [185, 28, 28];
+      doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236);
+      doc.rect(M, y, CW, 7, "F");
+      if (hills) doc.setTextColor(109, 40, 217); else doc.setTextColor(17, 94, 89);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+      doc.text(name, colX[0] + 2, y + 4.8);
+      doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(`${cur.toFixed(1)}°`, colX[1], y + 4.8);
+      doc.setTextColor(21, 128, 61);
+      doc.text(`${ideal.toFixed(1)}°`, colX[2], y + 4.8);
+      doc.setTextColor(...cc); doc.setFont("helvetica", "bold");
+      doc.text(`${corr >= 0 ? "+" : ""}${corr.toFixed(1)}°`, colX[3], y + 4.8);
+      y += 7;
+    });
+  } else {
+    // Reporte parcial: anotamos qué falta para que el cirujano sepa por qué no hay GAP score.
+    const faltantes = [];
+    if (pi === "" || pi === null || pi === undefined) faltantes.push("PI");
+    if (ss === "" || ss === null || ss === undefined) faltantes.push("SS");
+    if (l1s1 === "" || l1s1 === null) faltantes.push("L1-S1");
+    if (l4s1 === "" || l4s1 === null) faltantes.push("L4-S1");
+    if (gt === "" || gt === null) faltantes.push("GT");
+    if (age === "" || age === null) faltantes.push("Edad");
+    doc.setFillColor(244, 241, 236); doc.rect(M, y, CW, 14, "F");
+    doc.setDrawColor(231, 226, 217); doc.rect(M, y, CW, 14, "S");
+    doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "italic"); doc.setFontSize(9);
+    doc.text("GAP Score no calculado: mediciones incompletas.", M + 3, y + 5.5);
+    doc.setFontSize(8);
+    doc.text(faltantes.length ? `Faltan: ${faltantes.join(", ")}.` : "", M + 3, y + 10.5);
+    y += 18;
+  }
 
   // Eje T4-L1-Cadera (Hills 2022)
   if (hillsResult) {
@@ -1212,6 +1233,15 @@ export default function GAPCalculator() {
 
   const allFilled = spinopelvic.effPI !== null && spinopelvic.effSS !== null && l1s1 !== "" && l4s1 !== "" && gt !== "" && age !== "";
 
+  // ¿Hay AL MENOS un ángulo medido? Habilita export PDF parcial.
+  const hasAnyMeasurement =
+    spinopelvic.effPI !== null || spinopelvic.effSS !== null || spinopelvic.effPT !== null ||
+    l1s1 !== "" || l4s1 !== "" || gt !== "" ||
+    l1pa !== "" || t4pa !== "" ||
+    c2tiltDirect !== "" || cpa !== "" ||
+    t1tiltDirect !== "" || t1pa !== "" ||
+    l1tiltDirect !== "";
+
   const result = useMemo(() => {
     if (!allFilled) return null;
     const piE = spinopelvic.effPI, ssE = spinopelvic.effSS;
@@ -1811,7 +1841,7 @@ export default function GAPCalculator() {
         {/* Mediciones */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Mediciones radiográficas</h2>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Medición GAP</h2>
             <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
             </button>
@@ -1885,6 +1915,11 @@ export default function GAPCalculator() {
           </button>
           {hillsOpen && (
             <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+                </button>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
                   tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)" />
@@ -1949,6 +1984,11 @@ export default function GAPCalculator() {
           </button>
           {tiltsOpen && (
             <div style={{ marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+                </button>
+              </div>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px" }}>
                 Para cada nivel: mide el tilt directo en PACS o ingresa el Pelvic Angle correspondiente; la app deriva tilt = <strong>PA − PT</strong>.
               </p>
@@ -2045,24 +2085,6 @@ export default function GAPCalculator() {
           </Card>
         )}
 
-        {/* Anotador integrado — disponible en modo público y clínico */}
-        {!canEdit && (
-          <Card>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-              <div style={{ fontSize: 22, lineHeight: 1 }}>📐</div>
-              <div style={{ flex: 1, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>
-                  ¿No tienes los ángulos medidos todavía?
-                </div>
-                Carga una teleradiografía lateral y marca <strong>9 puntos guiados</strong>; la app calcula PI, SS, PT, L1-S1, L4-S1 y GT por trigonometría. No necesitas software externo.
-                <button onClick={() => setShowAnnotator(true)} style={{ marginTop: 10, padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>📐</span> Abrir anotador de radiografía
-                </button>
-              </div>
-            </div>
-          </Card>
-        )}
-
         {/* Mis casos guardados (modo público, desde localStorage) */}
         {!canEdit && myPublicCases.length > 0 && (
           <Card>
@@ -2141,10 +2163,10 @@ export default function GAPCalculator() {
         {/* Exportar */}
         <Card style={{ padding: 20 }}>
           <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>Exportar y guardar</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{result ? "Resultado listo para exportar" : "⚠ Llena las 6 mediciones para habilitar exportación"}</p>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{result ? "Resultado listo para exportar" : hasAnyMeasurement ? "Mediciones parciales · el PDF incluirá solo lo medido" : "⚠ Ingresa al menos una medición para habilitar exportación"}</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-            <ShareButton icon="📄" label="PDF" color={COLORS.accent} bg={COLORS.accentDim} onClick={handleDownload} disabled={!result} />
-            <ShareButton icon="✉️" label="Correo" color={COLORS.purple} bg={COLORS.purpleBg} onClick={handleEmail} disabled={!result} />
+            <ShareButton icon="📄" label="PDF" color={COLORS.accent} bg={COLORS.accentDim} onClick={handleDownload} disabled={!hasAnyMeasurement} />
+            <ShareButton icon="✉️" label="Correo" color={COLORS.purple} bg={COLORS.purpleBg} onClick={handleEmail} disabled={!hasAnyMeasurement} />
           </div>
           {(() => {
             const isPublic = !canEdit;
@@ -2445,6 +2467,12 @@ export default function GAPCalculator() {
           if (v.l1s1 !== undefined) setL1S1(v.l1s1);
           if (v.l4s1 !== undefined) setL4S1(v.l4s1);
           if (v.gt !== undefined) setGT(v.gt);
+          // Hills 2022 — opcionales según landmarks colocados.
+          if (v.l1pa !== undefined) setL1PA(v.l1pa);
+          if (v.t4pa !== undefined) setT4PA(v.t4pa);
+          if (v.c2tilt !== undefined) setC2TiltDirect(v.c2tilt);
+          if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
+          if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
           const count = Object.keys(v).length;
           showToast(`${count} medición${count === 1 ? "" : "es"} aplicada${count === 1 ? "" : "s"} al formulario ✓`);
         }}

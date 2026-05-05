@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT } from "./geometry";
+import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt } from "./geometry";
 
 const COLORS = {
   bg: "#1a1a1a",
@@ -70,6 +70,25 @@ const LANDMARK_DEFS = [
     label: "Centro del cuerpo vertebral de C7",
     que: "Punto de referencia más alto del eje espinal. Junto con el centro de S1 y el eje femoral define el Global Tilt (GT).",
     donde: "Centro del cuerpo vertebral de C7 (NO la apófisis espinosa). C7 es la última cervical y tiene la apófisis más prominente del cuello. Marca el centro del cuadrilátero del cuerpo vertebral."
+  },
+  // ── Hills 2022 (opcionales): T4 centroide para T4PA, T1 y C2 centroides para tilts ──
+  {
+    idx: 9, short: "T4 (opc.)", color: "#3b82f6", optional: true,
+    label: "Centro del cuerpo vertebral de T4",
+    que: "Centroide del cuerpo de T4 (Hills 2022). Define el T4 Pelvic Angle (T4PA) y, junto con el L1PA, el eje T4-L1-cadera. Opcional — solo si quieres T4PA.",
+    donde: "Cuenta 4 vértebras desde C7 hacia abajo (C7 → T1 → T2 → T3 → T4). Marca el centro del cuadrilátero del cuerpo vertebral de T4 (NO la apófisis espinosa)."
+  },
+  {
+    idx: 10, short: "T1 (opc.)", color: "#1d4ed8", optional: true,
+    label: "Centro del cuerpo vertebral de T1",
+    que: "Centroide del cuerpo de T1 (Hills 2022). Necesario para calcular el T1 tilt directo desde la radiografía. Opcional — solo si quieres T1 tilt.",
+    donde: "T1 es la primera vértebra torácica, justo debajo de C7. Marca el centro del cuadrilátero del cuerpo vertebral (NO la apófisis espinosa)."
+  },
+  {
+    idx: 11, short: "C2 (opc.)", color: "#1e3a8a", optional: true,
+    label: "Centro del cuerpo vertebral de C2",
+    que: "Centroide del cuerpo de C2 (Hills 2022). Necesario para calcular el C2 tilt directo desde la radiografía. Opcional — solo si quieres C2 tilt.",
+    donde: "C2 es la segunda vértebra cervical (axis), debajo del atlas. Tiene una apófisis odontoides característica. Marca el centro del cuadrilátero del cuerpo vertebral por debajo de la odontoides."
   }
 ];
 
@@ -80,8 +99,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
 
-  // GAP landmarks (9 puntos fijos)
-  const [landmarks, setLandmarks] = useState(Array(9).fill(null));
+  // GAP + Hills landmarks (9 obligatorios + 3 opcionales = 12).
+  const [landmarks, setLandmarks] = useState(Array(LANDMARK_DEFS.length).fill(null));
   const [step, setStep] = useState(0);
   const [draggingLandmarkIdx, setDraggingLandmarkIdx] = useState(null);
 
@@ -123,7 +142,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     if (open) {
       setImageSrc(null);
       setImageDims({ w: 0, h: 0 });
-      setLandmarks(Array(9).fill(null));
+      setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
       setStep(0);
       setFreePts([]);
       setFreeSegs([]);
@@ -182,7 +201,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   // ─── Hooks de cálculo (deben ir antes de cualquier early return para
   // respetar Rules of Hooks) ──────────────────────────────────────────────
   const partial = useMemo(() => {
-    const [p1, p2, p3, p4, p5, p6, p7, p8, p9] = landmarks;
+    const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12] = landmarks;
     const out = {};
     if (p1 && p2) out.femMid = midpoint(p1, p2);
     if (p3 && p4) {
@@ -198,6 +217,27 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     if (p3 && p4 && p7 && p8) out.l1s1 = computeL1S1(p7, p8, p3, p4);
     if (p3 && p4 && p5 && p6) out.l4s1 = computeL4S1(p5, p6, p3, p4);
     if (p1 && p2 && p3 && p4 && p9) out.gt = computeGT(p9, out.s1Mid, out.femMid);
+
+    // ── Hills 2022: L1 centroide derivado del platillo de L1; T4/T1/C2 directos ──
+    // L1PA y L1 tilt ya se obtienen sin landmarks adicionales (midpoint de p7-p8).
+    if (p1 && p2 && p3 && p4 && p7 && p8) {
+      const l1Mid = midpoint(p7, p8);
+      out.l1Mid = l1Mid;
+      out.l1pa = computePA(l1Mid, out.s1Mid, out.femMid, p3, p4);
+      out.l1tilt = computeVertebralTilt(l1Mid, out.femMid, p3, p4, horizontalRef);
+    }
+    // T4PA — requiere centroide de T4 (p10).
+    if (p1 && p2 && p3 && p4 && p10) {
+      out.t4pa = computePA(p10, out.s1Mid, out.femMid, p3, p4);
+    }
+    // T1 tilt — requiere centroide de T1 (p11).
+    if (p1 && p2 && p3 && p4 && p11) {
+      out.t1tilt = computeVertebralTilt(p11, out.femMid, p3, p4, horizontalRef);
+    }
+    // C2 tilt — requiere centroide de C2 (p12).
+    if (p1 && p2 && p3 && p4 && p12) {
+      out.c2tilt = computeVertebralTilt(p12, out.femMid, p3, p4, horizontalRef);
+    }
     return out;
   }, [landmarks, horizontalRef]);
 
@@ -231,7 +271,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       img.onload = () => {
         setImageSrc(url);
         setImageDims({ w: img.naturalWidth, h: img.naturalHeight });
-        setLandmarks(Array(9).fill(null));
+        setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
         setStep(0);
         setFreePts([]);
         setFreeSegs([]);
@@ -293,7 +333,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
 
     if (tool === "gap") {
       if (gapMode !== "wizard") return;
-      if (step >= 9) return;
+      if (step >= LANDMARK_DEFS.length) return;
       const newLm = [...landmarks];
       newLm[step] = coord;
       setLandmarks(newLm);
@@ -301,7 +341,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       if (next !== -1) setStep(next);
       else {
         const firstEmpty = newLm.findIndex(p => p === null);
-        setStep(firstEmpty === -1 ? 9 : firstEmpty);
+        setStep(firstEmpty === -1 ? LANDMARK_DEFS.length : firstEmpty);
       }
       return;
     }
@@ -548,11 +588,17 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     if (partial.l1s1 !== undefined) out.l1s1 = round1(partial.l1s1);
     if (partial.l4s1 !== undefined) out.l4s1 = round1(partial.l4s1);
     if (partial.gt !== undefined) out.gt = round1(partial.gt);
+    // Hills 2022 — solo se emiten si los landmarks correspondientes existen.
+    if (partial.l1pa !== undefined) out.l1pa = round1(partial.l1pa);
+    if (partial.t4pa !== undefined) out.t4pa = round1(partial.t4pa);
+    if (partial.c2tilt !== undefined) out.c2tilt = round1(partial.c2tilt);
+    if (partial.t1tilt !== undefined) out.t1tilt = round1(partial.t1tilt);
+    if (partial.l1tilt !== undefined) out.l1tilt = round1(partial.l1tilt);
     if (Object.keys(out).length === 0) return;
     onApply(out);
     onClose();
   };
-  const anyAngle = ["pi", "ss", "pt", "l1s1", "l4s1", "gt"].some(k => partial[k] !== undefined);
+  const anyAngle = ["pi", "ss", "pt", "l1s1", "l4s1", "gt", "l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt"].some(k => partial[k] !== undefined);
 
   const fmtDist = (px) => calibration ? `${(px * calibration.mmPerPx).toFixed(1)} mm` : `${Math.round(px)} px`;
 
@@ -601,7 +647,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   let gtOverlay = null;
   if (landmarks[8] && partial.femMid) gtOverlay = { p1: landmarks[8], p2: partial.femMid };
 
-  const currentDef = step < 9 ? LANDMARK_DEFS[step] : null;
+  const currentDef = step < LANDMARK_DEFS.length ? LANDMARK_DEFS[step] : null;
 
   const cursor = tool === "pan" ? "grab" : (tool === "gap" && gapMode === "free") ? "default" : "crosshair";
 
@@ -648,7 +694,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       {imageSrc && tool === "gap" && currentDef && gapMode === "wizard" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>Punto {step + 1}/9</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>Punto {step + 1}/{LANDMARK_DEFS.length}{currentDef.optional ? " · opc." : ""}</span>
             <span style={{ fontWeight: 700, color: COLORS.text }}>{currentDef.label}</span>
           </div>
           <div style={{ color: COLORS.textDim, marginBottom: 3 }}><strong style={{ color: COLORS.text }}>Qué medir:</strong> {currentDef.que}</div>
@@ -906,6 +952,25 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             {partial.consistencyDelta !== undefined && partial.consistencyDelta !== null && Math.abs(partial.consistencyDelta) > 1 && (
               <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: COLORS.yellow + "22", border: `1px solid ${COLORS.yellow}66`, color: COLORS.yellow, fontSize: 11, fontWeight: 600 }}>
                 ⚠ PI ≠ PT + SS (Δ {partial.consistencyDelta >= 0 ? "+" : ""}{partial.consistencyDelta.toFixed(1)}°). Revisa los puntos.
+              </div>
+            )}
+            {/* Hills 2022 — opcionales (L1PA y L1 tilt salen "gratis" del platillo L1) */}
+            {(partial.l1pa !== undefined || partial.t4pa !== undefined || partial.c2tilt !== undefined || partial.t1tilt !== undefined || partial.l1tilt !== undefined) && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022 (en vivo)</div>
+                {[
+                  { key: "l1pa", label: "L1PA" }, { key: "t4pa", label: "T4PA" },
+                  { key: "c2tilt", label: "C2 tilt" }, { key: "t1tilt", label: "T1 tilt" }, { key: "l1tilt", label: "L1 tilt" }
+                ].map(r => {
+                  const v = partial[r.key];
+                  if (v === undefined) return null;
+                  return (
+                    <div key={r.key} style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${COLORS.panelLight}` }}>
+                      <span style={{ color: COLORS.textDim }}>{r.label}</span>
+                      <span style={{ fontWeight: 700, color: COLORS.text }}>{v >= 0 ? "+" : ""}{v.toFixed(1)}°</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <button onClick={handleApply} disabled={!anyAngle} style={{ marginTop: 12, width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${anyAngle ? COLORS.green : COLORS.panelLight}`, background: anyAngle ? COLORS.green : "transparent", color: anyAngle ? "#fff" : COLORS.textDim, fontSize: 13, fontWeight: 700, cursor: anyAngle ? "pointer" : "not-allowed", opacity: anyAngle ? 1 : 0.5 }}>
