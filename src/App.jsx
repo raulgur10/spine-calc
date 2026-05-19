@@ -1350,9 +1350,10 @@ export default function GAPCalculator() {
   };
 
   const handleDownload = () => {
-    if (!result) { showToast("Completa las mediciones primero", false); return; }
+    if (!hasAnyMeasurement) { showToast("Ingresa al menos una medición", false); return; }
     // Modo público + caso no guardado todavía → ofrecer guardar primero
-    if (!canEdit && firebaseEnabled && savedPublicCaseId !== casoId) {
+    // (solo cuando el GAP está completo; guardar requiere result)
+    if (result && !canEdit && firebaseEnabled && savedPublicCaseId !== casoId) {
       setShowPdfSaveModal(true);
       return;
     }
@@ -1383,13 +1384,14 @@ export default function GAPCalculator() {
       ...(imc ? [`IMC: ${imc.valor.toFixed(1)} (${imc.categoria})`] : []),
       ...(medico ? [`Médico: ${medico}`] : []),
       "",
-      `Resultado: ${result.total}/13 — ${result.cat.label}`,
-      result.cat.risk
+      ...(result
+        ? [`Resultado: ${result.total}/13 — ${result.cat.label}`, result.cat.risk]
+        : ["Reporte parcial — GAP Score no calculado (mediciones incompletas)."])
     ].join("\n");
   };
 
   const handleEmail = async () => {
-    if (!result) { showToast("Completa las mediciones primero", false); return; }
+    if (!hasAnyMeasurement) { showToast("Ingresa al menos una medición", false); return; }
     const { file, filename } = buildPdfFile();
     // Web Share API con archivos (móvil + algunos desktop)
     try {
