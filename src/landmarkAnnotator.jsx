@@ -122,6 +122,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   // Horizontal real (cuando la radiografía no está alineada)
   const [horizontalRef, setHorizontalRef] = useState(null); // { p1: {x,y}, p2: {x,y} } o null
   const [horizontalPending, setHorizontalPending] = useState(null); // primer click en modo horizontal
+  const [draggingHorizEnd, setDraggingHorizEnd] = useState(null); // "p1" | "p2" | null
 
   // Selección (para borrar con tecla)
   const [selectedSegId, setSelectedSegId] = useState(null);
@@ -269,8 +270,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       const url = e.target.result;
       const img = new Image();
       img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
         setImageSrc(url);
-        setImageDims({ w: img.naturalWidth, h: img.naturalHeight });
+        setImageDims({ w, h });
         setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
         setStep(0);
         setFreePts([]);
@@ -278,7 +280,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         setPendingPtId(null);
         setCalibration(null);
         setCalibratePending(null);
-        setHorizontalRef(null);
+        // Horizontal por defecto: línea horizontal centrada (eje X de la imagen).
+        // El usuario puede arrastrar los endpoints para alinearla con la placa si está rotada.
+        setHorizontalRef({
+          p1: { x: w * 0.20, y: h * 0.50 },
+          p2: { x: w * 0.80, y: h * 0.50 }
+        });
         setHorizontalPending(null);
       };
       img.src = url;
@@ -437,6 +444,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       const c = screenToSvg(e.clientX, e.clientY);
       if (!c) return;
       setFreePts(prev => prev.map(p => p.id === draggingFreePtId ? { ...p, x: c.x, y: c.y } : p));
+      return;
+    }
+    if (draggingHorizEnd && horizontalRef) {
+      const c = screenToSvg(e.clientX, e.clientY);
+      if (!c) return;
+      setHorizontalRef({ ...horizontalRef, [draggingHorizEnd]: c });
     }
   };
 
@@ -490,6 +503,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       try { e.target?.releasePointerCapture?.(e.pointerId); } catch (err) {}
       setDraggingFreePtId(null);
       dragCandidateRef.current = null;
+      return;
+    }
+    if (draggingHorizEnd) {
+      try { e.target?.releasePointerCapture?.(e.pointerId); } catch (err) {}
+      setDraggingHorizEnd(null);
     }
   };
 
@@ -850,7 +868,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                       <g>
                         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fbbf24" strokeWidth={strokeWidth * 0.7} strokeOpacity="0.4" strokeDasharray={`${strokeWidth * 4},${strokeWidth * 3}`} pointerEvents="none" />
                         <line x1={horizontalRef.p1.x} y1={horizontalRef.p1.y} x2={horizontalRef.p2.x} y2={horizontalRef.p2.y} stroke="#fbbf24" strokeWidth={strokeWidth * 1.2} strokeOpacity="0.85" pointerEvents="none" />
-                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">horizontal</text>
+                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">horizontal · arrastra ⇄</text>
+                        {["p1", "p2"].map(key => (
+                          <circle key={key} cx={horizontalRef[key].x} cy={horizontalRef[key].y} r={radius * 1.1} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.6}
+                            style={{ cursor: "grab" }}
+                            onPointerDown={(e) => { e.stopPropagation(); try { e.target.setPointerCapture?.(e.pointerId); } catch (err) {} setDraggingHorizEnd(key); }} />
+                        ))}
                       </g>
                     );
                   })()}
@@ -949,9 +972,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 </div>
               );
             })}
-            {partial.consistencyDelta !== undefined && partial.consistencyDelta !== null && Math.abs(partial.consistencyDelta) > 1 && (
-              <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: COLORS.yellow + "22", border: `1px solid ${COLORS.yellow}66`, color: COLORS.yellow, fontSize: 11, fontWeight: 600 }}>
-                ⚠ PI ≠ PT + SS (Δ {partial.consistencyDelta >= 0 ? "+" : ""}{partial.consistencyDelta.toFixed(1)}°). Revisa los puntos.
+            {partial.consistencyDelta !== undefined && partial.consistencyDelta !== null && Math.abs(partial.consistencyDelta) > 3 && (
+              <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: COLORS.yellow + "22", border: `1px solid ${COLORS.yellow}66`, color: COLORS.yellow, fontSize: 11, fontWeight: 600, lineHeight: 1.45 }}>
+                ⚠ PI ≠ PT + SS (Δ {partial.consistencyDelta >= 0 ? "+" : ""}{partial.consistencyDelta.toFixed(1)}°).
+                <br />
+                Si la placa está rotada, ajusta la línea horizontal amarilla 📏 arrastrando sus extremos. Si no, revisa los puntos del platillo S1 y las cabezas femorales.
               </div>
             )}
             {/* Hills 2022 — opcionales (L1PA y L1 tilt salen "gratis" del platillo L1) */}
@@ -1033,17 +1058,20 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Referencia horizontal</div>
             {horizontalRef ? (
               <div style={{ fontSize: 12, color: COLORS.text }}>
-                <div style={{ padding: "6px 8px", borderRadius: 6, background: "#fbbf24" + "22", border: `1px solid #fbbf2444`, color: "#fbbf24", marginBottom: 8 }}>
-                  ✓ Horizontal definida por el usuario<br/>
-                  <span style={{ fontSize: 10, opacity: 0.85 }}>SS y PT corregidos por la rotación de la radiografía.</span>
+                <div style={{ padding: "6px 8px", borderRadius: 6, background: "#fbbf24" + "22", border: `1px solid #fbbf2444`, color: "#fbbf24", marginBottom: 8, lineHeight: 1.45 }}>
+                  📏 Línea horizontal activa<br/>
+                  <span style={{ fontSize: 10, opacity: 0.85 }}>Arrastra los círculos amarillos para alinearla con la placa si está rotada. SS y PT se corrigen en vivo.</span>
                 </div>
+                <button onClick={() => { const w = imageDims.w, h = imageDims.h; if (w && h) setHorizontalRef({ p1: { x: w*0.20, y: h*0.50 }, p2: { x: w*0.80, y: h*0.50 } }); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", marginBottom: 4 }}>
+                  Resetear al eje X de la imagen
+                </button>
                 <button onClick={() => setHorizontalRef(null)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  Volver al eje X de la imagen
+                  Ocultar línea horizontal
                 </button>
               </div>
             ) : (
               <div style={{ fontSize: 11, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.55 }}>
-                Usa <strong style={{ color: "#fbbf24" }}>📏 Horizontal</strong> arriba solo si la radiografía está rotada. Por default se asume que el borde inferior de la imagen es horizontal.
+                Sin línea horizontal: SS y PT se miden respecto al eje X de la imagen. Usa <strong style={{ color: "#fbbf24" }}>📏 Horizontal</strong> arriba para definirla si la placa está rotada.
               </div>
             )}
           </div>
