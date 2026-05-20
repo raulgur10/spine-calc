@@ -21,76 +21,162 @@ const LANDMARK_DEFS = [
     idx: 0, short: "Fem. izq.", color: "#e11d48",
     label: "Centro de la cabeza femoral izquierda",
     que: "Uno de los dos puntos que definen el eje bicoxofemoral. Su punto medio con la cabeza derecha es el centro de rotación de la pelvis (base de PI, PT y GT).",
-    donde: "Marca el centro del círculo formado por la cabeza femoral. Si las dos cabezas se proyectan superpuestas en la lateral, marca el centro de la cabeza más radiopaca (la más cercana al detector se ve más nítida)."
+    donde: "Marca el centro del círculo formado por la cabeza femoral. Si las dos cabezas se proyectan superpuestas en la lateral, marca el centro de la cabeza más radiopaca (la más cercana al detector se ve más nítida).",
+    figureSrc: "/landmarks/eje_femoral_lumbar.png"
   },
   {
     idx: 1, short: "Fem. der.", color: "#e11d48",
     label: "Centro de la cabeza femoral derecha",
     que: "Segundo punto del eje bicoxofemoral. Junto con el anterior define la línea de las cabezas femorales.",
-    donde: "Misma técnica que la izquierda, lado opuesto. Si están perfectamente superpuestas, marca este punto sobre la cabeza menos radiopaca (la más alejada del detector). El punto medio de los dos cae igual en el centro de rotación."
+    donde: "Misma técnica que la izquierda, lado opuesto. Si están perfectamente superpuestas, marca este punto sobre la cabeza menos radiopaca (la más alejada del detector). El punto medio de los dos cae igual en el centro de rotación.",
+    figureSrc: "/landmarks/eje_femoral_lumbar.png"
   },
   {
     idx: 2, short: "S1 post.", color: "#0891b2",
     label: "Esquina posterior del platillo superior de S1",
     que: "Define el límite dorsal del platillo superior de S1. La línea S1 post → S1 ant determina la pendiente sacra (SS).",
-    donde: "Esquina trasera del platillo superior de S1: donde el platillo se encuentra con el muro posterior del cuerpo de S1 (el lado que mira al canal raquídeo)."
+    donde: "Esquina trasera del platillo superior de S1: donde el platillo se encuentra con el muro posterior del cuerpo de S1 (el lado que mira al canal raquídeo).",
+    figureSrc: "/landmarks/angulo_ss.png"
   },
   {
     idx: 3, short: "S1 ant.", color: "#0891b2",
     label: "Esquina anterior del platillo superior de S1",
     que: "Cierra la línea del platillo superior de S1. La inclinación del segmento entre S1 post y S1 ant es la SS.",
-    donde: "Esquina delantera del platillo de S1: donde el platillo se encuentra con el muro anterior del cuerpo de S1. La línea entre los dos puntos S1 debe seguir el borde superior de la primera vértebra sacra."
+    donde: "Esquina delantera del platillo de S1: donde el platillo se encuentra con el muro anterior del cuerpo de S1. La línea entre los dos puntos S1 debe seguir el borde superior de la primera vértebra sacra.",
+    figureSrc: "/landmarks/angulo_ss.png"
   },
   {
     idx: 4, short: "L4 post.", color: "#16a34a",
     label: "Esquina posterior del platillo superior de L4",
     que: "Define el platillo superior de L4, plano de referencia para la lordosis distal L4-S1.",
-    donde: "Identifica L4 contando desde S1: la primera vértebra sobre S1 es L5, la siguiente es L4. Marca la esquina trasera del platillo superior de L4."
+    donde: "Identifica L4 contando desde S1: la primera vértebra sobre S1 es L5, la siguiente es L4. Marca la esquina trasera del platillo superior de L4.",
+    figureSrc: "/landmarks/angulo_l4s1.png"
   },
   {
     idx: 5, short: "L4 ant.", color: "#16a34a",
     label: "Esquina anterior del platillo superior de L4",
     que: "Cierra el plano del platillo superior de L4.",
-    donde: "Esquina delantera del platillo superior de L4. La línea entre L4 post y L4 ant debe seguir el borde superior del cuerpo vertebral."
+    donde: "Esquina delantera del platillo superior de L4. La línea entre L4 post y L4 ant debe seguir el borde superior del cuerpo vertebral.",
+    figureSrc: "/landmarks/angulo_l4s1.png"
   },
   {
     idx: 6, short: "L1 post.", color: "#7c3aed",
     label: "Esquina posterior del platillo superior de L1",
     que: "Define el platillo superior de L1, plano superior de la lordosis lumbar total (L1-S1).",
-    donde: "Cuenta 5 vértebras desde S1 hacia arriba (L5 → L4 → L3 → L2 → L1). Marca la esquina trasera del platillo superior de L1."
+    donde: "Cuenta 5 vértebras desde S1 hacia arriba (L5 → L4 → L3 → L2 → L1). Marca la esquina trasera del platillo superior de L1.",
+    figureSrc: "/landmarks/angulo_l1s1.png"
   },
   {
     idx: 7, short: "L1 ant.", color: "#7c3aed",
     label: "Esquina anterior del platillo superior de L1",
     que: "Cierra el plano del platillo superior de L1.",
-    donde: "Esquina delantera del platillo superior de L1. La línea entre los dos puntos L1 debe coincidir con el borde superior del cuerpo de L1."
+    donde: "Esquina delantera del platillo superior de L1. La línea entre los dos puntos L1 debe coincidir con el borde superior del cuerpo de L1.",
+    figureSrc: "/landmarks/angulo_l1s1.png"
   },
   {
     idx: 8, short: "C7", color: "#ea580c",
     label: "Centro del cuerpo vertebral de C7",
     que: "Punto de referencia más alto del eje espinal. Junto con el centro de S1 y el eje femoral define el Global Tilt (GT).",
-    donde: "Centro del cuerpo vertebral de C7 (NO la apófisis espinosa). C7 es la última cervical y tiene la apófisis más prominente del cuello. Marca el centro del cuadrilátero del cuerpo vertebral."
+    donde: "Centro del cuerpo vertebral de C7 (NO la apófisis espinosa). C7 es la última cervical y tiene la apófisis más prominente del cuello. Marca el centro del cuadrilátero del cuerpo vertebral.",
+    figureSrc: "/landmarks/angulo_gt.png"
   },
   // ── Hills 2022 (opcionales): T4 centroide para T4PA, T1 y C2 centroides para tilts ──
   {
     idx: 9, short: "T4 (opc.)", color: "#3b82f6", optional: true,
     label: "Centro del cuerpo vertebral de T4",
     que: "Centroide del cuerpo de T4 (Hills 2022). Define el T4 Pelvic Angle (T4PA) y, junto con el L1PA, el eje T4-L1-cadera. Opcional — solo si quieres T4PA.",
-    donde: "Cuenta 4 vértebras desde C7 hacia abajo (C7 → T1 → T2 → T3 → T4). Marca el centro del cuadrilátero del cuerpo vertebral de T4 (NO la apófisis espinosa)."
+    donde: "Cuenta 4 vértebras desde C7 hacia abajo (C7 → T1 → T2 → T3 → T4). Marca el centro del cuadrilátero del cuerpo vertebral de T4 (NO la apófisis espinosa).",
+    figureSrc: "/landmarks/cervical_t4.png"
   },
   {
     idx: 10, short: "T1 (opc.)", color: "#1d4ed8", optional: true,
     label: "Centro del cuerpo vertebral de T1",
     que: "Centroide del cuerpo de T1 (Hills 2022). Necesario para calcular el T1 tilt directo desde la radiografía. Opcional — solo si quieres T1 tilt.",
-    donde: "T1 es la primera vértebra torácica, justo debajo de C7. Marca el centro del cuadrilátero del cuerpo vertebral (NO la apófisis espinosa)."
+    donde: "T1 es la primera vértebra torácica, justo debajo de C7. Marca el centro del cuadrilátero del cuerpo vertebral (NO la apófisis espinosa).",
+    figureSrc: "/landmarks/cervical_t4.png"
   },
   {
     idx: 11, short: "C2 (opc.)", color: "#1e3a8a", optional: true,
     label: "Centro del cuerpo vertebral de C2",
     que: "Centroide del cuerpo de C2 (Hills 2022). Necesario para calcular el C2 tilt directo desde la radiografía. Opcional — solo si quieres C2 tilt.",
-    donde: "C2 es la segunda vértebra cervical (axis), debajo del atlas. Tiene una apófisis odontoides característica. Marca el centro del cuadrilátero del cuerpo vertebral por debajo de la odontoides."
+    donde: "C2 es la segunda vértebra cervical (axis), debajo del atlas. Tiene una apófisis odontoides característica. Marca el centro del cuadrilátero del cuerpo vertebral por debajo de la odontoides.",
+    figureSrc: "/landmarks/cervical_t4.png"
   }
 ];
+
+// Definiciones de ángulos calculados — explicación + esquema para el desplegable
+// "¿Cómo se calcula?" en el panel derecho.
+const ANGLE_DEFS = {
+  pi: {
+    label: "PI",
+    fullName: "Pelvic Incidence · Incidencia Pélvica",
+    explicacion: "Ángulo entre la perpendicular al platillo superior de S1 (en su punto medio) y la línea S1 mid → centro bicoxofemoral. Es una constante anatómica de cada persona: no cambia con la postura. Por identidad geométrica, PI = PT + SS siempre.",
+    figureSrc: "/landmarks/angulo_pi.png"
+  },
+  ss: {
+    label: "SS",
+    fullName: "Sacral Slope · Pendiente Sacra",
+    explicacion: "Inclinación del platillo superior de S1 respecto a la horizontal real. Valor típico 30–50°. Refleja la posición postural del sacro: aumenta al inclinar la pelvis hacia adelante.",
+    figureSrc: "/landmarks/angulo_ss.png"
+  },
+  pt: {
+    label: "PT",
+    fullName: "Pelvic Tilt · Versión Pélvica",
+    explicacion: "Ángulo entre la vertical y la línea fémur mid → S1 mid. Valor típico 5–20°. Refleja la rotación pélvica: aumenta como mecanismo compensador frente a desbalance sagital.",
+    figureSrc: "/landmarks/angulo_pt.png"
+  },
+  l1s1: {
+    label: "L1–S1",
+    fullName: "Lordosis Lumbar Total",
+    explicacion: "Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Es la lordosis lumbar total. El target ideal individual depende de la PI (≈ 0.62·PI + 29).",
+    figureSrc: "/landmarks/angulo_l1s1.png"
+  },
+  l4s1: {
+    label: "L4–S1",
+    fullName: "Lordosis Distal",
+    explicacion: "Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Captura los segmentos lumbares más caudales, donde reside ≈65% de la lordosis total en una columna fisiológica.",
+    figureSrc: "/landmarks/angulo_l4s1.png"
+  },
+  gt: {
+    label: "GT",
+    fullName: "Global Tilt · Inclinación Global",
+    explicacion: "Ángulo en fémur mid entre las rectas fémur mid → C7 y fémur mid → S1 mid. Mide el desbalance global del tronco respecto a la pelvis. 0° cuando C7, S1 mid y eje bicoxofemoral son colineales.",
+    figureSrc: "/landmarks/angulo_gt.png"
+  }
+};
+
+const HILLS_DEFS = {
+  l1pa: {
+    label: "L1PA",
+    fullName: "L1 Pelvic Angle (Hills 2022)",
+    explicacion: "Ángulo en fémur mid entre la línea al centroide de L1 y la línea a S1 mid, con signo (positivo si L1 cae anterior al eje fémur–S1). Es el target normativo propuesto por Hills 2022: L1PA ideal ≈ 0.5·PI − 21.",
+    figureSrc: "/landmarks/angulo_gt.png"
+  },
+  t4pa: {
+    label: "T4PA",
+    fullName: "T4 Pelvic Angle (Hills 2022)",
+    explicacion: "Análogo a L1PA pero usando el centroide de T4. En una columna alineada T4PA ≈ L1PA (eje T4–L1–cadera alineado). Una diferencia |T4PA − L1PA| > 4° sugiere desalineación cefálica.",
+    figureSrc: "/landmarks/cervical_t4.png"
+  },
+  c2tilt: {
+    label: "C2 tilt",
+    fullName: "Tilt vertebral C2 (Hills 2022)",
+    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide C2. Rango normal: −4.4° a −1.1° (ligeramente posterior al eje bicoxofemoral). Fuera del intervalo indica compensación cervical.",
+    figureSrc: "/landmarks/cervical_t4.png"
+  },
+  t1tilt: {
+    label: "T1 tilt",
+    fullName: "Tilt vertebral T1 (Hills 2022)",
+    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide T1. Rango normal: −7.0° a −3.6°. Valores positivos sugieren desbalance torácico anterior.",
+    figureSrc: "/landmarks/cervical_t4.png"
+  },
+  l1tilt: {
+    label: "L1 tilt",
+    fullName: "Tilt vertebral L1 (Hills 2022)",
+    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide L1. Rango normal: −10.3° a −5.1°. Útil como complemento al L1PA para evaluar la posición del ápex lordótico.",
+    figureSrc: "/landmarks/angulo_l1s1.png"
+  }
+};
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -123,6 +209,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const [horizontalRef, setHorizontalRef] = useState(null); // { p1: {x,y}, p2: {x,y} } o null
   const [horizontalPending, setHorizontalPending] = useState(null); // primer click en modo horizontal
   const [draggingHorizEnd, setDraggingHorizEnd] = useState(null); // "p1" | "p2" | null
+  const [showHowTo, setShowHowTo] = useState(true); // "¿Cómo medir?" desplegable en panel derecho
+  const [expandedAngle, setExpandedAngle] = useState(null); // key de ángulo expandido en "Cálculos GAP"
 
   // Selección (para borrar con tecla)
   const [selectedSegId, setSelectedSegId] = useState(null);
@@ -241,6 +329,20 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     }
     return out;
   }, [landmarks, horizontalRef]);
+
+  // Ángulo de la línea horizontal respecto al eje X de la imagen.
+  // Positivo = línea inclinada hacia abajo a la derecha (en convención y↓).
+  // Rango [-90°, 90°]; 0° = paralela al eje X de la imagen.
+  const horizontalAngle = useMemo(() => {
+    if (!horizontalRef) return null;
+    const dx = horizontalRef.p2.x - horizontalRef.p1.x;
+    const dy = horizontalRef.p2.y - horizontalRef.p1.y;
+    if (dx === 0 && dy === 0) return 0;
+    let a = Math.atan2(dy, dx) * 180 / Math.PI;
+    while (a > 90) a -= 180;
+    while (a <= -90) a += 180;
+    return a;
+  }, [horizontalRef]);
 
   const vertexAngles = useMemo(() => {
     const ptToSegs = {};
@@ -708,19 +810,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         </div>
       )}
 
-      {/* Hint contextual */}
+      {/* Hint compacto: solo nombre del punto activo. Detalle completo vive en el panel derecho. */}
       {imageSrc && tool === "gap" && currentDef && gapMode === "wizard" && (
-        <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>Punto {step + 1}/{LANDMARK_DEFS.length}{currentDef.optional ? " · opc." : ""}</span>
-            <span style={{ fontWeight: 700, color: COLORS.text }}>{currentDef.label}</span>
-          </div>
-          <div style={{ color: COLORS.textDim, marginBottom: 3 }}><strong style={{ color: COLORS.text }}>Qué medir:</strong> {currentDef.que}</div>
-          <div style={{ color: COLORS.textDim }}><strong style={{ color: COLORS.text }}>Dónde colocarlo:</strong> {currentDef.donde}</div>
-          <div style={{ marginTop: 6, color: COLORS.textDim, fontSize: 11, fontStyle: "italic" }}>
-            Tip: en el panel derecho puedes saltarte al punto que quieras (no es obligatorio seguir el orden).
-            Click sobre un punto colocado para seleccionarlo · <kbd style={{ background: COLORS.panel, padding: "0 4px", borderRadius: 3, fontFamily: "monospace", fontSize: 10 }}>Delete</kbd> lo borra.
-          </div>
+        <div style={{ padding: "8px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>Punto {step + 1}/{LANDMARK_DEFS.length}{currentDef.optional ? " · opc." : ""}</span>
+          <span style={{ fontWeight: 700, color: COLORS.text }}>{currentDef.label}</span>
+          <span style={{ color: COLORS.textDim, marginLeft: "auto", fontSize: 11, fontStyle: "italic" }}>Detalles → panel derecho · "¿Cómo medir?"</span>
         </div>
       )}
       {imageSrc && tool === "gap" && gapMode === "free" && (
@@ -868,7 +963,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                       <g>
                         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fbbf24" strokeWidth={strokeWidth * 0.7} strokeOpacity="0.4" strokeDasharray={`${strokeWidth * 4},${strokeWidth * 3}`} pointerEvents="none" />
                         <line x1={horizontalRef.p1.x} y1={horizontalRef.p1.y} x2={horizontalRef.p2.x} y2={horizontalRef.p2.y} stroke="#fbbf24" strokeWidth={strokeWidth * 1.2} strokeOpacity="0.85" pointerEvents="none" />
-                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">horizontal · arrastra ⇄</text>
+                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">
+                          horizontal · {horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : ""} · arrastra ⇄
+                        </text>
                         {["p1", "p2"].map(key => (
                           <circle key={key} cx={horizontalRef[key].x} cy={horizontalRef[key].y} r={radius * 1.1} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.6}
                             style={{ cursor: "grab" }}
@@ -955,20 +1052,67 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 </button>
               );
             })}
+
+            {/* Desplegable "¿Cómo medir?" con detalles del landmark activo */}
+            {currentDef && tool === "gap" && gapMode === "wizard" && (
+              <div style={{ marginTop: 8, border: `1px solid ${COLORS.panelLight}`, borderRadius: 6, overflow: "hidden" }}>
+                <button onClick={() => setShowHowTo(s => !s)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: showHowTo ? COLORS.panelLight : "transparent", border: "none", color: COLORS.text, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+                  <span>¿Cómo medir <span style={{ color: currentDef.color }}>{currentDef.short}</span>?</span>
+                  <span style={{ color: COLORS.textDim, fontSize: 14 }}>{showHowTo ? "▾" : "▸"}</span>
+                </button>
+                {showHowTo && (
+                  <div style={{ padding: "10px 12px", fontSize: 11.5, lineHeight: 1.5, background: COLORS.panel, borderTop: `1px solid ${COLORS.panelLight}` }}>
+                    <div style={{ fontWeight: 700, color: currentDef.color, marginBottom: 6, fontSize: 12 }}>{currentDef.label}</div>
+                    <div style={{ color: COLORS.textDim, marginBottom: 6 }}><strong style={{ color: COLORS.text }}>Qué medir:</strong> {currentDef.que}</div>
+                    <div style={{ color: COLORS.textDim, marginBottom: 8 }}><strong style={{ color: COLORS.text }}>Dónde colocarlo:</strong> {currentDef.donde}</div>
+                    {/* Figura esquemática (placeholder hasta que se agreguen los dibujos definitivos) */}
+                    <div style={{ background: "#0f172a", borderRadius: 4, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120, border: `1px dashed ${COLORS.panelLight}` }}>
+                      {currentDef.figureSrc ? (
+                        <img src={currentDef.figureSrc} alt={currentDef.label} style={{ maxWidth: "100%", maxHeight: 180, objectFit: "contain" }} />
+                      ) : (
+                        <div style={{ color: COLORS.textDim, fontSize: 10, fontStyle: "italic", textAlign: "center" }}>
+                          (esquema pendiente)<br/>
+                          <span style={{ fontSize: 9 }}>colocar en <code style={{ fontFamily: "monospace" }}>public/landmarks/{currentDef.short.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.png</code></span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop: 6, color: COLORS.textDim, fontSize: 10, fontStyle: "italic" }}>
+                      Tip: <kbd style={{ background: COLORS.panel, padding: "0 4px", borderRadius: 3, fontFamily: "monospace", fontSize: 10, border: `1px solid ${COLORS.panelLight}` }}>Delete</kbd> borra el punto seleccionado · no es obligatorio seguir el orden.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Resultados parciales */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Cálculos GAP (en vivo)</div>
-            {[
-              { key: "pi", label: "PI" }, { key: "ss", label: "SS" }, { key: "pt", label: "PT" },
-              { key: "l1s1", label: "L1-S1" }, { key: "l4s1", label: "L4-S1" }, { key: "gt", label: "GT" }
-            ].map(r => {
-              const v = partial[r.key];
+            {["pi", "ss", "pt", "l1s1", "l4s1", "gt"].map(key => {
+              const v = partial[key];
+              const def = ANGLE_DEFS[key];
+              const isOpen = expandedAngle === key;
               return (
-                <div key={r.key} style={{ display: "flex", justifyContent: "space-between", padding: "5px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${COLORS.panelLight}`, opacity: v === undefined ? 0.4 : 1 }}>
-                  <span style={{ color: COLORS.textDim }}>{r.label}</span>
-                  <span style={{ fontWeight: 700, color: v === undefined ? COLORS.textDim : COLORS.text }}>{v === undefined ? "—" : `${v.toFixed(1)}°`}</span>
+                <div key={key} style={{ borderBottom: `1px solid ${COLORS.panelLight}` }}>
+                  <button onClick={() => setExpandedAngle(isOpen ? null : key)}
+                    style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: isOpen ? COLORS.panelLight : "transparent", border: "none", cursor: "pointer", opacity: v === undefined ? 0.55 : 1, textAlign: "left", color: COLORS.text }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.textDim }}>
+                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>{isOpen ? "▾" : "▸"}</span>
+                      {def.label}
+                    </span>
+                    <span style={{ fontWeight: 700, color: v === undefined ? COLORS.textDim : COLORS.text }}>{v === undefined ? "—" : `${v.toFixed(1)}°`}</span>
+                  </button>
+                  {isOpen && (
+                    <div style={{ padding: "8px 10px 10px", fontSize: 11, lineHeight: 1.5, color: COLORS.textDim, background: COLORS.panel, borderTop: `1px dashed ${COLORS.panelLight}` }}>
+                      <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{def.fullName}</div>
+                      <div style={{ marginBottom: 8 }}>{def.explicacion}</div>
+                      {def.figureSrc && (
+                        <div style={{ background: "#0f172a", borderRadius: 4, padding: 6, display: "flex", justifyContent: "center", border: `1px solid ${COLORS.panelLight}` }}>
+                          <img src={def.figureSrc} alt={def.fullName} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -983,16 +1127,32 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             {(partial.l1pa !== undefined || partial.t4pa !== undefined || partial.c2tilt !== undefined || partial.t1tilt !== undefined || partial.l1tilt !== undefined) && (
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022 (en vivo)</div>
-                {[
-                  { key: "l1pa", label: "L1PA" }, { key: "t4pa", label: "T4PA" },
-                  { key: "c2tilt", label: "C2 tilt" }, { key: "t1tilt", label: "T1 tilt" }, { key: "l1tilt", label: "L1 tilt" }
-                ].map(r => {
-                  const v = partial[r.key];
+                {["l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt"].map(key => {
+                  const v = partial[key];
                   if (v === undefined) return null;
+                  const def = HILLS_DEFS[key];
+                  const isOpen = expandedAngle === key;
                   return (
-                    <div key={r.key} style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${COLORS.panelLight}` }}>
-                      <span style={{ color: COLORS.textDim }}>{r.label}</span>
-                      <span style={{ fontWeight: 700, color: COLORS.text }}>{v >= 0 ? "+" : ""}{v.toFixed(1)}°</span>
+                    <div key={key} style={{ borderBottom: `1px solid ${COLORS.panelLight}` }}>
+                      <button onClick={() => setExpandedAngle(isOpen ? null : key)}
+                        style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", background: isOpen ? COLORS.panelLight : "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.text }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, color: COLORS.textDim }}>
+                          <span style={{ color: COLORS.textDim, fontSize: 10 }}>{isOpen ? "▾" : "▸"}</span>
+                          {def.label}
+                        </span>
+                        <span style={{ fontWeight: 700, color: COLORS.text }}>{v >= 0 ? "+" : ""}{v.toFixed(1)}°</span>
+                      </button>
+                      {isOpen && (
+                        <div style={{ padding: "8px 10px 10px", fontSize: 11, lineHeight: 1.5, color: COLORS.textDim, background: COLORS.panel, borderTop: `1px dashed ${COLORS.panelLight}` }}>
+                          <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{def.fullName}</div>
+                          <div style={{ marginBottom: 8 }}>{def.explicacion}</div>
+                          {def.figureSrc && (
+                            <div style={{ background: "#0f172a", borderRadius: 4, padding: 6, display: "flex", justifyContent: "center", border: `1px solid ${COLORS.panelLight}` }}>
+                              <img src={def.figureSrc} alt={def.fullName} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1059,8 +1219,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             {horizontalRef ? (
               <div style={{ fontSize: 12, color: COLORS.text }}>
                 <div style={{ padding: "6px 8px", borderRadius: 6, background: "#fbbf24" + "22", border: `1px solid #fbbf2444`, color: "#fbbf24", marginBottom: 8, lineHeight: 1.45 }}>
-                  📏 Línea horizontal activa<br/>
-                  <span style={{ fontSize: 10, opacity: 0.85 }}>Arrastra los círculos amarillos para alinearla con la placa si está rotada. SS y PT se corrigen en vivo.</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <span>📏 Línea horizontal</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700 }}>{horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : "—"}</span>
+                  </div>
+                  <span style={{ fontSize: 10, opacity: 0.85 }}>Arrastra los círculos amarillos para alinearla con la placa. 0.0° = paralela al eje X de la imagen.</span>
                 </div>
                 <button onClick={() => { const w = imageDims.w, h = imageDims.h; if (w && h) setHorizontalRef({ p1: { x: w*0.20, y: h*0.50 }, p2: { x: w*0.80, y: h*0.50 } }); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", marginBottom: 4 }}>
                   Resetear al eje X de la imagen

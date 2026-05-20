@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
 import { firebaseEnabled, db, storage, auth, googleProvider } from "./firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where, getDoc, setDoc, increment, serverTimestamp } from "firebase/firestore";
@@ -618,42 +618,58 @@ function casosToCSV(casos) {
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENTES
 // ═══════════════════════════════════════════════════════════════════════════
-function InfoTooltip({ text }) {
+function InfoTooltip({ text, figureSrc }) {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  // Click fuera cierra el popover (importante porque ahora puede ser grande con imagen)
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+  const hasFigure = !!figureSrc;
   return (
-    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}>
+    <span ref={wrapRef} style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
+      onMouseEnter={() => { if (!hasFigure) setOpen(true); }}
+      onMouseLeave={() => { if (!hasFigure) setOpen(false); }}>
       <span
         role="button"
         tabIndex={0}
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-        onBlur={() => setOpen(false)}
         onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
         style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 16, height: 16, borderRadius: "50%", background: COLORS.inputHover, color: COLORS.textDim, fontSize: 10, cursor: "pointer", fontWeight: 700, border: `1px solid ${COLORS.inputBorder}`, userSelect: "none", outline: "none" }}>?</span>
       {open && (
         <span style={{
           position: "absolute", top: "calc(100% + 8px)", left: -4, zIndex: 100,
-          width: 280, maxWidth: "min(280px, 85vw)",
-          padding: "10px 12px",
+          width: hasFigure ? 340 : 280, maxWidth: "min(90vw, 380px)",
+          padding: "12px 14px",
           background: COLORS.text, color: "#F1F5F9",
           fontSize: 12, lineHeight: 1.5, fontWeight: 400, fontFamily: "'DM Sans', sans-serif",
           borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,0.22)",
-          whiteSpace: "normal", pointerEvents: "none"
-        }}>{text}</span>
+          whiteSpace: "normal",
+          display: "block"
+        }}>
+          <span style={{ display: "block" }}>{text}</span>
+          {hasFigure && (
+            <span style={{ display: "block", marginTop: 10, background: "#0f172a", borderRadius: 6, padding: 6, textAlign: "center" }}>
+              <img src={figureSrc} alt="" style={{ maxWidth: "100%", maxHeight: 200, objectFit: "contain", display: "inline-block" }} />
+            </span>
+          )}
+        </span>
       )}
     </span>
   );
 }
 
-function InputField({ label, tooltip, value, onChange, unit = "°", min, max, type = "number", placeholder, step, list, transform, maxLength }) {
+function InputField({ label, tooltip, tooltipFigure, value, onChange, unit = "°", min, max, type = "number", placeholder, step, list, transform, maxLength }) {
   const [focused, setFocused] = useState(false);
   const isTextLike = type === "text" || type === "date";
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minWidth: 0 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</label>
-        {tooltip && <InfoTooltip text={tooltip} />}
+        {tooltip && <InfoTooltip text={tooltip} figureSrc={tooltipFigure} />}
       </div>
       <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${focused ? COLORS.inputFocus : COLORS.inputBorder}`, overflow: "hidden", transition: "border-color 0.15s" }}>
         <input type={type} value={value} placeholder={placeholder} min={min} max={max} step={step} list={list} maxLength={maxLength}
@@ -1854,13 +1870,16 @@ export default function GAPCalculator() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
             <InputField label="Incidencia Pélvica (PI)" value={pi} onChange={setPI} min={0} max={120}
               placeholder={spinopelvic.derivedKey === "pi" && spinopelvic.effPI !== null ? spinopelvic.effPI.toFixed(1) : ""}
-              tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: PI = SS + PT. (Legaye, Duval-Beaupère 1998)" />
+              tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: PI = SS + PT. (Legaye, Duval-Beaupère 1998)"
+              tooltipFigure="/landmarks/angulo_pi.png" />
             <InputField label="Pendiente Sacra (SS)" value={ss} onChange={setSS} min={-30} max={90}
               placeholder={spinopelvic.derivedKey === "ss" && spinopelvic.effSS !== null ? spinopelvic.effSS.toFixed(1) : ""}
-              tooltip="Parámetro postural. Ángulo entre el platillo superior de S1 y la horizontal. Aumenta con la anteversión pélvica y disminuye con la retroversión. Determina en buena medida la lordosis lumbar." />
+              tooltip="Parámetro postural. Ángulo entre el platillo superior de S1 y la horizontal. Aumenta con la anteversión pélvica y disminuye con la retroversión. Determina en buena medida la lordosis lumbar."
+              tooltipFigure="/landmarks/angulo_ss.png" />
             <InputField label="Versión Pélvica (PT)" value={pt} onChange={setPT} min={-30} max={60}
               placeholder={spinopelvic.derivedKey === "pt" && spinopelvic.effPT !== null ? spinopelvic.effPT.toFixed(1) : ""}
-              tooltip="Pelvic Tilt. Parámetro postural. Ángulo entre la vertical y la línea del centro del eje bicoxofemoral al centro del platillo superior de S1. Aumenta en retroversión pélvica (mecanismo compensatorio del desbalance sagital). Relación: PT = PI − SS." />
+              tooltip="Pelvic Tilt. Parámetro postural. Ángulo entre la vertical y la línea del centro del eje bicoxofemoral al centro del platillo superior de S1. Aumenta en retroversión pélvica (mecanismo compensatorio del desbalance sagital). Relación: PT = PI − SS."
+              tooltipFigure="/landmarks/angulo_pt.png" />
           </div>
           {/* Banner de derivación / inconsistencia */}
           {(() => {
@@ -1892,12 +1911,15 @@ export default function GAPCalculator() {
           })()}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <InputField label="Lordosis L1-S1" value={l1s1} onChange={setL1S1} min={0} max={120}
-              tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la PI. Meta GAP: 0.62·PI + 29°." />
+              tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la PI. Meta GAP: 0.62·PI + 29°."
+              tooltipFigure="/landmarks/angulo_l1s1.png" />
             <InputField label="Lordosis L4-S1" value={l4s1} onChange={setL4S1} min={0} max={90}
-              tooltip="Lordosis lumbar distal. Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Aporta ≈ 65% de la lordosis total. Base del Índice de Distribución (ILD = L4-S1 / L1-S1 × 100; normal 50–80%)." />
+              tooltip="Lordosis lumbar distal. Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Aporta ≈ 65% de la lordosis total. Base del Índice de Distribución (ILD = L4-S1 / L1-S1 × 100; normal 50–80%)."
+              tooltipFigure="/landmarks/angulo_l4s1.png" />
           </div>
           <InputField label="Inclinación Global (GT)" value={gt} onChange={setGT} min={-30} max={70}
-            tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·PI − 15." />
+            tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·PI − 15."
+            tooltipFigure="/landmarks/angulo_gt.png" />
         </Card>
 
         {/* Eje T4-L1-Cadera (Hills 2022) — colapsable, opcional */}
@@ -1924,9 +1946,11 @@ export default function GAPCalculator() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
-                  tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)" />
+                  tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)"
+                  tooltipFigure="/landmarks/angulo_gt.png" />
                 <InputField label="T4 Pelvic Angle (T4PA)" value={t4pa} onChange={setT4PA} min={-30} max={40}
-                  tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)." />
+                  tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)."
+                  tooltipFigure="/landmarks/cervical_t4.png" />
               </div>
               {hillsResult && (
                 <div style={{ marginTop: 8 }}>
