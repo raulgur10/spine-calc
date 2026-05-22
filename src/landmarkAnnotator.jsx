@@ -29,56 +29,56 @@ const LANDMARK_DEFS = [
     label: "Centro de la cabeza femoral derecha",
     que: "Segundo punto del eje bicoxofemoral. Junto con el anterior define la línea de las cabezas femorales.",
     donde: "Misma técnica que la izquierda, lado opuesto. Si están perfectamente superpuestas, marca este punto sobre la cabeza menos radiopaca (la más alejada del detector). El punto medio de los dos cae igual en el centro de rotación.",
-    figureSrc: "/landmarks/eje_femoral_lumbar.png"
+    figureSrc: "/landmarks/eje_femoral_lumbar_derecho.png"
   },
   {
     idx: 2, short: "S1 post.", color: "#0891b2",
     label: "Esquina posterior del platillo superior de S1",
     que: "Define el límite dorsal del platillo superior de S1. La línea S1 post → S1 ant determina la pendiente sacra (SS).",
     donde: "Esquina trasera del platillo superior de S1: donde el platillo se encuentra con el muro posterior del cuerpo de S1 (el lado que mira al canal raquídeo).",
-    figureSrc: "/landmarks/angulo_ss.png"
+    figureSrc: "/landmarks/s1_post_lumbar.png"
   },
   {
     idx: 3, short: "S1 ant.", color: "#0891b2",
     label: "Esquina anterior del platillo superior de S1",
     que: "Cierra la línea del platillo superior de S1. La inclinación del segmento entre S1 post y S1 ant es la SS.",
     donde: "Esquina delantera del platillo de S1: donde el platillo se encuentra con el muro anterior del cuerpo de S1. La línea entre los dos puntos S1 debe seguir el borde superior de la primera vértebra sacra.",
-    figureSrc: "/landmarks/angulo_ss.png"
+    figureSrc: "/landmarks/s1_ant_lumbar.png"
   },
   {
     idx: 4, short: "L4 post.", color: "#16a34a",
     label: "Esquina posterior del platillo superior de L4",
     que: "Define el platillo superior de L4, plano de referencia para la lordosis distal L4-S1.",
     donde: "Identifica L4 contando desde S1: la primera vértebra sobre S1 es L5, la siguiente es L4. Marca la esquina trasera del platillo superior de L4.",
-    figureSrc: "/landmarks/angulo_l4s1.png"
+    figureSrc: "/landmarks/l4_post_lumbar.png"
   },
   {
     idx: 5, short: "L4 ant.", color: "#16a34a",
     label: "Esquina anterior del platillo superior de L4",
     que: "Cierra el plano del platillo superior de L4.",
     donde: "Esquina delantera del platillo superior de L4. La línea entre L4 post y L4 ant debe seguir el borde superior del cuerpo vertebral.",
-    figureSrc: "/landmarks/angulo_l4s1.png"
+    figureSrc: "/landmarks/l4_ant_lumbar.png"
   },
   {
     idx: 6, short: "L1 post.", color: "#7c3aed",
     label: "Esquina posterior del platillo superior de L1",
     que: "Define el platillo superior de L1, plano superior de la lordosis lumbar total (L1-S1).",
     donde: "Cuenta 5 vértebras desde S1 hacia arriba (L5 → L4 → L3 → L2 → L1). Marca la esquina trasera del platillo superior de L1.",
-    figureSrc: "/landmarks/angulo_l1s1.png"
+    figureSrc: "/landmarks/l1_post_lumbar.png"
   },
   {
     idx: 7, short: "L1 ant.", color: "#7c3aed",
     label: "Esquina anterior del platillo superior de L1",
     que: "Cierra el plano del platillo superior de L1.",
     donde: "Esquina delantera del platillo superior de L1. La línea entre los dos puntos L1 debe coincidir con el borde superior del cuerpo de L1.",
-    figureSrc: "/landmarks/angulo_l1s1.png"
+    figureSrc: "/landmarks/l1_ant_lumbar.png"
   },
   {
     idx: 8, short: "C7", color: "#ea580c",
     label: "Centro del cuerpo vertebral de C7",
     que: "Punto de referencia más alto del eje espinal. Junto con el centro de S1 y el eje femoral define el Global Tilt (GT).",
     donde: "Centro del cuerpo vertebral de C7 (NO la apófisis espinosa). C7 es la última cervical y tiene la apófisis más prominente del cuello. Marca el centro del cuadrilátero del cuerpo vertebral.",
-    figureSrc: "/landmarks/angulo_gt.png"
+    figureSrc: "/landmarks/c7_columna.png"
   },
   // ── Hills 2022 (opcionales): T4 centroide para T4PA, T1 y C2 centroides para tilts ──
   {
@@ -86,21 +86,21 @@ const LANDMARK_DEFS = [
     label: "Centro del cuerpo vertebral de T4",
     que: "Centroide del cuerpo de T4 (Hills 2022). Define el T4 Pelvic Angle (T4PA) y, junto con el L1PA, el eje T4-L1-cadera. Opcional — solo si quieres T4PA.",
     donde: "Cuenta 4 vértebras desde C7 hacia abajo (C7 → T1 → T2 → T3 → T4). Marca el centro del cuadrilátero del cuerpo vertebral de T4 (NO la apófisis espinosa).",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: "/landmarks/columna_completa.png"
   },
   {
     idx: 10, short: "T1 (opc.)", color: "#1d4ed8", optional: true,
     label: "Centro del cuerpo vertebral de T1",
     que: "Centroide del cuerpo de T1 (Hills 2022). Necesario para calcular el T1 tilt directo desde la radiografía. Opcional — solo si quieres T1 tilt.",
     donde: "T1 es la primera vértebra torácica, justo debajo de C7. Marca el centro del cuadrilátero del cuerpo vertebral (NO la apófisis espinosa).",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: "/landmarks/columna_completa.png"
   },
   {
     idx: 11, short: "C2 (opc.)", color: "#1e3a8a", optional: true,
     label: "Centro del cuerpo vertebral de C2",
     que: "Centroide del cuerpo de C2 (Hills 2022). Necesario para calcular el C2 tilt directo desde la radiografía. Opcional — solo si quieres C2 tilt.",
     donde: "C2 es la segunda vértebra cervical (axis), debajo del atlas. Tiene una apófisis odontoides característica. Marca el centro del cuadrilátero del cuerpo vertebral por debajo de la odontoides.",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: "/landmarks/columna_completa.png"
   }
 ];
 
@@ -327,8 +327,35 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     if (p1 && p2 && p3 && p4 && p12) {
       out.c2tilt = computeVertebralTilt(p12, out.femMid, p3, p4, horizontalRef);
     }
+
+    // SRS-Schwab — SVA: distancia horizontal entre C7 (p9) y esquina posterosuperior de S1 (p3).
+    // Si hay línea horizontal definida, se proyecta sobre ella; si no, se usa el eje X de la imagen.
+    if (p9 && p3) {
+      const dx = p9.x - p3.x;
+      const dy = p9.y - p3.y;
+      if (horizontalRef) {
+        const hx = horizontalRef.p2.x - horizontalRef.p1.x;
+        const hy = horizontalRef.p2.y - horizontalRef.p1.y;
+        const hlen = Math.sqrt(hx * hx + hy * hy);
+        out.svaPx = hlen > 0 ? Math.abs((dx * hx + dy * hy) / hlen) : Math.abs(dx);
+      } else {
+        out.svaPx = Math.abs(dx);
+      }
+    }
+    // SRS-Schwab — PI-LL mismatch
+    if (out.pi !== undefined && out.l1s1 !== undefined) {
+      out.piLL = out.pi - out.l1s1;
+    }
     return out;
   }, [landmarks, horizontalRef]);
+
+  // Grade helper for Schwab thresholds
+  const schwabGrade = (v, t0, t1) => {
+    if (v === null || v === undefined || Number.isNaN(v)) return null;
+    if (v < t0)  return { g: "0",  color: COLORS.green };
+    if (v <= t1) return { g: "+",  color: COLORS.yellow };
+    return       { g: "++", color: COLORS.red };
+  };
 
   // Ángulo de la línea horizontal respecto al eje X de la imagen.
   // Positivo = línea inclinada hacia abajo a la derecha (en convención y↓).
@@ -714,6 +741,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     if (partial.c2tilt !== undefined) out.c2tilt = round1(partial.c2tilt);
     if (partial.t1tilt !== undefined) out.t1tilt = round1(partial.t1tilt);
     if (partial.l1tilt !== undefined) out.l1tilt = round1(partial.l1tilt);
+    // SRS-Schwab: SVA en cm (requiere calibración)
+    if (partial.svaPx !== undefined && calibration) {
+      out.sva = round1(partial.svaPx * calibration.mmPerPx / 10);
+    }
     if (Object.keys(out).length === 0) return;
     onApply(out);
     onClose();
@@ -807,6 +838,59 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               {gapMode === "free" ? "✓ Solo arrastrar" : "Solo arrastrar"}
             </button>
           )}
+          {/* SRS-Schwab live summary */}
+          {(() => {
+            const svaCm = (partial.svaPx !== undefined && calibration) ? partial.svaPx * calibration.mmPerPx / 10 : null;
+            const gPiLL = schwabGrade(partial.piLL, 10, 20);
+            const gPt   = schwabGrade(partial.pt,   20, 30);
+            const gSva  = schwabGrade(svaCm,        4,  9.5);
+            const hasAny = partial.piLL !== undefined || partial.pt !== undefined || partial.svaPx !== undefined;
+            if (!hasAny) return null;
+            const chip = (label, val, unit, grade, hint) => (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 8px", borderRadius: 6, background: COLORS.panelLight, border: `1px solid ${grade ? grade.color + "66" : COLORS.panelLight}`, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                <span style={{ color: COLORS.textDim, fontWeight: 700 }}>{label}</span>
+                {val !== null && val !== undefined ? (
+                  <span style={{ color: COLORS.text, fontWeight: 700 }}>{val.toFixed(1)}{unit}</span>
+                ) : (
+                  <span style={{ color: COLORS.textDim, fontStyle: "italic", fontSize: 10 }}>{hint || "—"}</span>
+                )}
+                {grade && (
+                  <span style={{ padding: "0 6px", borderRadius: 4, background: grade.color + "22", color: grade.color, border: `1px solid ${grade.color}66`, fontSize: 11, fontWeight: 800 }}>{grade.g}</span>
+                )}
+              </span>
+            );
+            // Roussouly classification
+            let roussouly = null;
+            if (partial.ss !== undefined) {
+              if (partial.ss < 35) {
+                roussouly = { type: "1/2", color: COLORS.cyan };
+              } else if (partial.ss > 45) {
+                roussouly = { type: "4", color: COLORS.red };
+              } else if (partial.pi !== undefined && partial.pi < 50 && partial.pt !== undefined && partial.pt < 5) {
+                roussouly = { type: "3A", color: COLORS.pink };
+              } else {
+                roussouly = { type: "3", color: COLORS.green };
+              }
+            }
+            return (
+              <>
+                <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>SRS-Schwab</span>
+                  {chip("PI−LL", partial.piLL, "°", gPiLL)}
+                  {chip("PT", partial.pt, "°", gPt)}
+                  {chip("SVA", svaCm, " cm", gSva, partial.svaPx !== undefined && !calibration ? "calibra →" : null)}
+                </span>
+                {roussouly && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Roussouly</span>
+                    <span style={{ padding: "4px 10px", borderRadius: 6, background: roussouly.color + "22", color: roussouly.color, border: `1px solid ${roussouly.color}66`, fontSize: 12, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>
+                      Tipo {roussouly.type}
+                    </span>
+                  </span>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -1087,7 +1171,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
 
           {/* Resultados parciales */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Cálculos GAP (en vivo)</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Cálculos GAP</div>
             {["pi", "ss", "pt", "l1s1", "l4s1", "gt"].map(key => {
               const v = partial[key];
               const def = ANGLE_DEFS[key];
@@ -1126,7 +1210,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             {/* Hills 2022 — opcionales (L1PA y L1 tilt salen "gratis" del platillo L1) */}
             {(partial.l1pa !== undefined || partial.t4pa !== undefined || partial.c2tilt !== undefined || partial.t1tilt !== undefined || partial.l1tilt !== undefined) && (
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022 (en vivo)</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022</div>
                 {["l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt"].map(key => {
                   const v = partial[key];
                   if (v === undefined) return null;
@@ -1158,6 +1242,46 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 })}
               </div>
             )}
+            {/* SRS-Schwab — clasificación sagital (Schwab 2012) */}
+            {(partial.piLL !== undefined || partial.pt !== undefined || partial.svaPx !== undefined) && (() => {
+              const svaCm = (partial.svaPx !== undefined && calibration) ? partial.svaPx * calibration.mmPerPx / 10 : null;
+              const gPiLL = schwabGrade(partial.piLL, 10, 20);
+              const gPt   = schwabGrade(partial.pt,   20, 30);
+              const gSva  = schwabGrade(svaCm,        4,  9.5);
+              return (
+                <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>SRS-Schwab</div>
+                  {[
+                    { key: "piLL", label: "PI − LL",  val: partial.piLL, unit: "°",  grade: gPiLL, t: "0:<10° · +:10-20° · ++:>20°" },
+                    { key: "pt",   label: "PT",        val: partial.pt,    unit: "°",  grade: gPt,   t: "0:<20° · +:20-30° · ++:>30°" },
+                    { key: "sva",  label: "SVA",       val: svaCm,         unit: " cm", grade: gSva,  t: "0:<4cm · +:4-9.5cm · ++:>9.5cm",
+                      altText: partial.svaPx !== undefined && !calibration ? `${Math.round(partial.svaPx)} px (calibra para cm)` : null },
+                  ].map(row => (
+                    <div key={row.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${COLORS.panelLight}` }}>
+                      <span style={{ color: COLORS.textDim }}>{row.label}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {row.val !== null && row.val !== undefined ? (
+                          <span style={{ fontWeight: 700, color: COLORS.text }}>{row.val.toFixed(1)}{row.unit}</span>
+                        ) : row.altText ? (
+                          <span style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic" }}>{row.altText}</span>
+                        ) : (
+                          <span style={{ color: COLORS.textDim }}>—</span>
+                        )}
+                        {row.grade && (
+                          <span style={{ padding: "1px 7px", borderRadius: 5, background: row.grade.color + "22", color: row.grade.color, border: `1px solid ${row.grade.color}66`, fontSize: 11, fontWeight: 800, minWidth: 28, textAlign: "center" }}>{row.grade.g}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                  {partial.svaPx !== undefined && !calibration && (
+                    <div style={{ marginTop: 6, fontSize: 10, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.4 }}>
+                      Para gradar SVA usa ⚖ Calibrar (longitud conocida en mm) o ingresa el valor manualmente en el formulario.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <button onClick={handleApply} disabled={!anyAngle} style={{ marginTop: 12, width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${anyAngle ? COLORS.green : COLORS.panelLight}`, background: anyAngle ? COLORS.green : "transparent", color: anyAngle ? "#fff" : COLORS.textDim, fontSize: 13, fontWeight: 700, cursor: anyAngle ? "pointer" : "not-allowed", opacity: anyAngle ? 1 : 0.5 }}>
               Aplicar valores disponibles al formulario
             </button>

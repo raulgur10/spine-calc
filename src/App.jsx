@@ -273,10 +273,12 @@ function fmtDeg(v) {
 }
 
 function buildPDF(inputs, result) {
-  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey } = inputs;
+  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult } = inputs;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210, M = 18, CW = W - M * 2;
   let y = 18;
+  // Helper: salto de página si falta espacio
+  const ensureSpace = (needed) => { if (y + needed > 268) { doc.addPage(); y = 22; } };
   doc.setFillColor(13, 148, 136); doc.rect(0, 0, W, 16, "F");
   doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont("helvetica", "bold");
   doc.text("CIRUGIA DE COLUMNA", M, 9.5);
@@ -403,6 +405,7 @@ function buildPDF(inputs, result) {
 
   // Eje T4-L1-Cadera (Hills 2022)
   if (hillsResult) {
+    ensureSpace(30);
     y += 4;
     doc.setFillColor(109, 40, 217); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
@@ -442,6 +445,7 @@ function buildPDF(inputs, result) {
 
   // Tilts vertebrales (Hills 2022) — opcional
   if (tiltsResult && (tiltsResult.c2 || tiltsResult.t1 || tiltsResult.l1)) {
+    ensureSpace(40);
     y += 4;
     doc.setFillColor(109, 40, 217); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
@@ -474,6 +478,85 @@ function buildPDF(inputs, result) {
       doc.text(`PT derivado de PI - SS = ${tiltsResult.pt.toFixed(1)}°`, M + 2, y + 3.5);
       y += 5;
     }
+  }
+
+  // SRS-Schwab classification (Schwab 2012)
+  if (schwabResult && (schwabResult.piLL || schwabResult.pt || schwabResult.sva)) {
+    ensureSpace(36);
+    y += 4;
+    doc.setFillColor(180, 83, 9); doc.rect(M, y, CW, 7, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("CLASIFICACION SRS-SCHWAB  (Schwab et al., Spine 2012)", M + 3, y + 4.8); y += 8;
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 6, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(7.5);
+    ["Modificador", "Valor", "Grado", "Umbrales"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
+    y += 7;
+    const gradeRgb = (g) => !g ? [100, 116, 139] : g.g === "0" ? [21, 128, 61] : g.g === "+" ? [180, 83, 9] : [185, 28, 28];
+    [
+      { name: "PI - LL", val: schwabResult.piLLVal, grade: schwabResult.piLL, unit: "°",  th: "0:<10  +:10-20  ++:>20" },
+      { name: "PT",      val: schwabResult.ptVal,   grade: schwabResult.pt,   unit: "°",  th: "0:<20  +:20-30  ++:>30" },
+      { name: "SVA",     val: schwabResult.svaVal,  grade: schwabResult.sva,  unit: " cm", th: "0:<4  +:4-9.5  ++:>9.5" },
+    ].forEach((row, i) => {
+      const bg = i % 2 === 0 ? [250, 247, 242] : [244, 241, 236];
+      doc.setFillColor(...bg); doc.rect(M, y, CW, 6.5, "F");
+      doc.setTextColor(180, 83, 9); doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(row.name, M + 2, y + 4.3);
+      doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(row.val !== null && row.val !== undefined ? `${row.val.toFixed(1)}${row.unit}` : "—", colX[1], y + 4.3);
+      const gc = gradeRgb(row.grade);
+      doc.setTextColor(...gc); doc.setFont("helvetica", "bold"); doc.text(row.grade ? row.grade.g : "—", colX[2], y + 4.3);
+      doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(row.th, colX[3], y + 4.3);
+      y += 6.5;
+    });
+    if (schwabResult.piLL && schwabResult.pt && schwabResult.sva) {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30, 41, 59);
+      doc.text(`Resumen sagital: PI-LL ${schwabResult.piLL.g}  ·  PT ${schwabResult.pt.g}  ·  SVA ${schwabResult.sva.g}`, M + 2, y + 5);
+      y += 7;
+    }
+  }
+
+  // Roussouly classification
+  if (roussoulyResult) {
+    // Wrap description text and compute total box height
+    const descLines = doc.splitTextToSize(roussoulyResult.desc, CW - 44);
+    const descH = descLines.length * 3.2;
+    const boxH = Math.max(16, 11 + descH);
+    ensureSpace(boxH + 12);
+    y += 4;
+    doc.setFillColor(34, 211, 238); doc.rect(M, y, CW, 7, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("CLASIFICACION ROUSSOULY  (Roussouly 2005 / Laouissat 2017)", M + 3, y + 4.8); y += 9;
+    const rRgb = roussoulyResult.color === COLORS.green ? [21, 128, 61] : roussoulyResult.color === COLORS.red ? [185, 28, 28] : [14, 116, 144];
+    doc.setFillColor(250, 247, 242); doc.rect(M, y, CW, boxH, "F");
+    doc.setDrawColor(...rRgb); doc.setLineWidth(0.6); doc.rect(M, y, CW, boxH, "S");
+    doc.setTextColor(...rRgb); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+    doc.text(`Tipo ${roussoulyResult.type}`, M + 4, y + boxH / 2 + 3);
+    doc.setFontSize(9); doc.setTextColor(30, 41, 59);
+    doc.text(roussoulyResult.label, M + 40, y + 5);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+    doc.text(roussoulyResult.params, M + 40, y + 9);
+    doc.text(descLines, M + 40, y + 13);
+    y += boxH + 3;
+  }
+
+  // GAP-B (Noh 2020)
+  if (gapbResult) {
+    ensureSpace(28);
+    y += 4;
+    doc.setFillColor(15, 118, 110); doc.rect(M, y, CW, 7, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text("GAP-B  (Noh et al., Spine J 2020)", M + 3, y + 4.8); y += 9;
+    const gRgb = gapbResult.cat.color === COLORS.green ? [21, 128, 61] : gapbResult.cat.color === COLORS.yellow ? [180, 83, 9] : [185, 28, 28];
+    doc.setFillColor(...gRgb); doc.roundedRect(M, y, CW, 16, 2, 2, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+    doc.text(`${(gapbResult.prob * 100).toFixed(0)}%`, M + 12, y + 10, { align: "center" });
+    doc.setFontSize(11); doc.text(gapbResult.cat.label, M + 30, y + 7);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    doc.text(`IMC ${gapbResult.bmi.toFixed(1)}  ·  T-score ${gapbResult.tscore.toFixed(1)}  ·  GAP ${gapbResult.gap} pts`, M + 30, y + 12);
+    doc.text("Probabilidad de complicacion mecanica a 2 anos", M + 30, y + 14.5);
+    y += 19;
+    doc.setFont("helvetica", "italic"); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
+    doc.text("Aproximacion logistica de HRs publicados (BMI 1.284, BMD 0.277, GAP 1.457). Nomograma original = Noh 2020 Fig 2.", M + 2, y + 3);
+    y += 5;
   }
 
   if (fotos && fotos.length > 0) {
@@ -962,6 +1045,14 @@ export default function GAPCalculator() {
   const [t1tiltDirect, setT1TiltDirect] = useState("");
   const [t1pa, setT1PA] = useState("");
   const [l1tiltDirect, setL1TiltDirect] = useState("");
+  // SRS-Schwab — SVA en cm (medido en radiografía), card colapsable
+  const [sva, setSVA] = useState("");
+  const [schwabOpen, setSchwabOpen] = useState(false);
+  // Roussouly — card colapsable
+  const [roussoulyOpen, setRoussoulyOpen] = useState(false);
+  // GAP-B (Noh 2020) — añade BMI y BMD T-score al GAP
+  const [bmdTscore, setBmdTscore] = useState("");
+  const [gapbOpen, setGapbOpen] = useState(false);
   const [fotos, setFotos] = useState([]);
   const [toast, setToast] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1309,6 +1400,95 @@ export default function GAPCalculator() {
     return { pt: ptE, c2, t1, l1 };
   }, [spinopelvic, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, l1pa]);
 
+  // SRS-Schwab classification (Schwab et al, Spine 2012) — modificadores sagitales
+  // PI-LL: 0 < 10°, + 10-20°, ++ > 20°
+  // PT:    0 < 20°, + 20-30°, ++ > 30°
+  // SVA:   0 < 4cm, + 4-9.5cm, ++ > 9.5cm
+  const schwabResult = useMemo(() => {
+    const piN = spinopelvic.effPI;
+    const llN = l1s1 === "" || l1s1 === null ? null : Number(l1s1);
+    const ptN = spinopelvic.effPT;
+    const svaN = sva === "" || sva === null ? null : Number(sva);
+    const grade = (v, t0, t1) => {
+      if (v === null || v === undefined || Number.isNaN(v)) return null;
+      if (v < t0)  return { g: "0",  label: "Normal",   color: COLORS.green,  bg: COLORS.greenBg };
+      if (v <= t1) return { g: "+",  label: "Moderado", color: COLORS.yellow, bg: COLORS.yellowBg };
+      return       { g: "++", label: "Marcado",  color: COLORS.red,    bg: COLORS.redBg };
+    };
+    const piLLVal = (piN !== null && llN !== null && !Number.isNaN(llN)) ? piN - llN : null;
+    return {
+      piLLVal, piLL: grade(piLLVal, 10, 20),
+      ptVal: ptN, pt: grade(ptN, 20, 30),
+      svaVal: svaN, sva: grade(svaN, 4, 9.5),
+    };
+  }, [spinopelvic.effPI, spinopelvic.effPT, l1s1, sva]);
+
+  // Roussouly classification (Roussouly 2005; refined Laouissat/Roussouly 2017)
+  // SS < 35°  → Tipo 1 (apex L5) o Tipo 2 (dorso plano) — diferenciar por apex
+  // SS 35-45° → Tipo 3 (armónico); Tipo 3A si PI<50 y PT<5° (pelvis anteverted)
+  // SS > 45°  → Tipo 4 (alta PI, apex L3 o superior)
+  const roussoulyResult = useMemo(() => {
+    const ssN = spinopelvic.effSS;
+    const piN = spinopelvic.effPI;
+    const ptN = spinopelvic.effPT;
+    if (ssN === null || ssN === undefined || Number.isNaN(ssN)) return null;
+    if (ssN < 35) {
+      return {
+        type: "1 / 2",
+        label: "Tipo 1 ó 2",
+        desc: "SS < 35°. Tipo 1: hipolordosis, apex en L5, arco inferior corto. Tipo 2: dorso plano, apex en base de L4. La diferenciación requiere el apex de la lordosis (no derivable de los landmarks GAP).",
+        color: COLORS.cyan, bg: COLORS.cyanBg || (COLORS.cyan + "22"),
+        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+      };
+    }
+    if (ssN > 45) {
+      return {
+        type: "4",
+        label: "Tipo 4",
+        desc: "SS > 45°, asociado a PI alta. Apex de lordosis en L3 o superior; arco inferior prominente, hiperlordosis.",
+        color: COLORS.red, bg: COLORS.redBg,
+        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+      };
+    }
+    // SS 35-45° → Tipo 3 o 3A
+    if (piN !== null && piN !== undefined && piN < 50 && ptN !== null && ptN < 5) {
+      return {
+        type: "3A",
+        label: "Tipo 3A (anteverted)",
+        desc: "SS > 35° con PI baja (<50°) y PT bajo (<5°): pelvis anteverted. Hiperlordosis relativa por encima del PT bajo.",
+        color: COLORS.purple || COLORS.cyan, bg: (COLORS.purple || COLORS.cyan) + "22",
+        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+      };
+    }
+    return {
+      type: "3",
+      label: "Tipo 3 (armónico)",
+      desc: "SS 35-45°. Apex de lordosis en L4. Distribución armónica de arcos lordóticos. El patrón más frecuente en la población sana.",
+      color: COLORS.green, bg: COLORS.greenBg,
+      params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+    };
+  }, [spinopelvic.effSS, spinopelvic.effPI, spinopelvic.effPT]);
+
+  // GAP-B (Noh 2020, Spine J) — extiende el GAP con BMI y BMD T-score
+  // Modelo de regresión logística multivariable derivado de los HRs publicados:
+  //   BMI HR 1.284, BMD T-score HR 0.277, GAP HR 1.457
+  //   logit(p) = b0 + 0.250·BMI − 1.284·Tscore + 0.377·GAP
+  //   b0 ≈ −11.0 calibrado contra el caso ejemplo de Noh 2020 (BMI 28, T −2.0, GAP 7 → ~77%).
+  const gapbResult = useMemo(() => {
+    if (!result) return null;
+    const bmiN = imc && imc.valor ? Number(imc.valor) : null;
+    const tN = bmdTscore === "" || bmdTscore === null ? null : Number(bmdTscore);
+    const gapN = result.total;
+    if (bmiN === null || Number.isNaN(bmiN) || tN === null || Number.isNaN(tN)) return null;
+    const lp = -11.0 + 0.250 * bmiN + (-1.284) * tN + 0.377 * gapN;
+    const prob = 1 / (1 + Math.exp(-lp));
+    let cat;
+    if (prob < 0.25)      cat = { label: "Riesgo bajo",      color: COLORS.green,  bg: COLORS.greenBg };
+    else if (prob < 0.55) cat = { label: "Riesgo moderado",  color: COLORS.yellow, bg: COLORS.yellowBg };
+    else                  cat = { label: "Riesgo alto",      color: COLORS.red,    bg: COLORS.redBg };
+    return { bmi: bmiN, tscore: tN, gap: gapN, lp, prob, cat };
+  }, [result, imc, bmdTscore]);
+
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500); };
 
   const submitSubscribe = async () => {
@@ -1333,7 +1513,7 @@ export default function GAPCalculator() {
     }
     setSubBusy(false);
   };
-  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey };
+  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult };
 
   const addCirugia = () => setCirugias([...cirugias, { id: uid(), tipo: "", tipoCustom: "", segmentos: [] }]);
   const updateCirugia = (id, n) => setCirugias(cirugias.map(c => c.id === id ? n : c));
@@ -2083,6 +2263,201 @@ export default function GAPCalculator() {
           )}
         </Card>
 
+        {/* SRS-Schwab classification (Schwab 2012) — colapsable, opcional */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setSchwabOpen(o => !o)}
+            aria-expanded={schwabOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📊 Clasificación SRS-Schwab</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Schwab 2012 · modificadores sagitales · <em>opcional, complementa al GAP</em>
+              </p>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: schwabOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {schwabOpen && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
+                Tres modificadores sagitales (Schwab et al., Spine 2012). <strong>PI−LL</strong> y <strong>PT</strong> se derivan de los parámetros espinopélvicos. <strong>SVA</strong> requiere medición directa en la radiografía (distancia horizontal del plomo desde el centro del cuerpo de C7 hasta el borde posterosuperior de S1).
+              </p>
+              <InputField
+                label="SVA (Sagittal Vertical Axis)"
+                value={sva}
+                onChange={setSVA}
+                unit="cm"
+                min={-20} max={30} step={0.1}
+                tooltip="Sagittal Vertical Axis: distancia horizontal entre el plomo trazado desde el centro del cuerpo de C7 y el borde posterosuperior de S1. Positivo si C7 está anterior a S1. Mide la alineación sagital global. Normal < 4 cm. (Schwab et al., Spine 2012)"
+              />
+              {[
+                { key: "piLL", titulo: "PI − LL", subtitulo: "Mismatch lumbo-pélvico (deformidad regional)", val: schwabResult.piLLVal, grade: schwabResult.piLL, unit: "°", t0: "< 10°", t1: "10–20°", t2: "> 20°" },
+                { key: "pt",   titulo: "PT",       subtitulo: "Pelvic Tilt (mecanismo compensatorio)",        val: schwabResult.ptVal,   grade: schwabResult.pt,   unit: "°", t0: "< 20°", t1: "20–30°", t2: "> 30°" },
+                { key: "sva",  titulo: "SVA",      subtitulo: "Sagittal Vertical Axis (alineación global)",   val: schwabResult.svaVal,  grade: schwabResult.sva,  unit: " cm", t0: "< 4 cm", t1: "4–9.5 cm", t2: "> 9.5 cm" },
+              ].map(row => (
+                <div key={row.key} style={{ marginBottom: 10, padding: 12, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>{row.titulo}</div>
+                      <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 2 }}>{row.subtitulo}</div>
+                      <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                        <span style={{ color: COLORS.green }}>0: {row.t0}</span> · <span style={{ color: COLORS.yellow }}>+: {row.t1}</span> · <span style={{ color: COLORS.red }}>++: {row.t2}</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      {row.val !== null && row.val !== undefined ? (
+                        <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>
+                          {row.val.toFixed(1)}{row.unit}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic" }}>—</div>
+                      )}
+                      {row.grade && (
+                        <div style={{ marginTop: 4, display: "inline-block", padding: "3px 10px", borderRadius: 6, background: row.grade.bg, color: row.grade.color, fontSize: 13, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", border: `1px solid ${row.grade.color}44` }}>
+                          {row.grade.g}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(schwabResult.piLL && schwabResult.pt && schwabResult.sva) ? (
+                <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: COLORS.inputBg, border: `1px solid ${COLORS.cardBorder}` }}>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>Modificadores sagitales</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.ink, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em" }}>
+                    PI−LL <span style={{ color: schwabResult.piLL.color }}>{schwabResult.piLL.g}</span> · PT <span style={{ color: schwabResult.pt.color }}>{schwabResult.pt.g}</span> · SVA <span style={{ color: schwabResult.sva.color }}>{schwabResult.sva.g}</span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
+                  Llena PI, L1-S1 y SVA para obtener la clasificación completa.
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* Clasificación Roussouly — colapsable, opcional */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setRoussoulyOpen(o => !o)}
+            aria-expanded={roussoulyOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🧬 Clasificación Roussouly</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Roussouly 2005 · Laouissat 2017 · <em>shape sagital basado en SS</em>
+              </p>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: roussoulyOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {roussoulyOpen && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
+                Cuatro tipos sagitales según <strong>SS</strong> y apex de lordosis (Roussouly 2005). El tipo <strong>3A</strong> (Laouissat 2017) añade el patrón de pelvis anteverted: SS &gt; 35° con PI &lt; 50° y PT &lt; 5°.
+              </p>
+              {roussoulyResult ? (
+                <>
+                  <div style={{ padding: 14, borderRadius: 10, background: roussoulyResult.bg, border: `1.5px solid ${roussoulyResult.color}66` }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontSize: 28, fontWeight: 800, color: roussoulyResult.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{roussoulyResult.type}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: roussoulyResult.color }}>{roussoulyResult.label}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>{roussoulyResult.params}</div>
+                    <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{roussoulyResult.desc}</div>
+                  </div>
+                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                    <strong style={{ color: COLORS.text }}>Referencia de tipos:</strong><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 1: SS &lt; 35° · apex en L5 · hipolordosis</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 2: SS &lt; 35° · apex en L4 · dorso plano</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3: SS 35-45° · apex en L4 · armónico</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3A: SS &gt; 35° · PI &lt; 50° · PT &lt; 5° · anteverted</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 4: SS &gt; 45° · apex en L3+ · hiperlordosis</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
+                  Llena SS (o PI + PT) para obtener la clasificación Roussouly.
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        {/* GAP-B (Noh 2020) — colapsable, opcional */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setGapbOpen(o => !o)}
+            aria-expanded={gapbOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 GAP-B</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Noh 2020 · GAP + IMC + DMO · <em>predicción de complicaciones mecánicas</em>
+              </p>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: gapbOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {gapbOpen && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
+                Modificación del GAP score que añade <strong>IMC</strong> y <strong>DMO</strong> (T-score de columna o fémur, lo peor). AUC reportado 0.885 vs 0.798 del GAP original (Noh SH et al., Spine J 2020).
+              </p>
+              <InputField
+                label="DMO (T-score peor de columna/fémur)"
+                value={bmdTscore}
+                onChange={setBmdTscore}
+                unit=""
+                min={-5} max={5} step={0.1}
+                placeholder="Ej. -2.5"
+                tooltip="T-score por DEXA (densitometría). Usar el peor valor entre columna lumbar y fémur. Normal ≥ -1, osteopenia -1 a -2.5, osteoporosis ≤ -2.5. Si no tienes T-score reciente, deja en blanco."
+              />
+              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 12, color: COLORS.text }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, fontFamily: "'JetBrains Mono', monospace" }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>IMC</div>
+                    <div style={{ fontWeight: 700, color: imc && imc.valor ? COLORS.text : COLORS.textMuted }}>{imc && imc.valor ? `${Number(imc.valor).toFixed(1)} kg/m²` : "—"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>GAP</div>
+                    <div style={{ fontWeight: 700, color: result ? COLORS.text : COLORS.textMuted }}>{result ? `${result.total} pts` : "—"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>T-score</div>
+                    <div style={{ fontWeight: 700, color: bmdTscore !== "" ? COLORS.text : COLORS.textMuted }}>{bmdTscore !== "" ? Number(bmdTscore).toFixed(1) : "—"}</div>
+                  </div>
+                </div>
+                {(!imc || !imc.valor || !result || bmdTscore === "") && (
+                  <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 6, fontStyle: "italic" }}>
+                    Faltan: {[!imc || !imc.valor ? "peso/talla" : null, !result ? "GAP completo" : null, bmdTscore === "" ? "T-score DMO" : null].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+              {gapbResult ? (
+                <div style={{ padding: 14, borderRadius: 10, background: gapbResult.cat.bg, border: `1.5px solid ${gapbResult.cat.color}66` }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 28, fontWeight: 800, color: gapbResult.cat.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{(gapbResult.prob * 100).toFixed(0)}%</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: gapbResult.cat.color }}>{gapbResult.cat.label}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                    Probabilidad estimada de complicación mecánica postoperatoria (PJK/PJF, fractura de varilla o falla de implante) a 2 años, basada en la regresión logística de Noh 2020.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
+                  Llena peso, talla, los parámetros del GAP y el T-score de DMO para obtener la predicción GAP-B.
+                </div>
+              )}
+              <div style={{ marginTop: 10, fontSize: 10, color: COLORS.textMuted, lineHeight: 1.45, fontStyle: "italic" }}>
+                ⚠ Aproximación logística derivada de los HR multivariables publicados (BMI 1.284 · BMD 0.277 · GAP 1.457). El nomograma original de Noh 2020 (Fig. 2) es la referencia clínica formal. No sustituye juicio clínico.
+              </div>
+            </div>
+          )}
+        </Card>
+
         {/* Fotos — solo en modo clínico (los datos se asocian a un paciente identificado) */}
         {canEdit && (
           <Card>
@@ -2499,6 +2874,7 @@ export default function GAPCalculator() {
           if (v.c2tilt !== undefined) setC2TiltDirect(v.c2tilt);
           if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
           if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
+          if (v.sva !== undefined) setSVA(v.sva);
           const count = Object.keys(v).length;
           showToast(`${count} medición${count === 1 ? "" : "es"} aplicada${count === 1 ? "" : "s"} al formulario ✓`);
         }}
