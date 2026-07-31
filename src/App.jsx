@@ -33,7 +33,7 @@ const REFERENCIAS = [
   { year: 2018, cite: "Sebaaly A, Grobost P, Mallam L, Roussouly P. Description of the sagittal alignment of the degenerative human spine. Eur Spine J. 2018;27:489-496. doi:10.1007/s00586-017-5404-0" },
   { year: 2019, cite: "Bari TJ, Ohrt-Nissen S, Hansen LV, Dahl B, Gehrchen M. Ability of the Global Alignment and Proportion Score to Predict Mechanical Failure Following Adult Spinal Deformity Surgery—Validation in 149 Patients With Two-Year Follow-up. Spine Deformity. 2019;7:331-337." },
   { year: 2019, cite: "Le Huec JC, Thompson W, Mohsinaly Y, Barrey C, Faundez A. Sagittal balance of the spine. Eur Spine J. 2019;28:1958-1968. doi:10.1007/s00586-019-06083-1" },
-  { year: 2019, cite: "Noh SH, Ha Y, Obeid I, Park JY, Kuh SU, Chin DK, et al. Modified Global Alignment and Proportion Scoring With Body Mass Index and Bone Mineral Density (GAPB) for improving Predictions of Mechanical Complications After Adult Spinal Deformity Surgery. Spine J. 2019. doi:10.1016/j.spinee.2019.11.006" },
+  { year: 2020, cite: "Noh SH, Ha Y, Obeid I, Park JY, Kuh SU, Chin DK, et al. Modified Global Alignment and Proportion Scoring With Body Mass Index and Bone Mineral Density (GAPB) for improving Predictions of Mechanical Complications After Adult Spinal Deformity Surgery. Spine J. 2020;20(5):776-784. doi:10.1016/j.spinee.2019.11.006" },
   { year: 2020, cite: "Sebaaly A, Gehrchen M, Silvestre C, Kharrat K, Bari TJ, Kreichati G, et al. Mechanical complications in adult spinal deformity and the effect of restoring the spinal shapes according to the Roussouly classification: a multicentric study. Eur Spine J. 2020;29:904-913. doi:10.1007/s00586-019-06253-1" },
   { year: 2020, cite: "Bari TJ, Hansen LV, Gehrchen M. Surgical correction of Adult Spinal Deformity in accordance to the Roussouly classification: effect on postoperative mechanical complications. Spine Deform. 2020;8:1027-1037. doi:10.1007/s43390-020-00112-6" },
   { year: 2021, cite: "Kwan KYH, Shaffrey CI, Cheung KMC, et al. Are Higher Global Alignment and Proportion Scores Associated With Increased Risks of Mechanical Complications After Adult Spinal Deformity Surgery? An External Validation. Clin Orthop Relat Res. 2021;479:312-320. doi:10.1097/CORR.0000000000001521" },
@@ -42,6 +42,10 @@ const REFERENCIAS = [
   { year: 2025, cite: "Ferraz VR, Piedade GS, Goulart CR, Souza MF, Furlan MD, Mercier PA, et al. The predictive value of the global alignment and proportion (GAP) score for mechanical complications following adult spinal deformity surgery: A systematic review and meta-analysis. N Am Spine Soc J. 2025;24:100816. doi:10.1016/j.xnsj.2025.100816" },
   { year: 2025, cite: "Haddad S, Yilgor C, Jacobs E, Vila L, Nuñez-Pereira S, Ramirez Valencia M, et al. Long-term mechanical failure in well aligned adult spinal deformity patients. Spine J. 2025;25:337-346." }
 ];
+// Version del algoritmo, inyectada por Vite desde package.json (vite.config.js).
+// Se imprime en el pie de cada reporte PDF y junto al aviso de la interfaz.
+const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+
 const CONSENT_VERSION = "1.0";
 const CONSENT_CONTACT = "raulguillen@cardioanestesia.com.mx";
 const PUBLIC_CONSENT_VERSION = "1.0";
@@ -681,6 +685,8 @@ function buildPDF(inputs, result) {
     doc.setTextColor(148, 163, 184); doc.setFontSize(7); doc.setFont("helvetica", "normal");
     doc.text("Herramienta de calculo espinopelvico - No sustituye el juicio clinico del medico tratante", M, 284);
     doc.text("El uso de este calculo es responsabilidad del medico que lo utiliza", M, 287.5);
+    // Version del algoritmo: hace trazable cada reporte a la version que lo genero.
+    doc.text(`v${APP_VERSION}`, M, 291);
     doc.text(`Pagina ${p} de ${totalPages}`, W - M, 287.5, { align: "right" });
     if (medico) {
       doc.setDrawColor(94, 234, 212); doc.setLineWidth(0.5); doc.line(W - M - 50, 288, W - M, 288);
@@ -2951,6 +2957,9 @@ export default function GAPCalculator() {
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: COLORS.textMuted }}>
             Su uso es responsabilidad del médico que la utilice.
+          </div>
+          <div style={{ marginTop: 8, fontSize: 10, color: COLORS.textMuted, fontFamily: FONT_MONO }}>
+            v{APP_VERSION}
           </div>
         </div>
 

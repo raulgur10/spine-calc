@@ -5,7 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // '.vercel' contiene el bundle generado en el despliegue: no es codigo fuente
+  // y sin ignorarlo el lint reporta ~670 errores de librerias minificadas.
+  globalIgnores(['dist', '.vercel']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -15,7 +17,7 @@ export default defineConfig([
     ],
     languageOptions: {
       ecmaVersion: 2020,
-      globals: globals.browser,
+      globals: { ...globals.browser, __APP_VERSION__: 'readonly' },
       parserOptions: {
         ecmaVersion: 'latest',
         ecmaFeatures: { jsx: true },
