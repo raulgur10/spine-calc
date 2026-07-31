@@ -195,6 +195,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const [freeSegs, setFreeSegs] = useState([]); // { id, aId, bId }
   const [pendingPtId, setPendingPtId] = useState(null); // primer endpoint del segmento en construcción
   const [draggingFreePtId, setDraggingFreePtId] = useState(null);
+  // Cobb: pares de segmentos cuyo ángulo se traza automáticamente
+  const [cobbs, setCobbs] = useState([]); // { id, s1, s2 }
+  const [cobbPendingSegId, setCobbPendingSegId] = useState(null); // 1ª línea ya trazada, esperando la 2ª
 
   // Tool actual
   const [tool, setTool] = useState("gap"); // gap | line | calibrate | pan
@@ -263,7 +266,19 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedSegId) {
           e.preventDefault();
-          deleteSeg(selectedSegId);
+          // Si la línea pertenece a un Cobb, se borra la medición completa
+          const pair = cobbs.find(c => c.s1 === selectedSegId || c.s2 === selectedSegId);
+          if (pair) {
+            const newSegs = freeSegs.filter(s => s.id !== pair.s1 && s.id !== pair.s2);
+            setFreeSegs(newSegs);
+            setCobbs(prev => prev.filter(c => c.id !== pair.id));
+            const usedIds = new Set();
+            newSegs.forEach(s => { usedIds.add(s.aId); usedIds.add(s.bId); });
+            if (pendingPtId) usedIds.add(pendingPtId);
+            setFreePts(prev => prev.filter(p => usedIds.has(p.id)));
+          } else {
+            deleteSeg(selectedSegId);
+          }
           setSelectedSegId(null);
         } else if (selectedLandmarkIdx !== null) {
           e.preventDefault();
@@ -278,6 +293,14 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           const refed = freeSegs.some(s => s.aId === pendingPtId || s.bId === pendingPtId);
           if (!refed) setFreePts(prev => prev.filter(p => p.id !== pendingPtId));
           setPendingPtId(null);
+        } else if (cobbPendingSegId !== null) {
+          // Cobb a medias: descarta la 1ª línea huérfana
+          const newSegs = freeSegs.filter(s => s.id !== cobbPendingSegId);
+          setFreeSegs(newSegs);
+          const usedIds = new Set();
+          newSegs.forEach(s => { usedIds.add(s.aId); usedIds.add(s.bId); });
+          setFreePts(prev => prev.filter(p => usedIds.has(p.id)));
+          setCobbPendingSegId(null);
         }
         setSelectedSegId(null);
         setSelectedLandmarkIdx(null);
@@ -285,7 +308,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, selectedSegId, selectedLandmarkIdx, pendingPtId, freeSegs, landmarks, step]);
+  }, [open, selectedSegId, selectedLandmarkIdx, pendingPtId, freeSegs, landmarks, step, cobbs, cobbPendingSegId]);
 
   // ─── Hooks de cálculo (deben ir antes de cualquier early return para
   // respetar Rules of Hooks) ──────────────────────────────────────────────
@@ -390,6 +413,59 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     return out;
   }, [freePts, freeSegs]);
 
+  // Ángulos tipo Cobb entre dos líneas independientes.
+  // Cada línea se orienta canónicamente (dx > 0) para que dos platillos paralelos
+  // den 0° y el ángulo crezca con la convergencia — igual que en un PACS.
+  // Las perpendiculares desde el punto medio de cada línea se cruzan en el vértice
+  // donde se ancla la etiqueta (construcción clásica de Cobb).
+  const cobbAngles = useMemo(() => {
+    const segPts = (segId) => {
+      const s = freeSegs.find(x => x.id === segId);
+      if (!s) return null;
+      const a = freePts.find(p => p.id === s.aId);
+      const b = freePts.find(p => p.id === s.bId);
+      if (!a || !b) return null;
+      return { a, b };
+    };
+    const canonDir = (a, b) => {
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len === 0) return null;
+      dx /= len; dy /= len;
+      // Orientación canónica: apuntando a la derecha; si es vertical, hacia abajo
+      if (dx < 0 || (dx === 0 && dy < 0)) { dx = -dx; dy = -dy; }
+      return { x: dx, y: dy };
+    };
+    const out = [];
+    for (const c of cobbs) {
+      const p1 = segPts(c.s1), p2 = segPts(c.s2);
+      if (!p1 || !p2) continue;
+      const d1 = canonDir(p1.a, p1.b), d2 = canonDir(p2.a, p2.b);
+      if (!d1 || !d2) continue;
+      let angle = Math.abs(Math.atan2(d1.y, d1.x) - Math.atan2(d2.y, d2.x)) * 180 / Math.PI;
+      if (angle > 180) angle = 360 - angle;
+      const m1 = midpoint(p1.a, p1.b), m2 = midpoint(p2.a, p2.b);
+      // Intersección de las perpendiculares: n = normal de cada línea
+      const n1 = { x: -d1.y, y: d1.x }, n2 = { x: -d2.y, y: d2.x };
+      const den = n1.x * n2.y - n1.y * n2.x;
+      let vertex = null;
+      if (Math.abs(den) > 1e-9) {
+        const t = ((m2.x - m1.x) * n2.y - (m2.y - m1.y) * n2.x) / den;
+        vertex = { x: m1.x + n1.x * t, y: m1.y + n1.y * t };
+      }
+      out.push({ id: c.id, s1: c.s1, s2: c.s2, l1: p1, l2: p2, m1, m2, vertex, angle });
+    }
+    return out;
+  }, [cobbs, freeSegs, freePts]);
+
+  // Segmentos que forman parte de un Cobb (incluida la 1ª línea aún sin pareja)
+  const cobbSegIds = useMemo(() => {
+    const s = new Set();
+    cobbs.forEach(c => { s.add(c.s1); s.add(c.s2); });
+    if (cobbPendingSegId) s.add(cobbPendingSegId);
+    return s;
+  }, [cobbs, cobbPendingSegId]);
+
   if (!open) return null;
 
   const loadFile = (file) => {
@@ -406,6 +482,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         setStep(0);
         setFreePts([]);
         setFreeSegs([]);
+        setCobbs([]);
+        setCobbPendingSegId(null);
         setPendingPtId(null);
         setCalibration(null);
         setCalibratePending(null);
@@ -481,7 +559,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       }
       return;
     }
-    if (tool === "line" || tool === "calibrate") {
+    if (tool === "line" || tool === "calibrate" || tool === "cobb") {
       handleLineToolClick(coord, null);
       return;
     }
@@ -509,6 +587,15 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     } else if (firstId !== pendingPtId) {
       if (tool === "line") {
         setFreeSegs(prev => [...prev, { id: uid(), aId: pendingPtId, bId: firstId }]);
+      } else if (tool === "cobb") {
+        const segId = uid();
+        setFreeSegs(prev => [...prev, { id: segId, aId: pendingPtId, bId: firstId }]);
+        if (cobbPendingSegId === null) {
+          setCobbPendingSegId(segId);
+        } else {
+          setCobbs(prev => [...prev, { id: uid(), s1: cobbPendingSegId, s2: segId }]);
+          setCobbPendingSegId(null);
+        }
       } else {
         const segId = uid();
         setFreeSegs(prev => [...prev, { id: segId, aId: pendingPtId, bId: firstId }]);
@@ -589,7 +676,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       // Click sin drag
       dragCandidateRef.current = null;
       if (dc.type === "freept") {
-        if (tool === "line" || tool === "calibrate") {
+        if (tool === "line" || tool === "calibrate" || tool === "cobb") {
           const pt = freePts.find(p => p.id === dc.id);
           if (pt) handleLineToolClick(pt, dc.id);
           return;
@@ -644,6 +731,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const deleteSeg = (segId) => {
     const newSegs = freeSegs.filter(s => s.id !== segId);
     setFreeSegs(newSegs);
+    // Un Cobb sin una de sus dos líneas deja de existir
+    setCobbs(prev => prev.filter(c => c.s1 !== segId && c.s2 !== segId));
+    if (cobbPendingSegId === segId) setCobbPendingSegId(null);
     // Limpiar puntos que no quedan referenciados ni están pendientes
     const usedIds = new Set();
     newSegs.forEach(s => { usedIds.add(s.aId); usedIds.add(s.bId); });
@@ -651,6 +741,22 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     setFreePts(prev => prev.filter(p => usedIds.has(p.id)));
     // Si era el segmento de calibración, borrar calibración
     if (calibration && calibration.refSegId === segId) setCalibration(null);
+  };
+
+  // Borrar una medición Cobb completa (sus dos líneas en una sola actualización:
+  // dos deleteSeg encadenados leerían freeSegs obsoleto y revivirían la primera).
+  const deleteCobb = (cobbId) => {
+    const c = cobbs.find(x => x.id === cobbId);
+    if (!c) return;
+    const newSegs = freeSegs.filter(s => s.id !== c.s1 && s.id !== c.s2);
+    setFreeSegs(newSegs);
+    setCobbs(prev => prev.filter(x => x.id !== cobbId));
+    const usedIds = new Set();
+    newSegs.forEach(s => { usedIds.add(s.aId); usedIds.add(s.bId); });
+    if (pendingPtId) usedIds.add(pendingPtId);
+    setFreePts(prev => prev.filter(p => usedIds.has(p.id)));
+    if (calibration && (calibration.refSegId === c.s1 || calibration.refSegId === c.s2)) setCalibration(null);
+    if (selectedSegId === c.s1 || selectedSegId === c.s2) setSelectedSegId(null);
   };
 
   // Aplicar mm a calibración
@@ -686,7 +792,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       setPendingPtId(null);
       return;
     }
-    if (tool === "line" && freeSegs.length > 0) {
+    if ((tool === "line" || tool === "cobb") && freeSegs.length > 0) {
       const last = freeSegs[freeSegs.length - 1];
       deleteSeg(last.id);
       return;
@@ -709,6 +815,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const clearFreeMeasurements = () => {
     setFreeSegs([]);
     setFreePts([]);
+    setCobbs([]);
+    setCobbPendingSegId(null);
     setPendingPtId(null);
     setCalibration(null);
     setCalibratePending(null);
@@ -830,6 +938,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Herramienta</span>
           <button onClick={() => { setTool("gap"); setPendingPtId(null); }} style={btnTool(tool === "gap", "#a8927a")}>🎯 GAP</button>
           <button onClick={() => { setTool("line"); setPendingPtId(null); }} style={btnTool(tool === "line", COLORS.cyan)}>📐 Medir (línea/ángulo)</button>
+          <button onClick={() => { setTool("cobb"); setPendingPtId(null); }} style={btnTool(tool === "cobb", "#f472b6")}>∠ Cobb (2 líneas)</button>
           <button onClick={() => { setTool("calibrate"); setPendingPtId(null); }} style={btnTool(tool === "calibrate", COLORS.green)}>⚖ Calibrar</button>
           <button onClick={() => { setTool("horizontal"); setPendingPtId(null); setHorizontalPending(null); }} style={btnTool(tool === "horizontal", "#fbbf24")}>📏 Horizontal</button>
           <button onClick={() => { setTool("pan"); setPendingPtId(null); }} style={btnTool(tool === "pan", "#888")}>🤚 Pan/Zoom</button>
@@ -859,15 +968,16 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 )}
               </span>
             );
-            // Roussouly classification
+            // Roussouly classification (Bari 2020, Fig. 2). El tipo 1 vs 2 requiere
+            // el nº de vértebras lordóticas, que se captura en el formulario.
             let roussouly = null;
             if (partial.ss !== undefined) {
               if (partial.ss < 35) {
                 roussouly = { type: "1/2", color: COLORS.cyan };
-              } else if (partial.ss > 45) {
+              } else if (partial.ss >= 45) {
                 roussouly = { type: "4", color: COLORS.red };
               } else if (partial.pi !== undefined && partial.pi < 50 && partial.pt !== undefined && partial.pt < 5) {
-                roussouly = { type: "3A", color: COLORS.pink };
+                roussouly = { type: "3-AP", color: COLORS.pink };
               } else {
                 roussouly = { type: "3", color: COLORS.green };
               }
@@ -915,6 +1025,17 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           Para fusionar dos endpoints en uno, arrastra uno encima del otro.
           Click sobre una línea para seleccionarla; <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd>/<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Backspace</kbd> la borra. <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Esc</kbd> cancela.
           <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? "Click siguiente punto…" : (selectedSegId ? "Línea seleccionada (Delete para borrar)" : "Click primer punto.")}</span>
+        </div>
+      )}
+      {imageSrc && tool === "cobb" && (
+        <div style={{ padding: "10px 16px", background: "#f472b622", borderBottom: "1px solid #f472b666", color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
+          <strong style={{ color: "#f472b6" }}>Cobb:</strong> traza <strong>2 líneas</strong> (2 clicks cada una, p. ej. sobre los platillos superior e inferior). Al terminar la segunda, el ángulo entre ambas se calcula y dibuja automáticamente con sus perpendiculares.
+          Arrastra cualquier endpoint para ajustar: el ángulo se recalcula en vivo. Click sobre una línea + <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd> borra la medición.
+          <span style={{ color: "#f472b6", fontStyle: "italic", marginLeft: 6, fontWeight: 700 }}>
+            {pendingPtId
+              ? (cobbPendingSegId ? "2ª línea: click segundo punto…" : "1ª línea: click segundo punto…")
+              : (cobbPendingSegId ? "Ahora traza la 2ª línea (2 clicks)." : "Click primer punto de la 1ª línea.")}
+          </span>
         </div>
       )}
       {imageSrc && tool === "calibrate" && !calibratePending && (
@@ -1009,7 +1130,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     if (!a || !b) return null;
                     const isCal = calibration && calibration.refSegId === seg.id;
                     const isSelected = selectedSegId === seg.id;
-                    const color = isCal ? COLORS.green : (isSelected ? COLORS.yellow : COLORS.cyan);
+                    const isCobb = cobbSegIds.has(seg.id);
+                    const color = isCal ? COLORS.green : (isSelected ? COLORS.yellow : (isCobb ? "#f472b6" : COLORS.cyan));
                     const mid = midpoint(a, b);
                     return (
                       <g key={seg.id}>
@@ -1025,10 +1147,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                           strokeOpacity={isCal ? 0.6 : 0.9} strokeLinecap="round"
                           strokeDasharray={isCal ? `${strokeWidth * 2},${strokeWidth * 2}` : "none"}
                           pointerEvents="none" />
-                        <text x={mid.x} y={mid.y - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4}
-                          paintOrder="stroke" fontSize={radius * 1.5} fontWeight="700" textAnchor="middle" pointerEvents="none">
-                          {fmtDist(distance(a, b))}
-                        </text>
+                        {(!isCobb || calibration) && (
+                          <text x={mid.x} y={mid.y - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4}
+                            paintOrder="stroke" fontSize={radius * 1.5} fontWeight="700" textAnchor="middle" pointerEvents="none">
+                            {fmtDist(distance(a, b))}
+                          </text>
+                        )}
                       </g>
                     );
                   })}
@@ -1062,6 +1186,44 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                   {horizontalPending && (
                     <circle cx={horizontalPending.x} cy={horizontalPending.y} r={radius * 0.7} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.5} pointerEvents="none" />
                   )}
+
+                  {/* Cobb: perpendiculares punteadas desde el punto medio de cada línea
+                      hasta su intersección, con el ángulo anclado en el vértice. */}
+                  {cobbAngles.map(c => {
+                    const isSel = selectedSegId === c.s1 || selectedSegId === c.s2;
+                    const col = isSel ? COLORS.yellow : "#f472b6";
+                    if (!c.vertex) {
+                      // Líneas paralelas: sin intersección, se rotula sobre la 1ª línea
+                      return (
+                        <text key={`cobb-${c.id}`} x={c.m1.x} y={c.m1.y - radius * 2} fill={col} stroke="#000"
+                          strokeWidth={strokeWidth * 0.5} paintOrder="stroke" fontSize={radius * 1.8}
+                          fontWeight="800" textAnchor="middle" pointerEvents="none">
+                          0.0° (paralelas)
+                        </text>
+                      );
+                    }
+                    // Etiqueta desplazada hacia el lado opuesto a las líneas para no taparlas
+                    const bis = { x: (c.m1.x + c.m2.x) / 2, y: (c.m1.y + c.m2.y) / 2 };
+                    const off = Math.hypot(c.vertex.x - bis.x, c.vertex.y - bis.y) || 1;
+                    const lx = c.vertex.x + ((c.vertex.x - bis.x) / off) * radius * 2.4;
+                    const ly = c.vertex.y + ((c.vertex.y - bis.y) / off) * radius * 2.4;
+                    return (
+                      <g key={`cobb-${c.id}`} pointerEvents="none">
+                        <line x1={c.m1.x} y1={c.m1.y} x2={c.vertex.x} y2={c.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.9} strokeOpacity="0.85"
+                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2}`} />
+                        <line x1={c.m2.x} y1={c.m2.y} x2={c.vertex.x} y2={c.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.9} strokeOpacity="0.85"
+                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2}`} />
+                        <circle cx={c.vertex.x} cy={c.vertex.y} r={radius * 0.4} fill={col} stroke="#000" strokeWidth={strokeWidth * 0.4} />
+                        <text x={lx} y={ly} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.5}
+                          paintOrder="stroke" fontSize={radius * 1.9} fontWeight="800"
+                          textAnchor="middle" dominantBaseline="middle">
+                          {c.angle.toFixed(1)}°
+                        </text>
+                      </g>
+                    );
+                  })}
 
                   {/* Etiquetas de ángulo en vértices compartidos */}
                   {vertexAngles.map(va => (
@@ -1291,11 +1453,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           {/* Mediciones libres */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-              Mediciones libres {freeSegs.length > 0 ? `(${freeSegs.length} línea${freeSegs.length === 1 ? "" : "s"}, ${vertexAngles.length} ángulo${vertexAngles.length === 1 ? "" : "s"})` : ""}
+              Mediciones libres {freeSegs.length > 0 ? `(${freeSegs.length} línea${freeSegs.length === 1 ? "" : "s"}, ${vertexAngles.length + cobbAngles.length} ángulo${vertexAngles.length + cobbAngles.length === 1 ? "" : "s"})` : ""}
             </div>
             {freeSegs.length === 0 ? (
               <div style={{ fontSize: 11, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.5 }}>
                 Cambia a "📐 Medir (línea/ángulo)" arriba. Cada línea muestra su distancia. Si dos líneas comparten un endpoint (click sobre un punto existente), el ángulo aparece automáticamente.
+                Con "∠ Cobb (2 líneas)" trazas dos líneas independientes y el ángulo entre ellas se dibuja solo.
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -1321,6 +1484,18 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     </div>
                   );
                 })}
+                {cobbAngles.map((c, i) => (
+                  <div key={`cobb-row-${c.id}`} onClick={() => setSelectedSegId(c.s1)}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px", borderRadius: 6, background: "#f472b622", border: "1px solid #f472b655", fontSize: 12, cursor: "pointer" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: COLORS.text }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f472b6" }} />
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{c.angle.toFixed(1)}°</span>
+                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>Cobb {i + 1}</span>
+                    </span>
+                    <button onClick={(e) => { e.stopPropagation(); deleteCobb(c.id); }} title="Borrar esta medición Cobb"
+                      style={{ background: "transparent", border: "none", color: COLORS.textDim, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>×</button>
+                  </div>
+                ))}
                 {vertexAngles.map((va, i) => (
                   <div key={`va-${va.ptId}`} style={{ display: "flex", alignItems: "center", padding: "6px 8px", borderRadius: 6, background: COLORS.panelLight, fontSize: 12 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: COLORS.text }}>

@@ -30,9 +30,12 @@ const REFERENCIAS = [
   { year: 2005, cite: "Roussouly P, Gollogly S, Berthonnaud E, Dimnet J. Classification of the Normal Variation in the Sagittal Alignment of the Human Lumbar Spine and Pelvis in the Standing Position. Spine. 2005;30:346-353." },
   { year: 2017, cite: "Yilgor C, Sogunmez N, Boissiere L, Yavuz Y, Obeid I, et al. Global Alignment and Proportion (GAP) Score: Development and Validation of a New Method of Analyzing Spinopelvic Alignment to Predict Mechanical Complications After Adult Spinal Deformity Surgery. J Bone Joint Surg Am. 2017;99:1661-1672. doi:10.2106/JBJS.16.01594" },
   { year: 2017, cite: "Laouissat F, Sebaaly A, Gehrchen M, Roussouly P. Classification of normal sagittal spine alignment: refounding the Roussouly classification. Eur Spine J. 2017;26:2572-2588. doi:10.1007/s00586-017-5111-x" },
+  { year: 2018, cite: "Sebaaly A, Grobost P, Mallam L, Roussouly P. Description of the sagittal alignment of the degenerative human spine. Eur Spine J. 2018;27:489-496. doi:10.1007/s00586-017-5404-0" },
   { year: 2019, cite: "Bari TJ, Ohrt-Nissen S, Hansen LV, Dahl B, Gehrchen M. Ability of the Global Alignment and Proportion Score to Predict Mechanical Failure Following Adult Spinal Deformity Surgery—Validation in 149 Patients With Two-Year Follow-up. Spine Deformity. 2019;7:331-337." },
   { year: 2019, cite: "Le Huec JC, Thompson W, Mohsinaly Y, Barrey C, Faundez A. Sagittal balance of the spine. Eur Spine J. 2019;28:1958-1968. doi:10.1007/s00586-019-06083-1" },
   { year: 2019, cite: "Noh SH, Ha Y, Obeid I, Park JY, Kuh SU, Chin DK, et al. Modified Global Alignment and Proportion Scoring With Body Mass Index and Bone Mineral Density (GAPB) for improving Predictions of Mechanical Complications After Adult Spinal Deformity Surgery. Spine J. 2019. doi:10.1016/j.spinee.2019.11.006" },
+  { year: 2020, cite: "Sebaaly A, Gehrchen M, Silvestre C, Kharrat K, Bari TJ, Kreichati G, et al. Mechanical complications in adult spinal deformity and the effect of restoring the spinal shapes according to the Roussouly classification: a multicentric study. Eur Spine J. 2020;29:904-913. doi:10.1007/s00586-019-06253-1" },
+  { year: 2020, cite: "Bari TJ, Hansen LV, Gehrchen M. Surgical correction of Adult Spinal Deformity in accordance to the Roussouly classification: effect on postoperative mechanical complications. Spine Deform. 2020;8:1027-1037. doi:10.1007/s43390-020-00112-6" },
   { year: 2021, cite: "Kwan KYH, Shaffrey CI, Cheung KMC, et al. Are Higher Global Alignment and Proportion Scores Associated With Increased Risks of Mechanical Complications After Adult Spinal Deformity Surgery? An External Validation. Clin Orthop Relat Res. 2021;479:312-320. doi:10.1097/CORR.0000000000001521" },
   { year: 2022, cite: "Hills J, Lenke LG, Sardar ZM, Le Huec JC, Bourret S, Hasegawa K, et al. The T4-L1-Hip Axis: Defining a Normal Sagittal Spinal Alignment. Spine. 2022;47:1399-1406." },
   { year: 2024, cite: "Cho M, Lee S, Kim HJ. Assessing the predictive power of the GAP score on mechanical complications: a comprehensive systematic review and meta-analysis. Eur Spine J. 2024;33:1311-1319. doi:10.1007/s00586-024-08135-7" },
@@ -262,6 +265,63 @@ const computeTilt = (key, direct, pa, pt) => {
   const delta = (hasDirect && hasDerived) ? (d - der) : null;
   return { direct: d, derived: der, delta, cls, norm };
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Roussouly — clasificación actualizada
+// ═══════════════════════════════════════════════════════════════════════════
+// Asignación del tipo actual (Bari 2020, Fig. 2 · Laouissat/Roussouly 2017):
+//   SS < 35°        → NVL ≤ 3 → Tipo 1 ; NVL > 3 → Tipo 2
+//   35° ≤ SS < 45°  → PI < 50° Y PT < 5° → Tipo 3-AP ; en caso contrario → Tipo 3
+//   SS ≥ 45°        → Tipo 4
+// Tipo ideal / objetivo quirúrgico (Bari 2020, Fig. 3):
+//   Tipo 1 → PI < 50° : Tipo 1   | PI ≥ 50° : Tipo 3 ó 4
+//   Tipo 2 → PI < 50° : Tipo 2   | PI ≥ 50° : Tipo 3 ó 4
+//   Tipo 3 → PI < 50° y PT < 5° : Tipo 3-AP | PI ≥ 50° : PT < 25° → Tipo 3 ; PT ≥ 25° → Tipo 4
+//   Tipo 4 → Tipo 4
+// Regla de concordancia por PI (Sebaaly 2020, Eur Spine J): PI < 50° debe restaurarse
+// a tipo 1 ó 2; PI ≥ 50° a tipo 3 ó 4. No cumplirla: RR 3 de complicación mecánica.
+const R_TYPES = {
+  "1":    { label: "Tipo 1", short: "1", desc: "SS < 35° con lordosis corta (≤ 3 vértebras lordóticas). Apex bajo (L5), arco inferior corto y cifosis toracolumbar por encima. Asociado a PI baja." },
+  "2":    { label: "Tipo 2", short: "2", desc: "SS < 35° con lordosis larga y plana (> 3 vértebras lordóticas). Dorso plano global con punto de inflexión alto. Asociado a PI baja." },
+  "3":    { label: "Tipo 3 (armónico)", short: "3", desc: "SS 35–45°. Apex en L4, distribución armónica de los arcos lordóticos. El patrón más frecuente en población sana." },
+  "3AP":  { label: "Tipo 3 anteverted", short: "3-AP", desc: "SS ≥ 35° con PI < 50° y PT < 5°: pelvis anteverted. Lordosis prominente sobre una pelvis de baja incidencia (Laouissat 2017)." },
+  "4":    { label: "Tipo 4", short: "4", desc: "SS ≥ 45° con PI alta. Apex en L3 o superior, lordosis larga y angulada con arco inferior prominente." },
+  "1|2":  { label: "Tipo 1 ó 2", short: "1 / 2", desc: "SS < 35°: corresponde a tipo 1 ó 2. Para diferenciarlos se requiere el número de vértebras lordóticas (≤ 3 → tipo 1; > 3 → tipo 2)." },
+  "3|4":  { label: "Tipo 3 ó 4", short: "3 / 4", desc: "Objetivo: restaurar lordosis hasta un shape de PI alta (tipo 3 ó 4). El PT residual esperado define cuál de los dos." },
+};
+const R_LOW_PI = ["1", "2", "1|2"];
+const R_HIGH_PI = ["3", "4", "3|4"];
+
+function roussoulyCurrentType(ss, pi, pt, nvl) {
+  if (ss === null || ss === undefined || Number.isNaN(ss)) return null;
+  if (ss < 35) {
+    if (nvl === null || nvl === undefined) return { key: "1|2", uncertain: "nvl" };
+    return { key: nvl <= 3 ? "1" : "2" };
+  }
+  if (ss >= 45) return { key: "4" };
+  // 35° ≤ SS < 45°
+  if (pi === null || pi === undefined || pt === null || pt === undefined) {
+    return { key: "3", uncertain: "piPt" };
+  }
+  return { key: pi < 50 && pt < 5 ? "3AP" : "3" };
+}
+
+function roussoulyIdealType(curKey, pi, pt) {
+  if (!curKey || pi === null || pi === undefined) return null;
+  if (curKey === "4") return { key: "4" };
+  if (curKey === "1" || curKey === "2" || curKey === "1|2") {
+    return pi < 50 ? { key: curKey } : { key: "3|4" };
+  }
+  // Tipo 3 / 3-AP de partida
+  if (pi >= 50) {
+    if (pt === null || pt === undefined) return { key: "3|4", uncertain: "pt" };
+    return { key: pt < 25 ? "3" : "4" };
+  }
+  // PI < 50°
+  if (pt !== null && pt !== undefined && pt < 5) return { key: "3AP" };
+  // PI < 50° con PT ≥ 5°: rama no contemplada en la Fig. 3; se aplica la regla por PI
+  return { key: "1|2", inferred: true };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PDF
@@ -520,22 +580,62 @@ function buildPDF(inputs, result) {
     const descLines = doc.splitTextToSize(roussoulyResult.desc, CW - 44);
     const descH = descLines.length * 3.2;
     const boxH = Math.max(16, 11 + descH);
-    ensureSpace(boxH + 12);
+    const idealLines = roussoulyResult.ideal ? doc.splitTextToSize(roussoulyResult.ideal.desc, CW - 44) : [];
+    const idealH = roussoulyResult.ideal ? Math.max(14, 9 + idealLines.length * 3.2) : 0;
+    const matchH = roussoulyResult.piMatch ? 12 : 0;
+    ensureSpace(boxH + idealH + matchH + 14);
     y += 4;
     doc.setFillColor(34, 211, 238); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("CLASIFICACION ROUSSOULY  (Roussouly 2005 / Laouissat 2017)", M + 3, y + 4.8); y += 9;
+    doc.text("CLASIFICACION ROUSSOULY  (Laouissat 2017 / Sebaaly 2020 / Bari 2020)", M + 3, y + 4.8); y += 9;
     const rRgb = roussoulyResult.color === COLORS.green ? [21, 128, 61] : roussoulyResult.color === COLORS.red ? [185, 28, 28] : [14, 116, 144];
     doc.setFillColor(250, 247, 242); doc.rect(M, y, CW, boxH, "F");
     doc.setDrawColor(...rRgb); doc.setLineWidth(0.6); doc.rect(M, y, CW, boxH, "S");
     doc.setTextColor(...rRgb); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
     doc.text(`Tipo ${roussoulyResult.type}`, M + 4, y + boxH / 2 + 3);
     doc.setFontSize(9); doc.setTextColor(30, 41, 59);
-    doc.text(roussoulyResult.label, M + 40, y + 5);
+    doc.text(`ACTUAL  ·  ${roussoulyResult.label}`, M + 40, y + 5);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
     doc.text(roussoulyResult.params, M + 40, y + 9);
     doc.text(descLines, M + 40, y + 13);
     y += boxH + 3;
+
+    // Tipo ideal / objetivo quirúrgico (Bari 2020, Fig. 3)
+    if (roussoulyResult.ideal) {
+      doc.setFillColor(244, 241, 236); doc.rect(M, y, CW, idealH, "F");
+      doc.setDrawColor(148, 163, 184); doc.setLineWidth(0.4); doc.rect(M, y, CW, idealH, "S");
+      doc.setTextColor(51, 65, 85); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+      doc.text(`Tipo ${roussoulyResult.ideal.type}`, M + 4, y + idealH / 2 + 2.5);
+      doc.setFontSize(8.5); doc.setTextColor(30, 41, 59);
+      doc.text(`${roussoulyResult.esPost ? "IDEAL (orientativo)" : "IDEAL / OBJETIVO"}  ·  ${roussoulyResult.ideal.label}`, M + 40, y + 5);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+      doc.text(idealLines, M + 40, y + 9);
+      y += idealH + 3;
+    }
+
+    // Concordancia con la PI (Sebaaly 2020)
+    if (roussoulyResult.piMatch) {
+      const lvl = roussoulyResult.piMatch.level;
+      const mRgb = lvl === "ok" ? [21, 128, 61] : lvl === "warn" ? [180, 83, 9] : [185, 28, 28];
+      const piTxt = `PI ${roussoulyResult.piMatch.piLow ? "< 50" : ">= 50"}: se espera ${roussoulyResult.piMatch.esperadoLabel}.`;
+      doc.setFillColor(...mRgb); doc.rect(M, y, CW, 10, "F");
+      doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+      doc.text(
+        lvl === "ok" ? (roussoulyResult.esPost ? "FORMA RESTAURADA (concordante con la PI)" : "CONCORDANTE con la PI")
+          : lvl === "warn" ? "CONCORDANCIA CON RESERVAS"
+            : (roussoulyResult.esPost ? "FORMA NO RESTAURADA (discordante con la PI)" : "NO CONCORDANTE con la PI"),
+        M + 3, y + 4.2);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7);
+      doc.text(
+        lvl === "ok"
+          ? `${piTxt} Forma sagital acorde a la incidencia pelvica.`
+          : lvl === "warn"
+            ? `${piTxt} Tipo 3 anteverted: variante normal, pero objetivo quirurgico desfavorable (mayor tasa de PJK).`
+            : `${piTxt} No restaurar la forma = RR 3 (IC 1.5-4.3) de complicacion mecanica (Sebaaly 2020); OR 4.7 de revision (Bari 2020).`,
+        M + 3, y + 7.8
+      );
+      y += 13;
+    }
   }
 
   // GAP-B (Noh 2020)
@@ -1048,8 +1148,9 @@ export default function GAPCalculator() {
   // SRS-Schwab — SVA en cm (medido en radiografía), card colapsable
   const [sva, setSVA] = useState("");
   const [schwabOpen, setSchwabOpen] = useState(false);
-  // Roussouly — card colapsable
+  // Roussouly — card colapsable + NVL (nº de vértebras lordóticas, tipo 1 vs 2)
   const [roussoulyOpen, setRoussoulyOpen] = useState(false);
+  const [nvl, setNvl] = useState("");
   // GAP-B (Noh 2020) — añade BMI y BMD T-score al GAP
   const [bmdTscore, setBmdTscore] = useState("");
   const [gapbOpen, setGapbOpen] = useState(false);
@@ -1423,51 +1524,66 @@ export default function GAPCalculator() {
     };
   }, [spinopelvic.effPI, spinopelvic.effPT, l1s1, sva]);
 
-  // Roussouly classification (Roussouly 2005; refined Laouissat/Roussouly 2017)
-  // SS < 35°  → Tipo 1 (apex L5) o Tipo 2 (dorso plano) — diferenciar por apex
-  // SS 35-45° → Tipo 3 (armónico); Tipo 3A si PI<50 y PT<5° (pelvis anteverted)
-  // SS > 45°  → Tipo 4 (alta PI, apex L3 o superior)
+  // Roussouly classification — Laouissat/Roussouly 2017 + algoritmos de
+  // Sebaaly 2020 (Eur Spine J) y Bari 2020 (Spine Deform): tipo actual, tipo
+  // ideal (objetivo quirúrgico) y concordancia con la PI.
   const roussoulyResult = useMemo(() => {
     const ssN = spinopelvic.effSS;
     const piN = spinopelvic.effPI;
     const ptN = spinopelvic.effPT;
-    if (ssN === null || ssN === undefined || Number.isNaN(ssN)) return null;
-    if (ssN < 35) {
-      return {
-        type: "1 / 2",
-        label: "Tipo 1 ó 2",
-        desc: "SS < 35°. Tipo 1: hipolordosis, apex en L5, arco inferior corto. Tipo 2: dorso plano, apex en base de L4. La diferenciación requiere el apex de la lordosis (no derivable de los landmarks GAP).",
-        color: COLORS.cyan, bg: COLORS.cyanBg || (COLORS.cyan + "22"),
-        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+    const nvlN = nvl === "" || nvl === null || nvl === undefined || Number.isNaN(Number(nvl)) ? null : Number(nvl);
+    const cur = roussoulyCurrentType(ssN, piN, ptN, nvlN);
+    if (!cur) return null;
+    const curDef = R_TYPES[cur.key];
+    const ideal = roussoulyIdealType(cur.key, piN, ptN);
+    const idealDef = ideal ? R_TYPES[ideal.key] : null;
+
+    // Concordancia con la PI (Sebaaly 2020): PI < 50° → tipos 1/2 · PI ≥ 50° → tipos 3/4
+    let piMatch = null;
+    if (piN !== null && piN !== undefined && !Number.isNaN(piN)) {
+      const esperado = piN < 50 ? R_LOW_PI : R_HIGH_PI;
+      // 3-AP con PI baja: entidad normal propia para Laouissat 2017, pero Sebaaly
+      // 2020 lo señala como objetivo quirúrgico desfavorable (PJK) → advertencia.
+      const antevertedWarn = cur.key === "3AP" && piN < 50;
+      const level = esperado.includes(cur.key) ? "ok" : antevertedWarn ? "warn" : "bad";
+      piMatch = {
+        level,
+        ok: level !== "bad",
+        piLow: piN < 50,
+        esperadoLabel: piN < 50 ? "tipo 1 ó 2" : "tipo 3 ó 4",
+        antevertedWarn,
       };
     }
-    if (ssN > 45) {
-      return {
-        type: "4",
-        label: "Tipo 4",
-        desc: "SS > 45°, asociado a PI alta. Apex de lordosis en L3 o superior; arco inferior prominente, hiperlordosis.",
-        color: COLORS.red, bg: COLORS.redBg,
-        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
-      };
-    }
-    // SS 35-45° → Tipo 3 o 3A
-    if (piN !== null && piN !== undefined && piN < 50 && ptN !== null && ptN < 5) {
-      return {
-        type: "3A",
-        label: "Tipo 3A (anteverted)",
-        desc: "SS > 35° con PI baja (<50°) y PT bajo (<5°): pelvis anteverted. Hiperlordosis relativa por encima del PT bajo.",
-        color: COLORS.purple || COLORS.cyan, bg: (COLORS.purple || COLORS.cyan) + "22",
-        params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
-      };
-    }
+
+    const levelColor = { ok: COLORS.green, warn: COLORS.yellow, bad: COLORS.red };
+    const levelBg = { ok: COLORS.greenBg, warn: COLORS.yellowBg, bad: COLORS.redBg };
+    const color = piMatch === null ? COLORS.cyan : levelColor[piMatch.level];
+    const bg = piMatch === null ? (COLORS.cyanBg || COLORS.cyan + "22") : levelBg[piMatch.level];
+    const params = `SS ${ssN.toFixed(1)}°`
+      + (piN !== null && piN !== undefined ? ` · PI ${piN.toFixed(1)}°` : "")
+      + (ptN !== null && ptN !== undefined ? ` · PT ${ptN.toFixed(1)}°` : "")
+      + (nvlN !== null ? ` · NVL ${nvlN}` : "");
+
     return {
-      type: "3",
-      label: "Tipo 3 (armónico)",
-      desc: "SS 35-45°. Apex de lordosis en L4. Distribución armónica de arcos lordóticos. El patrón más frecuente en la población sana.",
-      color: COLORS.green, bg: COLORS.greenBg,
-      params: `SS ${ssN.toFixed(1)}°` + (piN !== null ? ` · PI ${piN.toFixed(1)}°` : "") + (ptN !== null ? ` · PT ${ptN.toFixed(1)}°` : ""),
+      type: curDef.short,
+      typeKey: cur.key,
+      label: curDef.label,
+      desc: curDef.desc,
+      uncertain: cur.uncertain || null,
+      color, bg, params,
+      esPost: tipoEvaluacion === "postoperatorio",
+      ideal: idealDef ? {
+        type: idealDef.short,
+        key: ideal.key,
+        label: idealDef.label,
+        desc: idealDef.desc,
+        uncertain: ideal.uncertain || null,
+        inferred: ideal.inferred || false,
+        same: ideal.key === cur.key,
+      } : null,
+      piMatch,
     };
-  }, [spinopelvic.effSS, spinopelvic.effPI, spinopelvic.effPT]);
+  }, [spinopelvic.effSS, spinopelvic.effPI, spinopelvic.effPT, nvl, tipoEvaluacion]);
 
   // GAP-B (Noh 2020, Spine J) — extiende el GAP con BMI y BMD T-score
   // Modelo de regresión logística multivariable derivado de los HRs publicados:
@@ -2348,7 +2464,7 @@ export default function GAPCalculator() {
             <div style={{ flex: 1 }}>
               <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🧬 Clasificación Roussouly</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Roussouly 2005 · Laouissat 2017 · <em>shape sagital basado en SS</em>
+                Laouissat 2017 · Sebaaly 2020 · Bari 2020 · <em>tipo actual, ideal y concordancia con la PI</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: roussoulyOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -2356,25 +2472,98 @@ export default function GAPCalculator() {
           {roussoulyOpen && (
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
-                Cuatro tipos sagitales según <strong>SS</strong> y apex de lordosis (Roussouly 2005). El tipo <strong>3A</strong> (Laouissat 2017) añade el patrón de pelvis anteverted: SS &gt; 35° con PI &lt; 50° y PT &lt; 5°.
+                Tipos sagitales según <strong>SS</strong>, número de vértebras lordóticas y <strong>PT</strong> (algoritmo de Bari 2020, Fig. 2). Se calcula además el <strong>tipo ideal</strong> a restaurar (Fig. 3) y la concordancia con la <strong>PI</strong>: no restaurar la forma sagital multiplica ×3 el riesgo de complicación mecánica (Sebaaly 2020).
               </p>
+              <InputField
+                label="Vértebras lordóticas (NVL)"
+                value={nvl}
+                onChange={setNvl}
+                unit="vért."
+                min={0} max={12} step={1}
+                tooltip="Número de vértebras incluidas en la lordosis: desde S1 hasta la vértebra del punto de inflexión. Sólo se usa cuando SS < 35°, para separar tipo 1 (≤ 3 vértebras, lordosis corta) de tipo 2 (> 3 vértebras, dorso plano). Media en población normal ≈ 6 (Sebaaly 2020)."
+              />
               {roussoulyResult ? (
                 <>
                   <div style={{ padding: 14, borderRadius: 10, background: roussoulyResult.bg, border: `1.5px solid ${roussoulyResult.color}66` }}>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Tipo actual</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                       <span style={{ fontSize: 28, fontWeight: 800, color: roussoulyResult.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{roussoulyResult.type}</span>
                       <span style={{ fontSize: 15, fontWeight: 700, color: roussoulyResult.color }}>{roussoulyResult.label}</span>
                     </div>
                     <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>{roussoulyResult.params}</div>
                     <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{roussoulyResult.desc}</div>
+                    {roussoulyResult.uncertain === "nvl" && (
+                      <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
+                        ⚠ Ingresa el número de vértebras lordóticas para separar tipo 1 de tipo 2.
+                      </div>
+                    )}
+                    {roussoulyResult.uncertain === "piPt" && (
+                      <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
+                        ⚠ Faltan PI y/o PT: no puede descartarse un tipo 3 anteverted (PI &lt; 50° y PT &lt; 5°).
+                      </div>
+                    )}
                   </div>
-                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
-                    <strong style={{ color: COLORS.text }}>Referencia de tipos:</strong><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 1: SS &lt; 35° · apex en L5 · hipolordosis</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 2: SS &lt; 35° · apex en L4 · dorso plano</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3: SS 35-45° · apex en L4 · armónico</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3A: SS &gt; 35° · PI &lt; 50° · PT &lt; 5° · anteverted</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 4: SS &gt; 45° · apex en L3+ · hiperlordosis</span>
+
+                  {roussoulyResult.ideal && (
+                    <div style={{ marginTop: 10, padding: 14, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}` }}>
+                      <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                        {roussoulyResult.esPost ? "Tipo ideal · referencia orientativa" : "Tipo ideal · objetivo de corrección"}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                        <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>{roussoulyResult.ideal.type}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{roussoulyResult.ideal.label}</span>
+                        {roussoulyResult.ideal.same && (
+                          <span style={{ fontSize: 11, color: COLORS.green, fontWeight: 700 }}>= tipo actual, mantener la forma</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{roussoulyResult.ideal.desc}</div>
+                      {roussoulyResult.esPost && (
+                        <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: COLORS.inputBg, border: `1px solid ${COLORS.cardBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.45 }}>
+                          Estudio <strong>postoperatorio</strong>: el algoritmo de la Fig. 3 parte del tipo <em>preoperatorio</em>, así que este objetivo derivado de la forma post-op es sólo orientativo. Para juzgar si el paciente quedó "restaurado", usa la concordancia con la PI de abajo, que sí se aplica directamente sobre la forma postoperatoria.
+                        </div>
+                      )}
+                      {roussoulyResult.ideal.uncertain === "pt" && (
+                        <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
+                          ⚠ Falta PT para definir entre tipo 3 (PT &lt; 25°) y tipo 4 (PT ≥ 25°).
+                        </div>
+                      )}
+                      {roussoulyResult.ideal.inferred && (
+                        <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.45 }}>
+                          Rama no contemplada en la Fig. 3 de Bari (PI &lt; 50° con PT ≥ 5°): objetivo derivado de la regla por PI de Sebaaly 2020.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {roussoulyResult.piMatch && (
+                    <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 10, background: roussoulyResult.piMatch.level === "ok" ? COLORS.greenBg : roussoulyResult.piMatch.level === "warn" ? COLORS.yellowBg : COLORS.redBg, border: `1.5px solid ${(roussoulyResult.piMatch.level === "ok" ? COLORS.green : roussoulyResult.piMatch.level === "warn" ? COLORS.yellow : COLORS.red)}66` }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: roussoulyResult.piMatch.level === "ok" ? COLORS.green : roussoulyResult.piMatch.level === "warn" ? COLORS.yellow : COLORS.red, marginBottom: 4 }}>
+                        {roussoulyResult.piMatch.level === "ok"
+                          ? (roussoulyResult.esPost ? "✓ Forma restaurada (concordante con la PI)" : "✓ Forma concordante con la PI")
+                          : roussoulyResult.piMatch.level === "warn"
+                            ? "⚠ Concordancia con reservas"
+                            : (roussoulyResult.esPost ? "✕ Forma NO restaurada (discordante con la PI)" : "✕ Forma NO concordante con la PI")}
+                      </div>
+                      <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>
+                        PI {roussoulyResult.piMatch.piLow ? "< 50°" : "≥ 50°"} → se espera <strong>{roussoulyResult.piMatch.esperadoLabel}</strong>.
+                        {roussoulyResult.piMatch.level === "bad" && " No restaurar la forma sagital según la PI se asoció a RR 3 (IC 1.5–4.3) de complicación mecánica (46.8% vs 22.5%, Sebaaly 2020) y OR 4.7 de revisión por falla mecánica (Bari 2020)."}
+                        {roussoulyResult.piMatch.antevertedWarn && " El tipo 3 anteverted es una variante normal reconocida (Laouissat 2017), pero convertir quirúrgicamente una PI baja en un anteverted es un objetivo desfavorable: se asocia a mayor tasa de PJK."}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.55 }}>
+                    <strong style={{ color: COLORS.text }}>Algoritmo de asignación (Bari 2020, Fig. 2):</strong><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS &lt; 35° · NVL ≤ 3 → Tipo 1 (lordosis corta, apex L5)</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS &lt; 35° · NVL &gt; 3 → Tipo 2 (dorso plano)</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>35° ≤ SS &lt; 45° · PI &lt; 50° y PT &lt; 5° → Tipo 3-AP</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>35° ≤ SS &lt; 45° · PI ≥ 50° ó PT ≥ 5° → Tipo 3</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS ≥ 45° → Tipo 4</span><br/>
+                    <strong style={{ color: COLORS.text }}>Tipo ideal (Fig. 3):</strong><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 1/2 · PI &lt; 50° → se mantiene · PI ≥ 50° → Tipo 3 ó 4</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3 · PI &lt; 50° y PT &lt; 5° → 3-AP</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3 · PI ≥ 50° → PT &lt; 25° = Tipo 3 · PT ≥ 25° = Tipo 4</span><br/>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 4 → Tipo 4</span>
                   </div>
                 </>
               ) : (
