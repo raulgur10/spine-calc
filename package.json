@@ -4,7 +4,9 @@
   "version": "1.0.0-beta.1",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/ensure-native-deps.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/ensure-native-deps.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

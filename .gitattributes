@@ -1,0 +1,18 @@
+# El proyecto se edita desde macOS y desde Windows (carpeta compartida por
+# OneDrive). Sin esto, Windows escribe CRLF y cada archivo aparece como
+# modificado por completo al volver al Mac. Todo el repo esta en LF: se fuerza
+# LF tambien en el arbol de trabajo para que ambas maquinas coincidan.
+* text=auto eol=lf
+
+# Binarios: que git no intente normalizarlos nunca.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
