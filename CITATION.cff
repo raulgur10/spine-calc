@@ -1,0 +1,57 @@
+cff-version: 1.2.0
+title: Calculadora de alineación sagital espinopélvica
+message: >-
+  Si utilizas este software en un trabajo académico, cítalo empleando los
+  metadatos de este archivo y, cuando esté publicado, el artículo indicado
+  en "preferred-citation".
+type: software
+authors:
+  - family-names: Guillén Rojas
+    given-names: Raúl
+    affiliation: Virtual Medical Learning (VML) / Centro Médico ABC, Campus Santa Fe
+  - family-names: Sámano López
+    given-names: Iván Ulises
+    affiliation: Centro Médico ABC, Campus Santa Fe
+  - family-names: Galván Hernández
+    given-names: Ernesto Eduardo
+    affiliation: Centro Médico ABC, Campus Santa Fe
+  - family-names: Avendaño Pradel
+    given-names: Rafael
+    affiliation: Centro Médico ABC, Campus Santa Fe
+repository-code: 'https://github.com/raulgur10/gap-calculator'
+url: 'https://gap-calculator-beta.vercel.app/'
+abstract: >-
+  Aplicación web de uso libre para la medición de parámetros espinopélvicos
+  sobre radiografías laterales digitales y su análisis mediante el GAP score,
+  el eje T4-L1-cadera, los tilts vertebrales, los modificadores SRS-Schwab, la
+  clasificación de Roussouly y el modelo GAP-B. No propone parámetros ni
+  umbrales nuevos: automatiza el cálculo de métodos previamente publicados.
+  No constituye un dispositivo médico.
+keywords:
+  - deformidad espinal del adulto
+  - balance sagital
+  - parámetros espinopélvicos
+  - GAP score
+  - medición radiográfica
+  - planeación quirúrgica
+license: Apache-2.0
+version: 1.0.0-beta.1
+date-released: '2026-07-30'
+
+# Actualizar cuando el artículo esté publicado (revista, volumen, páginas y DOI pendientes).
+preferred-citation:
+  type: article
+  title: >-
+    Desarrollo de una aplicación web interactiva y de uso libre para la medición
+    y el análisis multimodal de la alineación sagital espinopélvica
+  authors:
+    - family-names: Sámano López
+      given-names: Iván Ulises
+    - family-names: Guillén Rojas
+      given-names: Raúl
+    - family-names: Galván Hernández
+      given-names: Ernesto Eduardo
+    - family-names: Avendaño Pradel
+      given-names: Rafael
+  year: 2026
+  journal: '[pendiente]'

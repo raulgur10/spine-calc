@@ -1,0 +1,48 @@
+Calculadora de alineación sagital espinopélvica
+Copyright 2026 Virtual Medical Learning (VML)
+
+Este producto incluye software desarrollado por Virtual Medical Learning
+y se distribuye bajo la Licencia Apache, Versión 2.0 (véase el archivo LICENSE).
+
+---
+
+ATRIBUCIÓN DE MÉTODOS CIENTÍFICOS
+
+Este software no propone parámetros, umbrales ni sistemas de clasificación
+nuevos. Automatiza el cálculo de métodos publicados por terceros, cuyo mérito
+conceptual y científico corresponde íntegramente a sus autores originales:
+
+  - Incidencia pélvica ......... Legaye et al., Eur Spine J 1998
+  - Clasificación morfotípica .. Roussouly et al., Spine 2005
+                                 Laouissat et al., Eur Spine J 2018
+  - Modificadores sagitales .... Schwab et al. / Scoliosis Research Society,
+                                 Spine 2012 y 2013
+  - GAP score .................. Yilgor et al. / European Spine Study Group,
+                                 J Bone Joint Surg Am 2017
+  - Eje T4-L1-cadera ........... Hills et al., Spine 2022;47(19):1399-1406
+  - Modelo GAP-B ............... Noh et al., Spine J 2020;20(5):776-784
+
+Virtual Medical Learning y los autores de esta implementación NO mantienen
+relación institucional, contractual ni de respaldo con los autores de los
+métodos implementados, ni con la Scoliosis Research Society, el European Spine
+Study Group o las editoriales de las publicaciones citadas. Este software NO ha
+sido avalado, revisado ni certificado por ninguna de esas entidades.
+
+No se reproduce en este software ninguna figura, tabla, nomograma ni material
+gráfico protegido por derechos de autor de las publicaciones fuente. Todas las
+ilustraciones anatómicas y esquemas geométricos de la interfaz son de
+elaboración propia.
+
+---
+
+AVISO MÉDICO
+
+Este software es una herramienta de cálculo y apoyo educativo. NO constituye un
+dispositivo médico ni un sistema de apoyo a la decisión clínica. No cuenta con
+registro sanitario ante COFEPRIS, marcado CE ni autorización de la FDA. No debe
+utilizarse como fundamento único de una indicación quirúrgica. La interpretación
+de los resultados y la responsabilidad de las decisiones clínicas corresponden
+exclusivamente al médico tratante.
+
+Se distribuye SIN GARANTÍA DE NINGÚN TIPO, conforme a las secciones 7 y 8 de la
+Licencia Apache 2.0.
