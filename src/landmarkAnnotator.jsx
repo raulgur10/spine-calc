@@ -222,9 +222,32 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   // Guardado de imagen anotada
   const [savingAnnotated, setSavingAnnotated] = useState(false);
 
+  // Zoom actual del canvas. Los marcadores se dibujan en coordenadas de imagen,
+  // así que su tamaño se divide entre el zoom para que en pantalla se vean
+  // siempre iguales por más que se acerque la radiografía.
+  const [zoomScale, setZoomScale] = useState(1);
+  const [markerScale, setMarkerScale] = useState(1); // multiplicador manual (control en la barra)
+  const [exporting, setExporting] = useState(false); // al rasterizar se ignora el zoom de pantalla
+
+  // Ángulo automático entre pares de líneas de la herramienta "Medir"
+  const [showPairAngles, setShowPairAngles] = useState(true);
+
+  // Aviso de alineación que aparece al cargar la imagen
+  const [showAlignPrompt, setShowAlignPrompt] = useState(false);
+  const [horizontalTouched, setHorizontalTouched] = useState(false);
+
   // Detección click-vs-drag (umbral de movimiento en pantalla, en pixeles)
   const dragCandidateRef = useRef(null); // { type: "freept"|"landmark", id, startX, startY, started, pointerId, target }
   const DRAG_THRESHOLD = 4;
+
+  // ─── Historial para deshacer/rehacer (Cmd/Ctrl+Z) ────────────────────────
+  // Se guardan snapshots del estado editable. Como cada setState reemplaza el
+  // objeto/array completo, comparar por referencia basta para detectar cambios.
+  const pastRef = useRef([]);
+  const futureRef = useRef([]);
+  const presentRef = useRef(null);
+  const restoringRef = useRef(false); // un undo/redo no debe generar una entrada nueva
+  const HISTORY_LIMIT = 120;
 
   const svgRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -246,6 +269,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       setCalibrateInput("");
       setHorizontalRef(null);
       setHorizontalPending(null);
+      setHorizontalTouched(false);
+      setShowAlignPrompt(false);
+      setZoomScale(1);
+      pastRef.current = [];
+      futureRef.current = [];
+      presentRef.current = null;
     }
   }, [open]);
 
@@ -256,6 +285,29 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     }
   }, [freeSegs, selectedSegId]);
 
+  const isDragging = draggingLandmarkIdx !== null || draggingFreePtId !== null || draggingHorizEnd !== null;
+
+  // Apila una entrada de historial cada vez que cambia el estado editable.
+  useEffect(() => {
+    if (!open) return;
+    const cur = { landmarks, freePts, freeSegs, cobbs, cobbPendingSegId, pendingPtId, horizontalRef, calibration, step };
+    if (presentRef.current === null) { presentRef.current = cur; return; }
+    if (restoringRef.current) { presentRef.current = cur; restoringRef.current = false; return; }
+    // Durante un arrastre no se apila nada: al soltar, el estado previo a todo
+    // el arrastre queda como una sola entrada en vez de una por cada pixel.
+    if (isDragging) return;
+    const prev = presentRef.current;
+    if (prev.landmarks === cur.landmarks && prev.freePts === cur.freePts &&
+        prev.freeSegs === cur.freeSegs && prev.cobbs === cur.cobbs &&
+        prev.cobbPendingSegId === cur.cobbPendingSegId && prev.pendingPtId === cur.pendingPtId &&
+        prev.horizontalRef === cur.horizontalRef && prev.calibration === cur.calibration &&
+        prev.step === cur.step) return;
+    pastRef.current.push(prev);
+    if (pastRef.current.length > HISTORY_LIMIT) pastRef.current.shift();
+    futureRef.current = [];
+    presentRef.current = cur;
+  }, [open, isDragging, landmarks, freePts, freeSegs, cobbs, cobbPendingSegId, pendingPtId, horizontalRef, calibration, step]);
+
   // Atajos de teclado: Delete/Backspace para borrar segmento seleccionado, Escape para cancelar
   useEffect(() => {
     if (!open) return;
@@ -263,6 +315,17 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       // Si hay input enfocado (calibración), no procesar
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea") return;
+      // Deshacer / rehacer: Cmd+Z (Mac) o Ctrl+Z (Windows); Cmd/Ctrl+Shift+Z o Ctrl+Y para rehacer
+      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        if (e.shiftKey) handleRedo(); else handleUndo();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "Y")) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedSegId) {
           e.preventDefault();
@@ -308,7 +371,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, selectedSegId, selectedLandmarkIdx, pendingPtId, freeSegs, landmarks, step, cobbs, cobbPendingSegId]);
+  }, [open, selectedSegId, selectedLandmarkIdx, pendingPtId, freeSegs, landmarks, step, cobbs, cobbPendingSegId, calibratePending]);
 
   // ─── Hooks de cálculo (deben ir antes de cualquier early return para
   // respetar Rules of Hooks) ──────────────────────────────────────────────
@@ -466,6 +529,57 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     return s;
   }, [cobbs, cobbPendingSegId]);
 
+  // ─── Ángulo entre pares de líneas manuales (herramienta "Medir") ─────────
+  // Las líneas libres se emparejan en el orden en que se trazaron (1ª+2ª,
+  // 3ª+4ª, …). Cada par se prolonga punteado hasta el cruce de sus rectas y
+  // ahí se rotula el ángulo. No participan las líneas de Cobb (tienen su
+  // propia construcción con perpendiculares) ni la de calibración. Los puntos
+  // GAP no entran aquí: sus ángulos se calculan aparte.
+  const linePairs = useMemo(() => {
+    if (!showPairAngles) return [];
+    const elegibles = freeSegs.filter(s => !cobbSegIds.has(s.id) && !(calibration && calibration.refSegId === s.id));
+    const pt = (id) => freePts.find(p => p.id === id);
+    const out = [];
+    for (let i = 0; i + 1 < elegibles.length; i += 2) {
+      const s1 = elegibles[i], s2 = elegibles[i + 1];
+      // Si las dos comparten un extremo, el ángulo ya lo rotula vertexAngles
+      // con el vértice real; duplicarlo aquí solo confunde.
+      if (s1.aId === s2.aId || s1.aId === s2.bId || s1.bId === s2.aId || s1.bId === s2.bId) continue;
+      const a1 = pt(s1.aId), b1 = pt(s1.bId), a2 = pt(s2.aId), b2 = pt(s2.bId);
+      if (!a1 || !b1 || !a2 || !b2) continue;
+      const d1 = { x: b1.x - a1.x, y: b1.y - a1.y };
+      const d2 = { x: b2.x - a2.x, y: b2.y - a2.y };
+      const l1 = Math.hypot(d1.x, d1.y), l2 = Math.hypot(d2.x, d2.y);
+      if (l1 === 0 || l2 === 0) continue;
+      // Misma convención que el Cobb: ambas direcciones canónicas (apuntando a
+      // la derecha) para que dos líneas paralelas den 0° y el valor crezca con
+      // la convergencia.
+      const canon = (d, len) => {
+        let x = d.x / len, y = d.y / len;
+        if (x < 0 || (x === 0 && y < 0)) { x = -x; y = -y; }
+        return { x, y };
+      };
+      const u1 = canon(d1, l1), u2 = canon(d2, l2);
+      let angle = Math.abs(Math.atan2(u1.y, u1.x) - Math.atan2(u2.y, u2.x)) * 180 / Math.PI;
+      if (angle > 180) angle = 360 - angle;
+      // Cruce de las rectas (no de los segmentos)
+      const den = d1.x * d2.y - d1.y * d2.x;
+      let vertex = null;
+      if (Math.abs(den) > 1e-9) {
+        const t = ((a2.x - a1.x) * d2.y - (a2.y - a1.y) * d2.x) / den;
+        vertex = { x: a1.x + d1.x * t, y: a1.y + d1.y * t };
+      }
+      // Un cruce absurdamente lejos (líneas casi paralelas) no se dibuja.
+      if (vertex) {
+        const maxDim = Math.max(imageDims.w, imageDims.h) || 1;
+        const cx = imageDims.w / 2, cy = imageDims.h / 2;
+        if (Math.hypot(vertex.x - cx, vertex.y - cy) > maxDim * 2.5) vertex = null;
+      }
+      out.push({ id: `${s1.id}|${s2.id}`, s1: s1.id, s2: s2.id, a1, b1, a2, b2, vertex, angle });
+    }
+    return out;
+  }, [showPairAngles, freeSegs, freePts, cobbSegIds, calibration, imageDims]);
+
   if (!open) return null;
 
   const loadFile = (file) => {
@@ -487,13 +601,21 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         setPendingPtId(null);
         setCalibration(null);
         setCalibratePending(null);
-        // Horizontal por defecto: línea horizontal centrada (eje X de la imagen).
-        // El usuario puede arrastrar los endpoints para alinearla con la placa si está rotada.
+        // Horizontal por defecto: paralela al eje X de la imagen y colocada
+        // abajo, fuera de la zona de trabajo — en el centro los usuarios la
+        // confundían con una medición. El usuario arrastra los extremos para
+        // alinearla con la placa si está rotada.
         setHorizontalRef({
-          p1: { x: w * 0.20, y: h * 0.50 },
-          p2: { x: w * 0.80, y: h * 0.50 }
+          p1: { x: w * 0.20, y: h * 0.88 },
+          p2: { x: w * 0.80, y: h * 0.88 }
         });
         setHorizontalPending(null);
+        setHorizontalTouched(false);
+        setShowAlignPrompt(true);
+        setZoomScale(1);
+        pastRef.current = [];
+        futureRef.current = [];
+        presentRef.current = null;
       };
       img.src = url;
     };
@@ -518,8 +640,15 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     return { x: sp.x, y: sp.y };
   };
 
-  const radius = imageDims.w > 0 ? Math.max(8, imageDims.w / 200) : 8;
-  const strokeWidth = imageDims.w > 0 ? Math.max(2, imageDims.w / 600) : 2;
+  // Tamaño de marcadores y trazos. Se dibujan en coordenadas de imagen dentro
+  // de un SVG que el zoom escala completo, así que hay que dividir entre el
+  // factor de zoom para que en pantalla se vean del mismo tamaño siempre.
+  // Al exportar la imagen anotada se ignora el zoom (se rasteriza a escala 1).
+  const zoomComp = exporting ? 1 : Math.min(Math.max(zoomScale, 0.25), 8);
+  const baseRadius = imageDims.w > 0 ? Math.max(8, imageDims.w / 200) : 8;
+  const baseStroke = imageDims.w > 0 ? Math.max(2, imageDims.w / 600) : 2;
+  const radius = (baseRadius * markerScale) / zoomComp;
+  const strokeWidth = (baseStroke * markerScale) / zoomComp;
   const snapRadius = radius * 2.2;
 
   // Snap o crea un punto libre
@@ -569,6 +698,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       } else {
         setHorizontalRef({ p1: horizontalPending, p2: coord });
         setHorizontalPending(null);
+        setHorizontalTouched(true);
         setTool("gap");
       }
       return;
@@ -783,31 +913,41 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     setCalibrateInput("");
   };
 
+  // ─── Deshacer / rehacer sobre el historial de snapshots ─────────────────
+  const applySnapshot = (s) => {
+    restoringRef.current = true;
+    setLandmarks(s.landmarks);
+    setFreePts(s.freePts);
+    setFreeSegs(s.freeSegs);
+    setCobbs(s.cobbs);
+    setCobbPendingSegId(s.cobbPendingSegId);
+    setPendingPtId(s.pendingPtId);
+    setHorizontalRef(s.horizontalRef);
+    setCalibration(s.calibration);
+    setStep(s.step);
+    setSelectedSegId(null);
+    setSelectedLandmarkIdx(null);
+  };
+
   const handleUndo = () => {
+    // Una calibración a medias se cancela antes de tocar el historial
     if (calibratePending) { cancelCalibration(); return; }
-    if (pendingPtId !== null) {
-      // Limpiar punto pendiente si no es referenciado por otro segmento
-      const refed = freeSegs.some(s => s.aId === pendingPtId || s.bId === pendingPtId);
-      if (!refed) setFreePts(prev => prev.filter(p => p.id !== pendingPtId));
-      setPendingPtId(null);
-      return;
-    }
-    if ((tool === "line" || tool === "cobb") && freeSegs.length > 0) {
-      const last = freeSegs[freeSegs.length - 1];
-      deleteSeg(last.id);
-      return;
-    }
-    // GAP undo: borra el último landmark colocado
-    const lastFilledIdx = [...landmarks].map((p, i) => p ? i : -1).filter(i => i >= 0).pop();
-    if (lastFilledIdx === undefined) return;
-    const newLm = [...landmarks];
-    newLm[lastFilledIdx] = null;
-    setLandmarks(newLm);
-    setStep(lastFilledIdx);
+    const prev = pastRef.current.pop();
+    if (!prev) return;
+    if (presentRef.current) futureRef.current.push(presentRef.current);
+    applySnapshot(prev);
+  };
+
+  const handleRedo = () => {
+    if (calibratePending) return;
+    const next = futureRef.current.pop();
+    if (!next) return;
+    if (presentRef.current) pastRef.current.push(presentRef.current);
+    applySnapshot(next);
   };
 
   const handleResetGAP = () => {
-    setLandmarks(Array(9).fill(null));
+    setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
     setStep(0);
     setSelectedLandmarkIdx(null);
   };
@@ -826,7 +966,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const handleClearImage = () => {
     setImageSrc(null);
     setImageDims({ w: 0, h: 0 });
-    setLandmarks(Array(9).fill(null));
+    setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
     setStep(0);
     setFreePts([]);
     setFreeSegs([]);
@@ -866,6 +1006,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   const handleSaveAnnotated = async () => {
     if (!svgRef.current || !imageDims.w || !onSaveAnnotated) return;
     setSavingAnnotated(true);
+    // Los marcadores se dibujan compensando el zoom de pantalla; para el
+    // export hay que volver a escala 1 y esperar a que React repinte el SVG.
+    setExporting(true);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     try {
       const xml = new XMLSerializer().serializeToString(svgRef.current);
       const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
@@ -891,6 +1035,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
     } catch (e) {
       console.error("Error al guardar imagen anotada:", e);
     } finally {
+      setExporting(false);
       setSavingAnnotated(false);
     }
   };
@@ -922,7 +1067,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {imageSrc && (
             <>
-              <button onClick={handleUndo} style={btnSecondary(false)}>↶ Deshacer</button>
+              <button onClick={handleUndo} title="Deshacer (⌘Z / Ctrl+Z)" style={btnSecondary(false)}>↶ Deshacer</button>
+              <button onClick={handleRedo} title="Rehacer (⇧⌘Z / Ctrl+Y)" style={btnSecondary(false)}>↷ Rehacer</button>
               <button onClick={handleResetGAP} style={btnSecondary(false)}>Reiniciar GAP</button>
               <button onClick={clearFreeMeasurements} style={btnSecondary(false)}>Limpiar mediciones libres</button>
               <button onClick={handleClearImage} style={btnSecondary(false)}>Cambiar imagen</button>
@@ -947,6 +1093,16 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               {gapMode === "free" ? "✓ Solo arrastrar" : "Solo arrastrar"}
             </button>
           )}
+          {/* Tamaño de los marcadores. El zoom ya no los agranda, pero el
+              tamaño base depende de la resolución de la placa. */}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 12, padding: "3px 10px", borderRadius: 6, background: COLORS.panelLight }}
+            title="Tamaño de los puntos, líneas y etiquetas (no cambia con el zoom)">
+            <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>⬤ Tamaño</span>
+            <input type="range" min="0.4" max="2.5" step="0.1" value={markerScale}
+              onChange={e => setMarkerScale(Number(e.target.value))}
+              style={{ width: 84, accentColor: COLORS.accent, cursor: "pointer" }} />
+            <span style={{ fontSize: 10, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace", width: 30, textAlign: "right" }}>{Math.round(markerScale * 100)}%</span>
+          </span>
           {/* SRS-Schwab live summary */}
           {(() => {
             const svaCm = (partial.svaPx !== undefined && calibration) ? partial.svaPx * calibration.mmPerPx / 10 : null;
@@ -1020,11 +1176,17 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       {imageSrc && tool === "line" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
           <strong>Línea / ángulo:</strong> click 2 puntos para crear una línea.
-          Si haces click sobre un endpoint que ya existe, la nueva línea sale desde ahí compartiendo vértice → el ángulo aparece automáticamente.
+          Las líneas se emparejan en el orden en que las trazas (<strong>1ª+2ª, 3ª+4ª…</strong>) y el <strong>ángulo entre cada par</strong> se dibuja solo, prolongándolas punteadas hasta el cruce.
+          Si además haces click sobre un endpoint que ya existe, la nueva línea sale desde ahí compartiendo vértice y también se rotula ese ángulo.
           Arrastra cualquier endpoint para ajustar (la distancia y el ángulo se actualizan en vivo).
           Para fusionar dos endpoints en uno, arrastra uno encima del otro.
           Click sobre una línea para seleccionarla; <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd>/<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Backspace</kbd> la borra. <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Esc</kbd> cancela.
           <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? "Click siguiente punto…" : (selectedSegId ? "Línea seleccionada (Delete para borrar)" : "Click primer punto.")}</span>
+          <button onClick={() => setShowPairAngles(v => !v)}
+            title="Mostrar u ocultar el ángulo entre cada par de líneas"
+            style={{ ...btnTool(showPairAngles, COLORS.cyan), marginLeft: 10, padding: "3px 9px", fontSize: 10 }}>
+            {showPairAngles ? "✓ ∠ entre pares" : "∠ entre pares"}
+          </button>
         </div>
       )}
       {imageSrc && tool === "cobb" && (
@@ -1046,7 +1208,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       )}
       {imageSrc && tool === "horizontal" && (
         <div style={{ padding: "10px 16px", background: "#fbbf24" + "22", borderBottom: `1px solid #fbbf2466`, color: "#fbbf24", fontSize: 12, lineHeight: 1.55 }}>
-          <strong>Definir horizontal real:</strong> click 2 puntos sobre algo que sabes está horizontal (borde de mesa, plomo, marcador, suelo). Se usa para corregir SS y PT cuando la radiografía no está bien alineada. PI y los Cobb (L1-S1, L4-S1) no necesitan esto — son geométricos.
+          <strong>Definir horizontal real:</strong> arrastra los dos extremos amarillos de la línea que ya está abajo, o click 2 puntos sobre algo que sabes está horizontal (borde de mesa, plomo, marcador, suelo). Se usa para corregir SS y PT cuando la radiografía no está bien alineada. PI y los Cobb (L1-S1, L4-S1) no necesitan esto — son geométricos.
           <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{horizontalPending ? "Click segundo punto…" : "Click primer punto."}</span>
         </div>
       )}
@@ -1100,7 +1262,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             <TransformWrapper ref={transformRef} minScale={0.2} maxScale={8} initialScale={1} centerOnInit
               wheel={{ step: 0.15 }} doubleClick={{ disabled: true }}
               panning={{ disabled: tool !== "pan", velocityDisabled: true }}
-              pinch={{ disabled: tool !== "pan" }}>
+              pinch={{ disabled: tool !== "pan" }}
+              onTransform={(_ref, state) => setZoomScale(state?.scale || 1)}>
               <TransformComponent wrapperStyle={{ width: "100%", height: "100%" }} contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg ref={svgRef} viewBox={`0 0 ${imageDims.w} ${imageDims.h}`}
                   style={{ width: "auto", height: "100%", maxWidth: "100%", maxHeight: "100%", touchAction: "none", cursor, userSelect: "none" }}
@@ -1167,17 +1330,22 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     const ext = imageDims.w * 0.5;
                     const a = { x: horizontalRef.p1.x - ux * ext, y: horizontalRef.p1.y - uy * ext };
                     const b = { x: horizontalRef.p2.x + ux * ext, y: horizontalRef.p2.y + uy * ext };
+                    // Mientras nadie la haya tocado se dibuja atenuada, para que
+                    // no se confunda con una medición del estudio.
+                    const dim = !horizontalTouched && tool !== "horizontal";
                     return (
-                      <g>
+                      <g opacity={dim ? 0.55 : 1}>
                         <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fbbf24" strokeWidth={strokeWidth * 0.7} strokeOpacity="0.4" strokeDasharray={`${strokeWidth * 4},${strokeWidth * 3}`} pointerEvents="none" />
-                        <line x1={horizontalRef.p1.x} y1={horizontalRef.p1.y} x2={horizontalRef.p2.x} y2={horizontalRef.p2.y} stroke="#fbbf24" strokeWidth={strokeWidth * 1.2} strokeOpacity="0.85" pointerEvents="none" />
-                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">
-                          horizontal · {horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : ""} · arrastra ⇄
+                        <line x1={horizontalRef.p1.x} y1={horizontalRef.p1.y} x2={horizontalRef.p2.x} y2={horizontalRef.p2.y} stroke="#fbbf24" strokeWidth={dim ? strokeWidth * 0.9 : strokeWidth * 1.2} strokeOpacity={dim ? 0.7 : 0.85} pointerEvents="none" />
+                        <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill={dim ? "#fbbf24" : "#fff"} stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={dim ? radius * 1.0 : radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">
+                          {dim
+                            ? "referencia horizontal — arrastra solo si la placa está inclinada"
+                            : `horizontal · ${horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : ""} · arrastra ⇄`}
                         </text>
                         {["p1", "p2"].map(key => (
-                          <circle key={key} cx={horizontalRef[key].x} cy={horizontalRef[key].y} r={radius * 1.1} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.6}
+                          <circle key={key} cx={horizontalRef[key].x} cy={horizontalRef[key].y} r={dim ? radius * 0.8 : radius * 1.1} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.6}
                             style={{ cursor: "grab" }}
-                            onPointerDown={(e) => { e.stopPropagation(); try { e.target.setPointerCapture?.(e.pointerId); } catch (err) {} setDraggingHorizEnd(key); }} />
+                            onPointerDown={(e) => { e.stopPropagation(); try { e.target.setPointerCapture?.(e.pointerId); } catch (err) {} setDraggingHorizEnd(key); setHorizontalTouched(true); }} />
                         ))}
                       </g>
                     );
@@ -1220,6 +1388,51 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                           paintOrder="stroke" fontSize={radius * 1.9} fontWeight="800"
                           textAnchor="middle" dominantBaseline="middle">
                           {c.angle.toFixed(1)}°
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Ángulo entre pares de líneas manuales: prolongación punteada
+                      de cada línea hasta el cruce + etiqueta en el vértice. */}
+                  {linePairs.map(pr => {
+                    const isSel = selectedSegId === pr.s1 || selectedSegId === pr.s2;
+                    const col = isSel ? COLORS.yellow : COLORS.cyan;
+                    if (!pr.vertex) {
+                      // Casi paralelas: el cruce cae fuera de cualquier lugar útil
+                      const m = midpoint(midpoint(pr.a1, pr.b1), midpoint(pr.a2, pr.b2));
+                      return (
+                        <text key={`pa-${pr.id}`} x={m.x} y={m.y} fill="#fff" stroke="#000"
+                          strokeWidth={strokeWidth * 0.5} paintOrder="stroke" fontSize={radius * 1.6}
+                          fontWeight="800" textAnchor="middle" dominantBaseline="middle" pointerEvents="none">
+                          ∠ {pr.angle.toFixed(1)}° (casi paralelas)
+                        </text>
+                      );
+                    }
+                    // Cada línea se prolonga desde su extremo más cercano al cruce
+                    const nearest = (p, q) => (
+                      Math.hypot(p.x - pr.vertex.x, p.y - pr.vertex.y) <= Math.hypot(q.x - pr.vertex.x, q.y - pr.vertex.y) ? p : q
+                    );
+                    const e1 = nearest(pr.a1, pr.b1);
+                    const e2 = nearest(pr.a2, pr.b2);
+                    // Etiqueta corrida hacia el lado libre (opuesto a las líneas)
+                    const bis = midpoint(midpoint(pr.a1, pr.b1), midpoint(pr.a2, pr.b2));
+                    const off = Math.hypot(pr.vertex.x - bis.x, pr.vertex.y - bis.y) || 1;
+                    const lx = pr.vertex.x + ((pr.vertex.x - bis.x) / off) * radius * 2.6;
+                    const ly = pr.vertex.y + ((pr.vertex.y - bis.y) / off) * radius * 2.6;
+                    return (
+                      <g key={`pa-${pr.id}`} pointerEvents="none">
+                        <line x1={e1.x} y1={e1.y} x2={pr.vertex.x} y2={pr.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.7"
+                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2.5}`} />
+                        <line x1={e2.x} y1={e2.y} x2={pr.vertex.x} y2={pr.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.7"
+                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2.5}`} />
+                        <circle cx={pr.vertex.x} cy={pr.vertex.y} r={radius * 0.35} fill={col} stroke="#000" strokeWidth={strokeWidth * 0.4} />
+                        <text x={lx} y={ly} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.5}
+                          paintOrder="stroke" fontSize={radius * 1.8} fontWeight="800"
+                          textAnchor="middle" dominantBaseline="middle">
+                          ∠ {pr.angle.toFixed(1)}°
                         </text>
                       </g>
                     );
@@ -1273,6 +1486,35 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               <button onClick={() => transformRef.current?.zoomOut(0.3)} title="Alejar (zoom −)" style={zoomBtnStyle}>−</button>
               <button onClick={() => transformRef.current?.resetTransform()} title="Restablecer zoom" style={{ ...zoomBtnStyle, fontSize: 14 }}>⊕</button>
               <button onClick={() => transformRef.current?.centerView()} title="Centrar imagen" style={{ ...zoomBtnStyle, fontSize: 13 }}>◯</button>
+            </div>
+          )}
+
+          {/* Aviso de alineación al cargar la placa. La horizontal vive abajo y
+              atenuada; este mensaje explica para qué sirve, de modo que nadie
+              la interprete como parte de la medición. */}
+          {imageSrc && showAlignPrompt && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+              <div style={{ maxWidth: 420, background: COLORS.panel, border: `1.5px solid #fbbf2466`, borderRadius: 12, padding: "22px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.6)", textAlign: "center" }}>
+                <div style={{ fontSize: 30, marginBottom: 10 }}>📏</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.text, marginBottom: 10 }}>¿La placa está bien alineada?</div>
+                <div style={{ fontSize: 12.5, color: COLORS.textDim, lineHeight: 1.6, marginBottom: 18 }}>
+                  Si está desalineada, ajusta la <strong style={{ color: "#fbbf24" }}>línea horizontal amarilla</strong> que aparece abajo para corregir <strong style={{ color: COLORS.text }}>SS</strong> y <strong style={{ color: COLORS.text }}>PT</strong>.
+                  <br />
+                  El PI y los Cobb (L1-S1, L4-S1) no la necesitan: son geométricos.
+                </div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button onClick={() => { setShowAlignPrompt(false); setTool("horizontal"); setHorizontalPending(null); setHorizontalTouched(true); }}
+                    style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #fbbf24", background: "#fbbf24", color: "#1a1a1a", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
+                    Ajustar horizontal
+                  </button>
+                  <button onClick={() => setShowAlignPrompt(false)} style={{ ...btnSecondary(false), padding: "10px 18px", fontSize: 12.5 }}>
+                    Está bien así
+                  </button>
+                </div>
+                <div style={{ fontSize: 10.5, color: COLORS.textDim, fontStyle: "italic", marginTop: 14, lineHeight: 1.5 }}>
+                  Puedes cambiarla en cualquier momento con el botón 📏 Horizontal de la barra.
+                </div>
+              </div>
             </div>
           )}
         </div>
