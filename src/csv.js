@@ -19,7 +19,8 @@ export function casosToCSV(casos) {
     "T1 tilt directo", "T1PA", "T1 tilt derivado", "T1 tilt delta", "T1 tilt categoria",
     "L1 tilt directo", "L1 tilt derivado", "L1 tilt delta", "L1 tilt categoria",
     "RPV pts", "RLL pts", "LDI pts", "LDI %", "RSA pts", "FE pts",
-    "GAP Total", "Categoria GAP", "Fotos"
+    "GAP Total", "Categoria GAP",
+    "SVA cm", "T-score DMO", "Vertebras lordoticas", "Fotos"
   ];
   const escape = (v) => {
     if (v === null || v === undefined) return "";
@@ -27,14 +28,16 @@ export function casosToCSV(casos) {
     return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const rows = casos.map(c => {
-    const m = c.mediciones || {};
-    const r = c.resultado || {};
+    // El caso llega como DTO. Las mediciones son escalares planos en `meas` y
+    // el bloque GAP está en `gap`; el resto del cálculo de columnas no cambia.
+    const m = c.meas || {};
+    const r = c.gap || {};
     const idealSS = 0.59 * m.pi + 9;
     const idealLL = 0.62 * m.pi + 29;
     const idealGT = 0.48 * m.pi - 15;
     const idealL4S1 = idealLL * 0.65;
-    const imc = c.imc?.valor?.toFixed(1) || "";
-    const imcCat = c.imc?.categoria || "";
+    const imc = c.bmi != null ? c.bmi.toFixed(1) : "";
+    const imcCat = c.bmiCategory || "";
     const hasL1PA = m.l1pa !== undefined && m.l1pa !== null && m.l1pa !== "";
     const hasT4PA = m.t4pa !== undefined && m.t4pa !== null && m.t4pa !== "";
     const idealL1PA_H = hasL1PA ? (0.5 * m.pi - 21) : null;
@@ -67,21 +70,21 @@ export function casosToCSV(casos) {
     const l1t = tiltCsv("l1", "l1tilt", "l1pa");
     return [
       c.id,
-      c.fecha,
-      c.fechaEstudio || "",
-      c.fechaCirugia || "",
-      c.tipoEvaluacion || "",
-      c.diasDiferencia ?? "",
-      c.tiempoCalculado || "",
-      c.paciente?.apellidos || "",
-      c.paciente?.nombre || "",
-      c.edad || "",
-      c.peso || "",
-      c.talla || "",
+      c.createdAt,
+      c.studyDate || "",
+      c.surgeryDate || "",
+      c.evaluationType || "",
+      c.daysDiff ?? "",
+      c.timeLabel || "",
+      c.patientLastName || "",
+      c.patientFirstName || "",
+      c.age ?? "",
+      c.weightKg ?? "",
+      c.heightCm ?? "",
       imc,
       imcCat,
-      c.medico || "",
-      cirugiasTexto(c.cirugias || []),
+      c.surgeonName || "",
+      cirugiasTexto((c.surgeries || []).map(x => ({ tipo: x.type, tipoCustom: x.typeCustom, segmentos: x.segments }))),
       m.pi ?? "", m.ss ?? "", pt !== null ? pt.toFixed(1) : "", m.derivedKey ?? "", m.l1s1 ?? "", m.l4s1 ?? "", m.gt ?? "",
       hasL1PA ? m.l1pa : "", hasT4PA ? m.t4pa : "",
       idealSS.toFixed(1), idealLL.toFixed(1), idealL4S1.toFixed(1), idealGT.toFixed(1),
@@ -98,9 +101,10 @@ export function casosToCSV(casos) {
       c2t.direct, c2t.pa, c2t.derived, c2t.delta, c2t.cat,
       t1t.direct, t1t.pa, t1t.derived, t1t.delta, t1t.cat,
       l1t.direct, l1t.derived, l1t.delta, l1t.cat,
-      r.rpv ?? "", r.rll ?? "", r.ldi ?? "", r.ldiValor ?? "", r.rsa ?? "", r.af ?? "",
-      r.total ?? "", r.categoria || "",
-      c.fotos?.length || 0
+      r.rpv ?? "", r.rll ?? "", r.ldi ?? "", r.ldiValue ?? "", r.rsa ?? "", r.af ?? "",
+      r.total ?? "", r.category || "",
+      m.sva ?? "", m.bmdTscore ?? "", m.nvl ?? "",
+      c.photos?.length || 0
     ].map(escape).join(",");
   });
   return [headers.join(","), ...rows].join("\n");

@@ -6,10 +6,15 @@
 // archivo se sustituye por su equivalente de Supabase y nada más cambia.
 //
 // Tolera dos versiones:
-//   v1 — la forma histórica, anidada y con nombres en español. Todos los casos
-//        emitidos hasta ahora están así. Se lee, nunca se reescribe: hay PDFs
-//        ya entregados cuyos números salieron de esos documentos.
+//   v1 — la forma histórica, anidada y con nombres en español.
 //   v2 — el DTO actual, con `schemaVersion`.
+//
+// El soporte de v1 es TEMPORAL y muere con Firebase. Los casos que hay en
+// Firestore son ensayos, no datos clínicos: no se migran a Supabase y no hay
+// reportes que dependan de poder releerlos. Sirve solo para que la aplicación
+// siga funcionando durante el resto del refactor, mientras el motor sigue
+// siendo Firebase. El adaptador de Supabase arranca con base limpia y no lleva
+// ninguna compatibilidad hacia atrás.
 
 import { emptyCaso, normalizeCaso, num, CASO_SCHEMA_VERSION } from "./caso";
 
