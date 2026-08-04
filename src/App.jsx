@@ -28,6 +28,7 @@ import {
   emptyForm, formToCaso, casoToForm, toPublicCaso,
 } from "./data";
 import { casoFromDoc } from "./data/firestoreWire";
+import { MEASUREMENT_KEYS } from "./data/landmarks";
 import {
   InfoTooltip, InputField, SelectField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   Chip, CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -75,6 +76,8 @@ export default function GAPCalculator() {
   const [l1tiltDirect, setL1TiltDirect] = useState("");
   // SRS-Schwab — SVA en cm (medido en radiografía), card colapsable
   const [sva, setSVA] = useState("");
+  // Trazo del anotador: landmarks, calibración y horizontal de referencia.
+  const [geometry, setGeometry] = useState(null);
   const [schwabOpen, setSchwabOpen] = useState(false);
   // Roussouly — card colapsable + NVL (nº de vértebras lordóticas, tipo 1 vs 2)
   const [roussoulyOpen, setRoussoulyOpen] = useState(false);
@@ -538,7 +541,7 @@ export default function GAPCalculator() {
     pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa,
     c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect,
     sva, nvl, bmdTscore,
-    fotos,
+    fotos, geometry,
   };
   const formSetters = {
     tipoEvaluacion: setTipoEvaluacion, fechaEstudio: setFechaEstudio, fechaCirugia: setFechaCirugia,
@@ -552,7 +555,7 @@ export default function GAPCalculator() {
     c2tiltDirect: setC2TiltDirect, cpa: setCPA, t1tiltDirect: setT1TiltDirect,
     t1pa: setT1PA, l1tiltDirect: setL1TiltDirect,
     sva: setSVA, nvl: setNvl, bmdTscore: setBmdTscore,
-    fotos: setFotos,
+    fotos: setFotos, geometry: setGeometry,
   };
   const applyForm = (partial) => {
     for (const k of Object.keys(partial)) formSetters[k]?.(partial[k]);
@@ -1902,7 +1905,12 @@ export default function GAPCalculator() {
           if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
           if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
           if (v.sva !== undefined) setSVA(v.sva);
-          const count = Object.keys(v).length;
+          // El trazo se guarda con el caso: es lo que alimenta el dataset y el
+          // futuro modelo de keypoints.
+          if (v.geometry) setGeometry({ ...v.geometry, appliedAt: new Date().toISOString() });
+          // Contar por lista explícita: `geometry` no es una medición y con
+          // Object.keys se colaría en el número que ve el usuario.
+          const count = MEASUREMENT_KEYS.filter(k => v[k] !== undefined).length;
           showToast(`${count} medición${count === 1 ? "" : "es"} aplicada${count === 1 ? "" : "s"} al formulario ✓`);
         }}
       />

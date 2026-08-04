@@ -8,6 +8,7 @@
 // números o null. La conversión ocurre aquí y solo aquí.
 
 import { emptyCaso, num, round, MEAS_KEYS } from "./caso";
+import { detectManualEdits } from "./landmarks";
 
 // Campos del formulario, con su valor inicial. El orden es el de la interfaz.
 // No incluye estado de interfaz (paneles abiertos, toasts, sesión): solo lo que
@@ -172,7 +173,12 @@ export function formToCaso(f, d = {}) {
     prob: round(g.prob, 4), category: g.cat.label,
   } : null;
 
-  caso.landmarks = f.geometry ?? null;
+  // El trazo se guarda con una marca de si las mediciones se tocaron a mano
+  // después de aplicarlo: si es así, los puntos ya no explican los números y
+  // la fila no debe entrar tal cual en un análisis.
+  caso.landmarks = f.geometry
+    ? { ...f.geometry, editedAfterApply: detectManualEdits(f.geometry.applied, f) }
+    : null;
   caso.photos = (f.fotos || []).map((p) => ({
     id: p.id, name: p.name, category: p.categoria,
     url: p.url ?? null, dataUrl: p.dataUrl ?? undefined,
