@@ -201,8 +201,11 @@ export function casoToForm(caso) {
     age: str(caso.age),
     peso: str(caso.weightKg),
     talla: str(caso.heightCm),
-    cirugias: (caso.surgeries || []).map((s) => ({
-      id: s.id ?? null,
+    // El id de la cirugía es una clave de React, no un dato clínico. Los casos
+    // públicos no lo persisten, así que se sintetiza uno estable por posición
+    // (los que añade el usuario en vivo usan uid() y no colisionan con "c0").
+    cirugias: (caso.surgeries || []).map((s, i) => ({
+      id: s.id ?? `c${i}`,
       tipo: s.type || "",
       tipoCustom: s.typeCustom || "",
       segmentos: s.segments || [],

@@ -21,6 +21,8 @@ import {
 } from "./scoring";
 import { buildPDF } from "./pdf";
 import { casosToCSV } from "./csv";
+import { emptyForm, casoToForm } from "./data/form";
+import { casoFromDoc } from "./data/firestoreWire";
 import {
   InfoTooltip, InputField, SelectField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   Chip, CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -552,6 +554,30 @@ export default function GAPCalculator() {
   };
   const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult };
 
+  // ── El formulario como un solo objeto ──────────────────────────────────────
+  // Los campos siguen viviendo en useState sueltos (el JSX los lee directo),
+  // pero aquí se reúnen en una tabla de setters. Cargar y limpiar pasan a ser
+  // una sola operación sobre el bag en vez de treinta asignaciones a mano, que
+  // es donde se colaban los olvidos. El sentido inverso (leer el bag para
+  // guardar) llega con la capa de datos, junto a su consumidor.
+  const formSetters = {
+    tipoEvaluacion: setTipoEvaluacion, fechaEstudio: setFechaEstudio, fechaCirugia: setFechaCirugia,
+    apellidos: setApellidos, nombre: setNombre, iniciales: setIniciales, casoId: setCasoId,
+    age: setAge, peso: setPeso, talla: setTalla,
+    cirujanoSel: setCirujanoSel, cirujanoCustom: setCirujanoCustom, medicoPublic: setMedicoPublic,
+    medidorSel: setMedidorSel, medidorCustom: setMedidorCustom,
+    cirugias: setCirugias,
+    pi: setPI, ss: setSS, pt: setPT, l1s1: setL1S1, l4s1: setL4S1, gt: setGT,
+    l1pa: setL1PA, t4pa: setT4PA,
+    c2tiltDirect: setC2TiltDirect, cpa: setCPA, t1tiltDirect: setT1TiltDirect,
+    t1pa: setT1PA, l1tiltDirect: setL1TiltDirect,
+    sva: setSVA, nvl: setNvl, bmdTscore: setBmdTscore,
+    fotos: setFotos,
+  };
+  const applyForm = (partial) => {
+    for (const k of Object.keys(partial)) formSetters[k]?.(partial[k]);
+  };
+
   const addCirugia = () => setCirugias([...cirugias, { id: uid(), tipo: "", tipoCustom: "", segmentos: [] }]);
   const updateCirugia = (id, n) => setCirugias(cirugias.map(c => c.id === id ? n : c));
   const removeCirugia = (id) => setCirugias(cirugias.filter(c => c.id !== id));
@@ -809,30 +835,12 @@ export default function GAPCalculator() {
     try {
       const snap = await getDoc(doc(db, "public_cases", id));
       if (!snap.exists()) { showToast("Caso no encontrado", false); setLoadingCase(false); return; }
-      const c = snap.data();
-      const m = c.mediciones || {};
+      // El documento puede ser v1 (anidado, todos los casos emitidos hasta hoy)
+      // o v2; casoFromDoc resuelve cuál es y devuelve siempre el mismo DTO.
+      const caso = casoFromDoc(snap.data(), { id, visibility: "public" });
+      applyForm(casoToForm(caso));
       setCasoId(id);
-      setFechaEstudio(c.fechaEstudio || hoy());
-      setFechaCirugia(c.fechaCirugia || "");
-      setTipoEvaluacion(c.tipoEvaluacion || "preoperatorio");
-      setIniciales(c.iniciales || "");
-      setAge(c.edad ?? "");
-      setPeso(c.peso ?? "");
-      setTalla(c.talla ?? "");
-      setCirugias(Array.isArray(c.cirugias) ? c.cirugias.map(x => ({ id: uid(), tipo: x.tipo || "", tipoCustom: x.tipoCustom || "", segmentos: x.segmentos || [] })) : []);
-      setPI(m.pi ?? "");
-      setSS(m.ss ?? "");
-      setPT(m.pt ?? "");
-      setL1S1(m.l1s1 ?? "");
-      setL4S1(m.l4s1 ?? "");
-      setGT(m.gt ?? "");
-      setL1PA(m.l1pa ?? "");
-      setT4PA(m.t4pa ?? "");
-      setC2TiltDirect(m.c2tilt ?? "");
-      setCPA(m.cpa ?? "");
-      setT1TiltDirect(m.t1tilt ?? "");
-      setT1PA(m.t1pa ?? "");
-      setL1TiltDirect(m.l1tilt ?? "");
+      if (!caso.studyDate) setFechaEstudio(hoy());
       setLoadCaseIdInput("");
       setSavedPublicCaseId(id);
       showToast(`Caso ${id} cargado ✓`);
@@ -872,7 +880,14 @@ export default function GAPCalculator() {
     URL.revokeObjectURL(url); showToast(`CSV exportado (${casosGuardados.length} casos)`);
   };
 
-  const clearAll = () => { setAge(""); setPeso(""); setTalla(""); setPI(""); setSS(""); setPT(""); setL1S1(""); setL4S1(""); setGT(""); setL1PA(""); setT4PA(""); setC2TiltDirect(""); setCPA(""); setT1TiltDirect(""); setT1PA(""); setL1TiltDirect(""); setApellidos(""); setNombre(""); setIniciales(""); setCasoId(generarCasoId()); setCirujanoSel(""); setCirujanoCustom(""); setCirugias([]); setFotos([]); setFechaCirugia(""); setFechaEstudio(hoy()); setTipoEvaluacion("preoperatorio"); setSaved(false); setSavedPublicCaseId(null); setMedidorSel(""); setMedidorCustom(""); setMedicoPublic("");};
+  // Limpiar es aplicar el formulario vacío. La versión anterior enumeraba los
+  // campos a mano y se le habían quedado fuera sva, nvl y bmdTscore, que se
+  // arrastraban al siguiente paciente.
+  const clearAll = () => {
+    applyForm(emptyForm({ hoy: hoy(), casoId: generarCasoId() }));
+    setSaved(false);
+    setSavedPublicCaseId(null);
+  };
 
   const conteos = { todos: casosGuardados.length, preoperatorio: casosGuardados.filter(c => c.tipoEvaluacion === "preoperatorio").length, postoperatorio: casosGuardados.filter(c => c.tipoEvaluacion === "postoperatorio").length };
   const casosFiltrados = filtroTipo === "todos" ? casosGuardados : casosGuardados.filter(c => c.tipoEvaluacion === filtroTipo);
