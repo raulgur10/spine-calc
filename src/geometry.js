@@ -157,3 +157,65 @@ export function computeAllAngles(landmarks, refH = null) {
   if (p12) out.c2tilt = round1(computeVertebralTilt(p12, femMid, p3, p4, refH));
   return out;
 }
+
+// Ángulo entre dos rectas independientes, con la construcción que se dibuja.
+//
+// El vértice NO es el cruce de las dos rectas sino el de sus PERPENDICULARES.
+// Dos platillos vertebrales son casi paralelos: su cruce cae a una distancia
+// enorme, fuera de la placa, donde no se puede dibujar ni leer nada. Las
+// perpendiculares se cortan entre las dos líneas, que es donde está mirando
+// quien mide. El ángulo es el mismo: girar ambas rectas 90° no cambia lo que
+// las separa.
+//
+// Devuelve el ángulo (0–180°, con 0° para rectas paralelas), los centros de
+// cada línea, las normales orientadas la una hacia la otra, y el vértice —o
+// null cuando no hay uno que dibujar honestamente: rectas casi paralelas, corte
+// más allá de `maxDim`, o corte que cae fuera del espacio entre las dos líneas.
+// En esos casos quien dibuja debe rotular el valor entre ambas en lugar de en
+// un vértice que sugeriría una geometría distinta de la medida.
+export function linePairAngle(a1, b1, a2, b2, maxDim = Infinity) {
+  const d1 = vec(a1, b1), d2 = vec(a2, b2);
+  const l1 = mag(d1), l2 = mag(d2);
+  if (l1 === 0 || l2 === 0) return null;
+
+  // Dirección canónica (apuntando a la derecha) para que dos rectas paralelas
+  // den 0° y el valor crezca con la convergencia, igual que en un PACS.
+  const canon = (d, len) => {
+    let x = d.x / len, y = d.y / len;
+    if (x < 0 || (x === 0 && y < 0)) { x = -x; y = -y; }
+    return { x, y };
+  };
+  const u1 = canon(d1, l1), u2 = canon(d2, l2);
+  let angle = Math.abs(Math.atan2(u1.y, u1.x) - Math.atan2(u2.y, u2.x)) * RAD2DEG;
+  if (angle > 180) angle = 360 - angle;
+
+  const m1 = midpoint(a1, b1), m2 = midpoint(a2, b2);
+  // Normal a cada recta, orientada hacia la otra línea para que el vértice
+  // caiga entre las dos y no del lado opuesto.
+  const orientar = (u, desde, hacia) => {
+    const n = { x: -u.y, y: u.x };
+    return ((hacia.x - desde.x) * n.x + (hacia.y - desde.y) * n.y) < 0 ? { x: -n.x, y: -n.y } : n;
+  };
+  const n1 = orientar(u1, m1, m2), n2 = orientar(u2, m2, m1);
+
+  // El determinante es el seno del ángulo entre las normales, que es el mismo
+  // ángulo que separa las rectas. Con rectas casi paralelas el corte de las
+  // perpendiculares es numéricamente inestable: puede aterrizar sobre una de
+  // las líneas y dibujar un vértice de patas nulas. Por debajo de ~1.2° no se
+  // propone vértice y quien dibuja rotula el valor entre las dos líneas.
+  const den = n1.x * n2.y - n1.y * n2.x;
+  let vertex = null, leg1 = 0, leg2 = 0;
+  if (Math.abs(den) > 0.02) {
+    const t = ((m2.x - m1.x) * n2.y - (m2.y - m1.y) * n2.x) / den;
+    const s = ((m2.x - m1.x) * n1.y - (m2.y - m1.y) * n1.x) / den;
+    // Solo vale como vértice si queda ENTRE las dos líneas, es decir si ambas
+    // patas avanzan en el sentido en que su normal apunta a la otra. Con rectas
+    // poco divergentes el corte se produce más allá de una de ellas: dibujar ahí
+    // un ángulo sugiere una geometría que no es la que se está midiendo.
+    if (t > 0 && s > 0 && t < maxDim && s < maxDim) {
+      vertex = { x: m1.x + n1.x * t, y: m1.y + n1.y * t };
+      leg1 = t; leg2 = s;
+    }
+  }
+  return { angle: round1(angle), m1, m2, n1, n2, vertex, leg1, leg2 };
+}

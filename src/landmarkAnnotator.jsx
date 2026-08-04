@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt } from "./geometry";
+import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, linePairAngle } from "./geometry";
 import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
 
@@ -370,17 +370,29 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
   }, [freePts, freeSegs]);
 
   // ─── Ángulo entre pares de líneas (herramienta "Medir") ─────────────────
-  // Es la medición tipo Cobb: las líneas se emparejan en el orden en que se
-  // trazaron (1ª+2ª, 3ª+4ª, …), se prolongan punteadas hasta el cruce de sus
-  // rectas y ahí se rotula el ángulo, sin más texto. Cada línea se orienta
-  // canónicamente (apuntando a la derecha) para que dos platillos paralelos
-  // den 0° y el valor crezca con la convergencia, igual que en un PACS. No
-  // participa la línea de calibración. Los puntos GAP tampoco: sus ángulos se
-  // calculan aparte.
+  // Las líneas se emparejan en el orden en que se trazaron (1ª+2ª, 3ª+4ª, …) y
+  // se mide el ángulo entre ellas.
+  //
+  // El ángulo se construye con las PERPENDICULARES a cada recta, no prolongando
+  // las rectas hasta su cruce. Dos platillos vertebrales son casi paralelos: su
+  // cruce cae a una distancia enorme, fuera de la placa, y allí no se puede
+  // dibujar nada ni leer el valor. Las perpendiculares, en cambio, se cortan
+  // entre las dos líneas, que es donde el lector está mirando. El ángulo entre
+  // las perpendiculares es el mismo que el ángulo entre las rectas: girar
+  // ambas 90° no cambia lo que las separa.
+  //
+  // Cada perpendicular se orienta hacia la otra línea para que el vértice caiga
+  // entre las dos. Se orientan además las rectas canónicamente (apuntando a la
+  // derecha) para que dos líneas paralelas den 0° y el valor crezca con la
+  // convergencia, igual que en un PACS.
+  //
+  // No participa la línea de calibración. Los puntos GAP tampoco: sus ángulos
+  // se calculan aparte.
   const linePairs = useMemo(() => {
     if (!showPairAngles) return [];
     const elegibles = freeSegs.filter(s => !(calibration && calibration.refSegId === s.id));
     const pt = (id) => freePts.find(p => p.id === id);
+    const maxDim = Math.max(imageDims.w, imageDims.h) || 1;
     const out = [];
     for (let i = 0; i + 1 < elegibles.length; i += 2) {
       const s1 = elegibles[i], s2 = elegibles[i + 1];
@@ -389,35 +401,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       if (s1.aId === s2.aId || s1.aId === s2.bId || s1.bId === s2.aId || s1.bId === s2.bId) continue;
       const a1 = pt(s1.aId), b1 = pt(s1.bId), a2 = pt(s2.aId), b2 = pt(s2.bId);
       if (!a1 || !b1 || !a2 || !b2) continue;
-      const d1 = { x: b1.x - a1.x, y: b1.y - a1.y };
-      const d2 = { x: b2.x - a2.x, y: b2.y - a2.y };
-      const l1 = Math.hypot(d1.x, d1.y), l2 = Math.hypot(d2.x, d2.y);
-      if (l1 === 0 || l2 === 0) continue;
-      // Misma convención que el Cobb: ambas direcciones canónicas (apuntando a
-      // la derecha) para que dos líneas paralelas den 0° y el valor crezca con
-      // la convergencia.
-      const canon = (d, len) => {
-        let x = d.x / len, y = d.y / len;
-        if (x < 0 || (x === 0 && y < 0)) { x = -x; y = -y; }
-        return { x, y };
-      };
-      const u1 = canon(d1, l1), u2 = canon(d2, l2);
-      let angle = Math.abs(Math.atan2(u1.y, u1.x) - Math.atan2(u2.y, u2.x)) * 180 / Math.PI;
-      if (angle > 180) angle = 360 - angle;
-      // Cruce de las rectas (no de los segmentos)
-      const den = d1.x * d2.y - d1.y * d2.x;
-      let vertex = null;
-      if (Math.abs(den) > 1e-9) {
-        const t = ((a2.x - a1.x) * d2.y - (a2.y - a1.y) * d2.x) / den;
-        vertex = { x: a1.x + d1.x * t, y: a1.y + d1.y * t };
-      }
-      // Un cruce absurdamente lejos (líneas casi paralelas) no se dibuja.
-      if (vertex) {
-        const maxDim = Math.max(imageDims.w, imageDims.h) || 1;
-        const cx = imageDims.w / 2, cy = imageDims.h / 2;
-        if (Math.hypot(vertex.x - cx, vertex.y - cy) > maxDim * 2.5) vertex = null;
-      }
-      out.push({ id: `${s1.id}|${s2.id}`, s1: s1.id, s2: s2.id, a1, b1, a2, b2, vertex, angle });
+      const par = linePairAngle(a1, b1, a2, b2, maxDim * 0.9);
+      if (!par) continue;
+      const { angle, m1, m2, n1, n2, vertex, leg1, leg2 } = par;
+      out.push({ id: `${s1.id}|${s2.id}`, s1: s1.id, s2: s2.id, a1, b1, a2, b2, m1, m2, n1, n2, vertex, leg1, leg2, angle });
     }
     return out;
   }, [showPairAngles, freeSegs, freePts, calibration, imageDims]);
@@ -1028,7 +1015,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       {imageSrc && tool === "line" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
           <strong>Línea / ángulo:</strong> click 2 puntos para crear una línea. Sola, muestra su distancia.
-          Al trazar la <strong>segunda</strong>, las dos se emparejan (1ª+2ª, 3ª+4ª…) y queda solo el <strong>ángulo entre ellas</strong> — la medición tipo Cobb — con las prolongaciones punteadas hasta el cruce.
+          Al trazar la <strong>segunda</strong>, las dos se emparejan (1ª+2ª, 3ª+4ª…) y se rotula el <strong>ángulo entre ellas</strong>.
           Arrastra cualquier endpoint para ajustar: el ángulo se recalcula en vivo.
           Para fusionar dos endpoints en uno, arrastra uno encima del otro.
           Click sobre una línea para seleccionarla; <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd>/<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Backspace</kbd> la borra. <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Esc</kbd> cancela.
@@ -1197,49 +1184,63 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     <circle cx={horizontalPending.x} cy={horizontalPending.y} r={radius * 0.7} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.5} pointerEvents="none" />
                   )}
 
-                  {/* Cobb: perpendiculares punteadas desde el punto medio de cada línea
-                      hasta su intersección, con el ángulo anclado en el vértice. */}
-                  {/* Ángulo entre pares de líneas: prolongación punteada de cada
-                      línea hasta el cruce y el valor en el vértice, sin más texto. */}
+                  {/* Ángulo entre pares de líneas: perpendicular punteada desde el
+                      centro de cada línea hasta donde ambas se cortan, con el valor
+                      en el vértice. Si las líneas son casi paralelas el corte se va
+                      lejos: entonces se dibujan muñones cortos y el valor se rotula
+                      entre las dos, para que nunca quede fuera de la vista. */}
                   {linePairs.map(pr => {
                     const isSel = selectedSegId === pr.s1 || selectedSegId === pr.s2;
                     const col = isSel ? COLORS.yellow : COLORS.cyan;
+                    const dash = `${strokeWidth * 3},${strokeWidth * 2.5}`;
+                    const etiqueta = (x, y) => (
+                      <text x={x} y={y} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.6}
+                        paintOrder="stroke" fontSize={radius * 1.9} fontWeight="800"
+                        textAnchor="middle" dominantBaseline="middle">
+                        {pr.angle.toFixed(1)}°
+                      </text>
+                    );
+
                     if (!pr.vertex) {
-                      // Casi paralelas: el cruce cae fuera de cualquier lugar útil
-                      const m = midpoint(midpoint(pr.a1, pr.b1), midpoint(pr.a2, pr.b2));
+                      // Sin vértice dibujable, cada línea saca un muñón hacia la
+                      // otra y el valor va en medio: los dos muñones apuntan al
+                      // número, que es lo que hace legible la medición.
+                      const sep = Math.hypot(pr.m2.x - pr.m1.x, pr.m2.y - pr.m1.y);
+                      const stub = Math.min(sep * 0.38, Math.max(imageDims.w, imageDims.h) * 0.15);
+                      const medio = midpoint(pr.m1, pr.m2);
                       return (
-                        <text key={`pa-${pr.id}`} x={m.x} y={m.y} fill="#fff" stroke="#000"
-                          strokeWidth={strokeWidth * 0.5} paintOrder="stroke" fontSize={radius * 1.6}
-                          fontWeight="800" textAnchor="middle" dominantBaseline="middle" pointerEvents="none">
-                          {pr.angle.toFixed(1)}°
-                        </text>
+                        <g key={`pa-${pr.id}`} pointerEvents="none">
+                          <line x1={pr.m1.x} y1={pr.m1.y} x2={pr.m1.x + pr.n1.x * stub} y2={pr.m1.y + pr.n1.y * stub}
+                            stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.75" strokeDasharray={dash} />
+                          <line x1={pr.m2.x} y1={pr.m2.y} x2={pr.m2.x + pr.n2.x * stub} y2={pr.m2.y + pr.n2.y * stub}
+                            stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.75" strokeDasharray={dash} />
+                          {etiqueta(medio.x, medio.y)}
+                        </g>
                       );
                     }
-                    // Cada línea se prolonga desde su extremo más cercano al cruce
-                    const nearest = (p, q) => (
-                      Math.hypot(p.x - pr.vertex.x, p.y - pr.vertex.y) <= Math.hypot(q.x - pr.vertex.x, q.y - pr.vertex.y) ? p : q
-                    );
-                    const e1 = nearest(pr.a1, pr.b1);
-                    const e2 = nearest(pr.a2, pr.b2);
-                    // Etiqueta corrida hacia el lado libre (opuesto a las líneas)
-                    const bis = midpoint(midpoint(pr.a1, pr.b1), midpoint(pr.a2, pr.b2));
-                    const off = Math.hypot(pr.vertex.x - bis.x, pr.vertex.y - bis.y) || 1;
-                    const lx = pr.vertex.x + ((pr.vertex.x - bis.x) / off) * radius * 2.6;
-                    const ly = pr.vertex.y + ((pr.vertex.y - bis.y) / off) * radius * 2.6;
+
+                    // El valor va dentro del ángulo, sobre la bisectriz: es donde
+                    // se lee sin taparlo con las propias líneas.
+                    const haciaM1 = { x: pr.m1.x - pr.vertex.x, y: pr.m1.y - pr.vertex.y };
+                    const haciaM2 = { x: pr.m2.x - pr.vertex.x, y: pr.m2.y - pr.vertex.y };
+                    const nor = (v) => { const l = Math.hypot(v.x, v.y) || 1; return { x: v.x / l, y: v.y / l }; };
+                    const w1 = nor(haciaM1), w2 = nor(haciaM2);
+                    let bis = { x: w1.x + w2.x, y: w1.y + w2.y };
+                    const lb = Math.hypot(bis.x, bis.y);
+                    // Ángulo de 180°: la bisectriz se anula y hay que elegir un lado.
+                    bis = lb < 1e-6 ? { x: -w1.y, y: w1.x } : { x: bis.x / lb, y: bis.y / lb };
+                    const lx = pr.vertex.x + bis.x * radius * 3;
+                    const ly = pr.vertex.y + bis.y * radius * 3;
+
                     return (
                       <g key={`pa-${pr.id}`} pointerEvents="none">
-                        <line x1={e1.x} y1={e1.y} x2={pr.vertex.x} y2={pr.vertex.y}
-                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.7"
-                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2.5}`} />
-                        <line x1={e2.x} y1={e2.y} x2={pr.vertex.x} y2={pr.vertex.y}
-                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.7"
-                          strokeDasharray={`${strokeWidth * 3},${strokeWidth * 2.5}`} />
-                        <circle cx={pr.vertex.x} cy={pr.vertex.y} r={radius * 0.35} fill={col} stroke="#000" strokeWidth={strokeWidth * 0.4} />
-                        <text x={lx} y={ly} fill="#fff" stroke="#000" strokeWidth={strokeWidth * 0.5}
-                          paintOrder="stroke" fontSize={radius * 1.8} fontWeight="800"
-                          textAnchor="middle" dominantBaseline="middle">
-                          {pr.angle.toFixed(1)}°
-                        </text>
+                        <line x1={pr.m1.x} y1={pr.m1.y} x2={pr.vertex.x} y2={pr.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.75" strokeDasharray={dash} />
+                        <line x1={pr.m2.x} y1={pr.m2.y} x2={pr.vertex.x} y2={pr.vertex.y}
+                          stroke={col} strokeWidth={strokeWidth * 0.8} strokeOpacity="0.75" strokeDasharray={dash} />
+                        <circle cx={pr.vertex.x} cy={pr.vertex.y} r={radius * 0.35} fill={col}
+                          stroke="#000" strokeWidth={strokeWidth * 0.4} />
+                        {etiqueta(lx, ly)}
                       </g>
                     );
                   })}

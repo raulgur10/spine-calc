@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   midpoint, distance, angleBetweenLines, angleAtVertex, angleFromHorizontal,
   angleFromVertical, computeSS, computePT, computePI, computeL1S1, computeL4S1,
-  computeGT, computePA, computeVertebralTilt, computeAllAngles,
+  computeGT, computePA, computeVertebralTilt, computeAllAngles, linePairAngle,
 } from "./geometry";
 
 // Convención del módulo: coordenadas en el espacio de la imagen, eje Y HACIA ABAJO.
@@ -182,5 +182,110 @@ describe("computeAllAngles", () => {
     expect(r.ss).toBeCloseTo(GOLDEN.ss, 1);
     expect(r.pt).toBeCloseTo(GOLDEN.pt, 1);
     expect(r.consistencyDelta).toBeCloseTo(0, 1);
+  });
+});
+
+describe("linePairAngle · ángulo entre dos rectas independientes", () => {
+  // Aproximación al caso de la captura: dos platillos lumbares casi paralelos.
+  // Es el que fallaba: el cruce de las dos RECTAS cae a miles de píxeles a la
+  // derecha, así que las prolongaciones se salían de la placa y el número
+  // quedaba fuera de la vista.
+  const SUP_A = { x: 176, y: 156 }, SUP_B = { x: 289, y: 191 };   // ~17.2°
+  const INF_A = { x: 137, y: 290 }, INF_B = { x: 243, y: 299 };   // ~4.9°
+
+  it("mide el ángulo entre las dos líneas", () => {
+    const r = linePairAngle(SUP_A, SUP_B, INF_A, INF_B, 10000);
+    expect(r.angle).toBeCloseTo(12.4, 0);
+  });
+
+  it("el cruce de las RECTAS cae fuera de la placa: por eso no se usa", () => {
+    // Intersección directa de las dos rectas, que es lo que se dibujaba antes.
+    const d1 = { x: SUP_B.x - SUP_A.x, y: SUP_B.y - SUP_A.y };
+    const d2 = { x: INF_B.x - INF_A.x, y: INF_B.y - INF_A.y };
+    const den = d1.x * d2.y - d1.y * d2.x;
+    const t = ((INF_A.x - SUP_A.x) * d2.y - (INF_A.y - SUP_A.y) * d2.x) / den;
+    const cruce = { x: SUP_A.x + d1.x * t, y: SUP_A.y + d1.y * t };
+    expect(cruce.x).toBeGreaterThan(700);   // la imagen mide 760 px de ancho
+  });
+
+  it("con estos platillos el corte cae más allá de la línea inferior, así que no se propone vértice", () => {
+    // El corte existe, pero queda fuera del espacio entre las dos líneas.
+    // Dibujar un ángulo ahí sugeriría una geometría distinta de la medida;
+    // quien dibuja rotula el valor entre ambas.
+    const r = linePairAngle(SUP_A, SUP_B, INF_A, INF_B, 10000);
+    expect(r.vertex).toBeNull();
+    expect(r.angle).toBeCloseTo(12.4, 0);   // el valor no depende de eso
+  });
+
+  it("el Cobb clásico —platillos inclinados uno hacia el otro— sí da vértice entre las dos", () => {
+    // Es la configuración de una curva escoliótica y la del dibujo de
+    // referencia: las dos perpendiculares se cortan entre los dos platillos.
+    const r = linePairAngle(
+      { x: 100, y: 100 }, { x: 260, y: 160 },
+      { x: 120, y: 400 }, { x: 280, y: 340 }, 10000);
+    expect(r.vertex).not.toBeNull();
+    expect(r.leg1).toBeGreaterThan(0);
+    expect(r.leg2).toBeGreaterThan(0);
+    // Entre los dos platillos y dentro de la placa.
+    expect(r.vertex.y).toBeGreaterThan(150);
+    expect(r.vertex.y).toBeLessThan(400);
+    expect(r.vertex.x).toBeGreaterThan(0);
+    expect(r.vertex.x).toBeLessThan(760);
+  });
+
+  it("las normales apuntan la una hacia la otra", () => {
+    const r = linePairAngle(SUP_A, SUP_B, INF_A, INF_B, 10000);
+    // La de la línea superior apunta hacia abajo (+y) y la inferior hacia arriba.
+    expect(r.n1.y).toBeGreaterThan(0);
+    expect(r.n2.y).toBeLessThan(0);
+  });
+
+  it("dos rectas paralelas dan 0° y no producen vértice", () => {
+    const r = linePairAngle({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 50 }, { x: 100, y: 50 }, 1000);
+    expect(r.angle).toBe(0);
+    expect(r.vertex).toBeNull();   // quien dibuja rotula el valor entre las dos
+  });
+
+  it("el ángulo es el mismo que entre las perpendiculares", () => {
+    const r = linePairAngle({ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 100 }, { x: 100, y: 40 }, 10000);
+    const entreNormales = Math.acos(
+      Math.max(-1, Math.min(1, r.n1.x * r.n2.x + r.n1.y * r.n2.y))
+    ) * 180 / Math.PI;
+    // Girar ambas rectas 90° no cambia lo que las separa.
+    expect(Math.min(entreNormales, 180 - entreNormales)).toBeCloseTo(Math.min(r.angle, 180 - r.angle), 1);
+  });
+
+  it("es independiente del orden en que se marcó cada línea", () => {
+    const a = linePairAngle(SUP_A, SUP_B, INF_A, INF_B, 10000).angle;
+    expect(linePairAngle(SUP_B, SUP_A, INF_A, INF_B, 10000).angle).toBeCloseTo(a, 6);
+    expect(linePairAngle(SUP_A, SUP_B, INF_B, INF_A, 10000).angle).toBeCloseTo(a, 6);
+    expect(linePairAngle(INF_A, INF_B, SUP_A, SUP_B, 10000).angle).toBeCloseTo(a, 6);
+  });
+
+  it("no propone vértice con rectas casi paralelas, donde el corte es inestable", () => {
+    // 0.57° de separación: el cruce de las perpendiculares puede aterrizar
+    // sobre una de las propias líneas y dibujar un vértice de patas nulas.
+    const r = linePairAngle({ x: 0, y: 0 }, { x: 100, y: 1 }, { x: 0, y: 50 }, { x: 100, y: 50 }, 10000);
+    expect(r.vertex).toBeNull();
+    expect(r.angle).toBeGreaterThan(0);   // pero el valor sigue existiendo
+  });
+
+  it("suelta el vértice si el corte se iría más allá del límite dado", () => {
+    const r = linePairAngle({ x: 0, y: 0 }, { x: 100, y: 6 }, { x: 0, y: 400 }, { x: 100, y: 400 }, 40);
+    expect(r.vertex).toBeNull();
+    expect(r.angle).toBeGreaterThan(0);
+  });
+
+  it("cuando sí hay vértice, sus patas no son degeneradas", () => {
+    const r = linePairAngle(
+      { x: 100, y: 100 }, { x: 260, y: 160 },
+      { x: 120, y: 400 }, { x: 280, y: 340 }, 10000);
+    // Un vértice pegado a una de las líneas no dibujaría ángulo alguno.
+    expect(r.leg1).toBeGreaterThan(1);
+    expect(r.leg2).toBeGreaterThan(1);
+  });
+
+  it("un segmento degenerado no produce medición", () => {
+    expect(linePairAngle({ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 0, y: 0 }, { x: 1, y: 1 })).toBeNull();
   });
 });
