@@ -15,7 +15,7 @@ import {
   normalizeIniciales, nombreCompleto, calcularIMC, calcularDiferencia,
 } from "./utils";
 import {
-  classify, rpvCalc, rllCalc, ldiCalc, rsaCalc, afCalc,
+  classify, gapIdeals, rpvCalc, rllCalc, ldiCalc, rsaCalc, afCalc,
   TILT_NORMS, computeTilt, R_TYPES, R_LOW_PI, R_HIGH_PI,
   roussoulyCurrentType, roussoulyIdealType,
 } from "./scoring";
@@ -374,7 +374,7 @@ export default function GAPCalculator() {
   const result = useMemo(() => {
     if (!allFilled) return null;
     const piE = spinopelvic.effPI, ssE = spinopelvic.effSS;
-    const idealSS = 0.59 * piE + 9, idealLL = 0.62 * piE + 29, idealGT = 0.48 * piE - 15;
+    const { idealSS, idealLL, idealGT } = gapIdeals(piE);
     const rpv = rpvCalc(ssE, idealSS), rll = rllCalc(l1s1, idealLL), ldi = ldiCalc(l4s1, l1s1), rsa = rsaCalc(gt, idealGT), af = afCalc(age);
     const total = rpv.score + rll.score + ldi.score + rsa.score + af.score;
     return { idealSS, idealLL, idealGT, rpv: { ...rpv, diff: ssE - idealSS }, rll: { ...rll, diff: l1s1 - idealLL }, ldi, rsa: { ...rsa, diff: gt - idealGT }, af, total, cat: classify(total) };

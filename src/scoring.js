@@ -5,6 +5,16 @@
 // cálculos ya emitidos en reportes previos. Ver src/scoring.test.js.
 import { COLORS } from "./theme";
 
+// Valores ideales del GAP en función de la PI (Yilgor 2017). Se calculan aparte
+// del scoring para poder mostrarlos en la tabla de parámetros y en el PDF.
+export function gapIdeals(pi) {
+  return {
+    idealSS: 0.59 * pi + 9,
+    idealLL: 0.62 * pi + 29,
+    idealGT: 0.48 * pi - 15,
+  };
+}
+
 export function classify(score) {
   if (score <= 2) return { label: "Proporcionado", color: COLORS.green, bg: COLORS.greenBg, risk: "Riesgo bajo (~4%)" };
   if (score <= 6) return { label: "Moderadamente Desproporcionado", color: COLORS.yellow, bg: COLORS.yellowBg, risk: "Riesgo moderado (~36-57%)" };
