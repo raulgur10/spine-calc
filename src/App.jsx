@@ -25,9 +25,8 @@ import {
   savePublicCaso as savePublicCasoRemote, getPublicCaso,
   getUsageCount, incrementUsage, registerDeviceSession, incrementDeviceCalc,
   subscribeToUpdates, sendFeedback,
-  emptyForm, formToCaso, casoToForm, toPublicCaso,
+  emptyForm, formToCaso, casoToForm, toPublicCaso, normalizeCaso,
 } from "./data";
-import { casoFromDoc } from "./data/firestoreWire";
 import { MEASUREMENT_KEYS } from "./data/landmarks";
 import {
   InfoTooltip, InputField, SelectField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
@@ -241,8 +240,8 @@ export default function GAPCalculator() {
   const loadLocalCasos = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      // Lo guardado puede ser de antes del refactor: casoFromDoc lo normaliza.
-      if (saved) setCasosGuardados(JSON.parse(saved).map(c => casoFromDoc(c, { id: c.id })));
+      // Lo guardado son DTOs; normalizeCaso rellena los huecos de versiones previas.
+      if (saved) setCasosGuardados(JSON.parse(saved).map(c => normalizeCaso(c)));
     } catch (e) {}
   };
 

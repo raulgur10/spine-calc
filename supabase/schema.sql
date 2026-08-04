@@ -191,6 +191,11 @@ create table if not exists public.casos (
   lm_horiz_p2x          numeric(10,3),
   lm_horiz_p2y          numeric(10,3),
   lm_applied_at         timestamptz,
+  -- Mediciones libres que el usuario traza sobre la placa (distancias y angulos
+  -- ad hoc). Van en jsonb y no en columnas porque no forman parte del dataset:
+  -- son anotaciones de trabajo, de forma variable y sin consulta agregada.
+  lm_free_points        jsonb,
+  lm_free_segments      jsonb,
   -- Si es true, el usuario corrigió alguna medición a mano DESPUÉS de aplicar
   -- los landmarks: los puntos ya no explican los números y la fila no debe
   -- entrar tal cual en un análisis ni en el entrenamiento del modelo.

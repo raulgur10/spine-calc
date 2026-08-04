@@ -4,12 +4,10 @@
 // Lo único que App.jsx importa para hablar con la base. Ninguna función de
 // aquí revela qué motor hay debajo.
 //
-// PARA MIGRAR A SUPABASE: escribir src/data/adapters/supabase/ con la misma
-// interfaz y cambiar las tres líneas de import de abajo. App.jsx no se toca.
-// Si al llegar a ese punto hace falta editar App.jsx, es que algo se quedó
-// filtrado y hay que devolverlo al adaptador.
+// El motor se elige con la línea de import de abajo y nada más. El adaptador de
+// Firebase sigue en adapters/firebase: cambiar esa línea vuelve a él.
 
-import * as backend from "./adapters/firebase";   // ← migrar: "./adapters/supabase"
+import * as backend from "./adapters/supabase";   // el de Firebase sigue en adapters/firebase
 
 /** ¿Hay backend configurado? Si es false, la app funciona en local y sin login. */
 export const dataAvailable = backend.available;

@@ -6,7 +6,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../../../firebase";
 import { DataError, DataErrorCode, fromFirebaseError } from "../../errors";
-import { casoFromDoc } from "../../firestoreWire";
+import { casoFromDoc } from "./wire";
 import { dataURLtoBlob } from "../../../utils";
 
 /**

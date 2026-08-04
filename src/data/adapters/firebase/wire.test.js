@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { casoFromDocV1, casoFromDoc } from "./firestoreWire";
-import { casoToForm } from "./form";
-import { CASO_SCHEMA_VERSION } from "./caso";
+import { casoFromDocV1, casoFromDoc } from "./wire";
+import { casoToForm } from "../../form";
+import { CASO_SCHEMA_VERSION } from "../../caso";
 
 // Documento tal y como lo escribió la versión anterior en public_cases.
 // Todos los casos emitidos hasta ahora tienen esta forma.

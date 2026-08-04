@@ -16,7 +16,7 @@
 // siendo Firebase. El adaptador de Supabase arranca con base limpia y no lleva
 // ninguna compatibilidad hacia atrás.
 
-import { emptyCaso, normalizeCaso, num, CASO_SCHEMA_VERSION } from "./caso";
+import { emptyCaso, normalizeCaso, num, CASO_SCHEMA_VERSION } from "../../caso";
 
 function tiltFromV1(t) {
   if (!t) return null;
