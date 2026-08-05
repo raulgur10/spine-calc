@@ -45,7 +45,7 @@ comment on column public.perfiles.activo is
 create or replace function public.crear_perfil_al_registrarse()
 returns trigger
 language plpgsql
-security definer set search_path = public
+security definer set search_path = ''
 as $$
 begin
   insert into public.perfiles (id, email, nombre, activo)
@@ -54,6 +54,9 @@ begin
   return new;
 end;
 $$;
+
+-- Solo la dispara el trigger: nadie debe poder llamarla.
+revoke execute on function public.crear_perfil_al_registrarse() from public, anon, authenticated;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -259,6 +262,10 @@ create table if not exists public.caso_fotos (
 -- 4. Seguridad a nivel de fila
 -- ───────────────────────────────────────────────────────────────────────────
 
+-- Se habilita RLS pero NO se usa `force row level security`: las funciones
+-- SECURITY DEFINER de más abajo (guardar y obtener caso público, incrementar
+-- uso) dependen de que el propietario de las tablas la eluda. Forzarla las
+-- rompería sin dar un error legible.
 alter table public.perfiles       enable row level security;
 alter table public.casos          enable row level security;
 alter table public.caso_landmarks enable row level security;
@@ -268,7 +275,7 @@ alter table public.caso_fotos     enable row level security;
 -- ── Perfiles: cada quien ve y edita el suyo ──────────────────────────────
 drop policy if exists perfiles_propio_select on public.perfiles;
 create policy perfiles_propio_select on public.perfiles
-  for select to authenticated using (id = auth.uid());
+  for select to authenticated using (id = (select auth.uid()));
 
 -- Solo el consentimiento y el nombre son editables por el usuario. `activo` NO:
 -- se otorga desde el panel de Supabase. Si el usuario pudiera cambiarlo, la
@@ -280,7 +287,7 @@ create policy perfiles_propio_select on public.perfiles
 drop policy if exists perfiles_propio_update on public.perfiles;
 create policy perfiles_propio_update on public.perfiles
   for update to authenticated
-  using (id = auth.uid()) with check (id = auth.uid());
+  using (id = (select auth.uid())) with check (id = (select auth.uid()));
 
 revoke update on public.perfiles from authenticated;
 grant update (nombre, consent_version, consent_accepted_at) on public.perfiles to authenticated;
@@ -288,30 +295,35 @@ grant update (nombre, consent_version, consent_accepted_at) on public.perfiles t
 -- ── Casos clínicos: solo el dueño, y solo si está autorizado ──────────────
 create or replace function public.perfil_activo()
 returns boolean
-language sql stable security definer set search_path = public
+language sql stable security definer set search_path = ''
 as $$
-  select coalesce((select activo from public.perfiles where id = auth.uid()), false);
+  select coalesce((select activo from public.perfiles where id = (select auth.uid())), false);
 $$;
+
+-- `authenticated` sí necesita ejecutarla: las políticas de abajo la evalúan con
+-- los privilegios de quien consulta. Nadie más.
+revoke execute on function public.perfil_activo() from public, anon;
+grant execute on function public.perfil_activo() to authenticated;
 
 drop policy if exists casos_propios_select on public.casos;
 create policy casos_propios_select on public.casos
   for select to authenticated
-  using (visibility = 'private' and owner_uid = auth.uid());
+  using (visibility = 'private' and owner_uid = (select auth.uid()));
 
 drop policy if exists casos_propios_insert on public.casos;
 create policy casos_propios_insert on public.casos
   for insert to authenticated
-  with check (visibility = 'private' and owner_uid = auth.uid() and public.perfil_activo());
+  with check (visibility = 'private' and owner_uid = (select auth.uid()) and (select public.perfil_activo()));
 
 drop policy if exists casos_propios_update on public.casos;
 create policy casos_propios_update on public.casos
   for update to authenticated
-  using (owner_uid = auth.uid() and public.perfil_activo())
-  with check (owner_uid = auth.uid());
+  using (owner_uid = (select auth.uid()) and (select public.perfil_activo()))
+  with check (owner_uid = (select auth.uid()));
 
 drop policy if exists casos_propios_delete on public.casos;
 create policy casos_propios_delete on public.casos
-  for delete to authenticated using (owner_uid = auth.uid());
+  for delete to authenticated using (owner_uid = (select auth.uid()));
 
 -- Los casos PÚBLICOS no tienen política de lectura a propósito: se leen con
 -- obtener_caso_publico(), que exige el ID completo. Sin eso, un `select *`
@@ -326,8 +338,8 @@ begin
     execute format($f$
       create policy %I_por_caso on public.%I
         for all to authenticated
-        using (exists (select 1 from public.casos c where c.id = caso_id and c.owner_uid = auth.uid()))
-        with check (exists (select 1 from public.casos c where c.id = caso_id and c.owner_uid = auth.uid()))
+        using (exists (select 1 from public.casos c where c.id = caso_id and c.owner_uid = (select auth.uid())))
+        with check (exists (select 1 from public.casos c where c.id = caso_id and c.owner_uid = (select auth.uid())))
     $f$, t, t);
   end loop;
 end $$;
@@ -341,7 +353,7 @@ end $$;
 
 create or replace function public.obtener_caso_publico(p_public_id text)
 returns jsonb
-language sql stable security definer set search_path = public
+language sql stable security definer set search_path = ''
 as $$
   -- Se quita device_id: es un identificador de seguimiento y no tiene por qué
   -- salir a cualquiera que conozca el ID del caso.
@@ -355,11 +367,12 @@ as $$
   where c.visibility = 'public' and upper(c.public_id) = upper(trim(p_public_id));
 $$;
 
+revoke execute on function public.obtener_caso_publico(text) from public;
 grant execute on function public.obtener_caso_publico(text) to anon, authenticated;
 
 create or replace function public.guardar_caso_publico(p_caso jsonb, p_landmarks jsonb default '[]', p_cirugias jsonb default '[]')
 returns text
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = ''
 as $$
 declare
   v_id uuid := gen_random_uuid();
@@ -406,6 +419,7 @@ begin
 end;
 $$;
 
+revoke execute on function public.guardar_caso_publico(jsonb, jsonb, jsonb) from public;
 grant execute on function public.guardar_caso_publico(jsonb, jsonb, jsonb) to anon, authenticated;
 
 -- ───────────────────────────────────────────────────────────────────────────
@@ -433,13 +447,14 @@ create policy stats_lectura on public.stats for select to anon, authenticated us
 
 create or replace function public.incrementar_uso()
 returns bigint
-language sql security definer set search_path = public
+language sql security definer set search_path = ''
 as $$
   insert into public.stats (key, count, updated_at) values ('usage', 1, now())
   on conflict (key) do update set count = public.stats.count + 1, updated_at = now()
   returning count;
 $$;
 
+revoke execute on function public.incrementar_uso() from public;
 grant execute on function public.incrementar_uso() to anon, authenticated;
 
 create table if not exists public.feedback (
@@ -473,12 +488,12 @@ create policy casos_imagenes_propias on storage.objects
   using (
     bucket_id = 'casos'
     and exists (select 1 from public.casos c
-                where c.id::text = (storage.foldername(name))[1] and c.owner_uid = auth.uid())
+                where c.id::text = (storage.foldername(name))[1] and c.owner_uid = (select auth.uid()))
   )
   with check (
     bucket_id = 'casos'
     and exists (select 1 from public.casos c
-                where c.id::text = (storage.foldername(name))[1] and c.owner_uid = auth.uid())
+                where c.id::text = (storage.foldername(name))[1] and c.owner_uid = (select auth.uid()))
   );
 
 -- ═══════════════════════════════════════════════════════════════════════════

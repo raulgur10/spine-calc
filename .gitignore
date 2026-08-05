@@ -26,3 +26,8 @@ dist-ssr
 
 # Backups locales
 *.bak
+
+# Skills de agentes instaladas con `npx skills add` (código de terceros).
+# skills-lock.json sí se versiona: es lo que hace reproducible la instalación.
+.agents/
+.claude/skills/
