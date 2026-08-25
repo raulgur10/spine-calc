@@ -5,6 +5,7 @@ import pkg from './package.json' with { type: 'json' }
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/calc/',
   // Version del algoritmo: se imprime en cada reporte PDF para que un resultado
   // exportado sea trazable a la version exacta que lo genero.
   define: {

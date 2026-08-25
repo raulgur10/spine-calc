@@ -31,3 +31,7 @@ dist-ssr
 # skills-lock.json sí se versiona: es lo que hace reproducible la instalación.
 .agents/
 .claude/skills/
+
+# Hermes (asistente) y Astro — artefactos locales
+.hermes/
+.astro

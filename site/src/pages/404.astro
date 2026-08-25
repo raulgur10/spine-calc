@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Página no encontrada">
+  <section class="section">
+    <div class="container center">
+      <h1>Página no encontrada</h1>
+      <p class="lede">
+        La ruta que buscas no existe. La calculadora vive en <a href="/calc">/calc</a>.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn--primary" href="/calc">Abrir la calculadora</a>
+        <a class="btn btn--ghost" href="/">Volver al inicio</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .center { text-align: center; max-width: 640px; margin: 0 auto; }
+  .center .lede { margin-left: auto; margin-right: auto; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+</style>

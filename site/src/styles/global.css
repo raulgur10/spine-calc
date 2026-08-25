@@ -1,0 +1,169 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   SpineCalc — design tokens y estilos base
+   Dirección "revista académica": serif editorial (Source Serif 4, auto-
+   hospedada), papel cálido, márgenes generosos, detalles de imprenta.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Color — papel cálido, tinta fría */
+  --c-bg: #fbf8f1;
+  --c-bg-soft: #f3ecdf;
+  --c-card: #fffdf9;
+  --c-ink: #262219;
+  --c-muted: #6d6454;
+  --c-line: #e6ddcb;
+  --c-primary: #0d4a7a;          /* la tinta azul de la revista */
+  --c-primary-strong: #093a61;
+  --c-accent: #155a85;           /* ≥4.5:1 sobre papel (WCAG AA) */
+  --c-footer: #1f1c16;
+
+  /* Tipografía */
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue',
+    Arial, sans-serif;
+
+  /* Layout */
+  --maxw: 1080px;
+  --radius: 4px;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--c-ink);
+  background: var(--c-bg);
+  line-height: 1.7;
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--c-primary-strong);
+  margin: 0 0 0.5em;
+}
+
+h1 {
+  font-size: clamp(2.1rem, 4.5vw, 3.4rem);
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h2 { font-size: clamp(1.55rem, 3vw, 2.1rem); }
+h3 { font-size: 1.2rem; }
+
+p { margin: 0 0 1.2em; }
+
+a { color: var(--c-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.container {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.section { padding: 88px 0; }
+.section--soft { background: var(--c-bg-soft); }
+
+.lede {
+  font-size: 1.2rem;
+  color: var(--c-muted);
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+/* Letra capital para el párrafo de apertura. */
+.dropcap::first-letter {
+  font-family: var(--font-display);
+  font-weight: 700;
+  float: left;
+  font-size: 3.4em;
+  line-height: 0.82;
+  margin: 0.05em 0.14em 0 0;
+  color: var(--c-primary);
+}
+
+/* Filete editorial sobre los encabezados de sección. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--c-line);
+  margin: 0 0 28px;
+  width: 64px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn--primary { background: var(--c-primary); color: #fff; }
+.btn--primary:hover { background: var(--c-primary-strong); text-decoration: none; }
+.btn--ghost {
+  background: transparent;
+  color: var(--c-primary);
+  border-color: var(--c-line);
+}
+.btn--ghost:hover {
+  border-color: var(--c-primary);
+  color: var(--c-primary-strong);
+  text-decoration: none;
+}
+
+.grid { display: grid; gap: 24px; }
+.grid--cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+.card {
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+}
+.card h2, .card h3 { margin-bottom: 0.4em; }
+.card h2 { font-size: 1.2rem; }
+.card p { font-size: 0.98rem; color: var(--c-muted); margin: 0; }
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--c-footer);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 0 0 6px 0;
+  z-index: 100;
+}
+.skip-link:focus { left: 0; text-decoration: none; }
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--c-bg-soft);
+  border: 1px solid var(--c-line);
+  border-radius: 4px;
+  padding: 1px 5px;
+}

@@ -15,7 +15,7 @@ export const MEDIDORES = [
 export const TIPOS_CIRUGIA = ["Instrumentación lumbar anterior", "Instrumentación lumbar posterior"];
 export const SEGMENTOS = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"];
 export const CATEGORIAS_FOTO = ["Radiografía lateral", "Radiografía AP", "Radiografía anotada", "Planificación", "Otra"];
-export const STORAGE_KEY = "gap_calculator_casos";
+export const STORAGE_KEY = "spinecalc_casos";
 
 export const REFERENCIAS = [
   { year: 1998, cite: "Legaye J, Duval-Beaupère G, Hecquet J, Marty C. Pelvic incidence: a fundamental pelvic parameter for three-dimensional regulation of spinal sagittal curves. Eur Spine J. 1998;7:99-103." },
@@ -40,11 +40,11 @@ export const REFERENCIAS = [
 // Se imprime en el pie de cada reporte PDF y junto al aviso de la interfaz.
 export const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
-export const CONSENT_VERSION = "1.0";
+export const CONSENT_VERSION = "2.0";
 export const CONSENT_CONTACT = "raulguillen@cardioanestesia.com.mx";
 export const PUBLIC_CONSENT_VERSION = "1.0";
-export const PUBLIC_CONSENT_LS_KEY = "gap_public_consent";
-export const PUBLIC_CASES_LS_KEY = "gap_my_public_cases";
+export const PUBLIC_CONSENT_LS_KEY = "spinecalc_public_consent";
+export const PUBLIC_CASES_LS_KEY = "spinecalc_my_public_cases";
 // Feature flag: en modo simplificado solo se muestra C2 tilt directo en la sección de tilts.
 // Cambia a true para reactivar CPA, T1 tilt directo, T1PA, L1 tilt directo (Hills 2022 completo).
 export const TILTS_FULL_MODE = true;
@@ -55,7 +55,7 @@ export const PUBLIC_CONSENT_TEXT = `Acepto que se guarden los datos de este cál
 2) Estadística agregada anonimizada: análisis de cohorte para validar GAP Score, eje T4-L1-cadera y tilts vertebrales en una población más amplia.
 
 NO se guardarán datos identificables del paciente (nombre, apellidos, expediente, fotografías) ni datos del médico que realiza la medición. El nombre del médico, si lo capturas, se usa solo para imprimirlo en el PDF y no se persiste en la base de datos.`;
-export const CONSENT_TEXT = `Al guardar casos en esta aplicación acepto que los datos clínicos y radiográficos capturados (identificadores del paciente, parámetros espinopélvicos, diagnóstico, tipo de cirugía y resultados calculados) se almacenen de forma segura en Firebase y sean utilizados con dos fines:
+export const CONSENT_TEXT = `Al guardar casos en esta aplicación acepto que los datos clínicos y radiográficos capturados (identificadores del paciente, parámetros espinopélvicos, diagnóstico, tipo de cirugía y resultados calculados) se almacenen de forma segura en Supabase y sean utilizados con dos fines:
 
 1) Asistencia clínica propia: consulta y seguimiento de los casos que yo mismo registro como cirujano responsable o medidor. Solo yo puedo ver los casos que yo guardo.
 

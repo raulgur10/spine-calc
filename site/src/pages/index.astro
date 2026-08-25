@@ -1,0 +1,149 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <h1>Mide la alineación sagital de la columna con rigor, sin fricción.</h1>
+        <p class="lede dropcap">
+          SpineCalc automatiza el cálculo del GAP score, el eje T4–L1–cadera, la
+          clasificación de Roussouly, los modificadores SRS–Schwab y más, directamente
+          sobre radiografías laterales digitales. Gratis, en el navegador.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn--primary" href="/calc">Probar la calculadora</a>
+          <a class="btn btn--ghost" href="/calc">Acceso cirujanos</a>
+        </div>
+        <p class="hero-note">Herramienta de cálculo y apoyo educativo. No es un dispositivo médico.</p>
+      </div>
+      <figure class="hero-figure">
+        <img src="/images/xray-1.jpg" alt="Radiografía lateral con los parámetros espinopélvicos medidos en SpineCalc" width="852" height="858" />
+        <figcaption>Medición de parámetros espinopélvicos en SpineCalc.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Por qué importa -->
+  <section class="section section--soft">
+    <div class="container">
+      <h2>Por qué medir la alineación importa</h2>
+      <div class="grid why">
+        <p>
+          El desajuste entre la forma de la pelvis y la alineación de la columna es un
+          predictor conocido de <strong>complicaciones mecánicas</strong> tras la cirugía de
+          deformidad espinal del adulto: aflojamiento de tornillos, cifosis proximal de la
+          unión y falta de fusión, entre otras.
+        </p>
+        <p>
+          El <strong>GAP score</strong> (Yilgor et al., 2017) se desarrolló precisamente para
+          capturar esa proporción global y predecir el riesgo. Ha sido validado de forma
+          externa (Kwan et al., 2021) y reanalizado en meta-análisis recientes
+          (Cho et al., 2024; Ferraz et al., 2025).
+        </p>
+        <p>
+          Medir bien —y rápido— permite planear la cirugía con un objetivo de alineación
+          basado en evidencia, y comparar el preoperatorio con el postoperatorio con el
+          mismo criterio.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Qué calcula -->
+  <section class="section">
+    <div class="container">
+      <h2>Qué calcula SpineCalc</h2>
+      <p class="lede">
+        Una sola carga de la radiografía y un solo marcado de puntos alimentan varios
+        marcos publicados a la vez. Sin transcribir entre calculadoras.
+      </p>
+      <div class="grid grid--cards">
+        <div class="card"><h3>GAP score</h3><p>Proporción y alineación global (Yilgor 2017), con sus cinco subcomponentes.</p></div>
+        <div class="card"><h3>Eje T4–L1–cadera</h3><p>Alineación sagital ideal normal (Hills 2022), con tilts vertebrales.</p></div>
+        <div class="card"><h3>Roussouly</h3><p>Morfotipo actual y objetivo, y su concordancia con la incidencia pélvica.</p></div>
+        <div class="card"><h3>SRS–Schwab</h3><p>Modificadores sagitales estándar: PI−LL, PT y SVA.</p></div>
+        <div class="card"><h3>GAP-B</h3><p>Variante del GAP con IMC y densidad mineral ósea (Noh 2020).</p></div>
+        <div class="card"><h3>Parámetros básicos</h3><p>PI, SS, PT, lordosis L1–S1 y L4–S1, global tilt y SVA.</p></div>
+      </div>
+      <p style="margin-top: 24px"><a href="/conceptos">Ver todos los conceptos →</a></p>
+    </div>
+  </section>
+
+  <!-- Referencias -->
+  <section class="section section--soft">
+    <div class="container">
+      <h2>Basado en evidencia publicada</h2>
+      <p class="lede">
+        SpineCalc no propone parámetros ni umbrales nuevos: automatiza la aritmética de
+        métodos publicados por terceros, cuyo mérito científico corresponde a sus autores.
+        La bibliografía va de Legaye 1998 a Haddad 2025.
+      </p>
+      <a class="btn btn--ghost" href="/referencias">Ver las referencias</a>
+    </div>
+  </section>
+
+  <!-- Equipo -->
+  <section class="section">
+    <div class="container">
+      <h2>Quiénes la desarrollamos</h2>
+      <p class="lede">
+        Cirujanos de columna del Centro Médico ABC, en la Ciudad de México, junto con
+        Virtual Medical Learning (VML).
+      </p>
+      <a class="btn btn--ghost" href="/equipo">Conocer al equipo</a>
+    </div>
+  </section>
+
+  <!-- CTA final -->
+  <section class="section section--soft">
+    <div class="container center">
+      <h2>Empieza a medir</h2>
+      <p class="lede">Carga una radiografía lateral y obtén el análisis completo en minutos.</p>
+      <div class="cta-row">
+        <a class="btn btn--primary" href="/calc">Probar la calculadora</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero { padding: 88px 0 64px; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .hero h1 { max-width: 20ch; }
+  .hero .lede { max-width: 58ch; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 24px 0 0; }
+  .hero-note { margin-top: 16px; font-size: 0.85rem; color: var(--c-muted); }
+  .hero-figure {
+    margin: 0;
+    padding: 12px;
+    background: var(--c-card);
+    border: 1px solid var(--c-line);
+    border-radius: 6px;
+  }
+  .hero-figure img { width: 100%; height: auto; display: block; border-radius: 4px; }
+  .hero-figure figcaption {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    font-style: italic;
+    padding: 10px 4px 0;
+    line-height: 1.5;
+  }
+  .why { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .why p { color: var(--c-muted); }
+  .why strong { color: var(--c-ink); }
+  .center { text-align: center; }
+  .center .lede { margin-left: auto; margin-right: auto; }
+  .center .cta-row { justify-content: center; }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+
+</style>

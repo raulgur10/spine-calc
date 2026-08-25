@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: Calculadora de alineación sagital espinopélvica
+title: 'SpineCalc: calculadora de alineación sagital espinopélvica'
 message: >-
   Si utilizas este software en un trabajo académico, cítalo empleando los
   metadatos de este archivo y, cuando esté publicado, el artículo indicado
@@ -18,8 +18,8 @@ authors:
   - family-names: Avendaño Pradel
     given-names: Rafael
     affiliation: Centro Médico ABC, Campus Santa Fe
-repository-code: 'https://github.com/raulgur10/gap-calculator'
-url: 'https://gap-calculator-beta.vercel.app/'
+repository-code: 'https://github.com/raulgur10/spine-calc'
+url: 'https://spinecalc.app/calc'
 abstract: >-
   Aplicación web de uso libre para la medición de parámetros espinopélvicos
   sobre radiografías laterales digitales y su análisis mediante el GAP score,

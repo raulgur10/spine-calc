@@ -296,7 +296,7 @@ export function ConsentModal({ onAccept, onReject, userEmail, busy }) {
       <div style={{ background: COLORS.card, borderRadius: 16, maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
         <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}`, position: "sticky", top: 0, background: COLORS.card, zIndex: 1 }}>
           <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 6px", color: COLORS.accentDark }}>Consentimiento informado</h2>
-          <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0 }}>gap-calculator · {userEmail}</p>
+          <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0 }}>SpineCalc · {userEmail}</p>
         </div>
         <div style={{ padding: "20px 24px", fontSize: 13, lineHeight: 1.65, color: COLORS.text, whiteSpace: "pre-wrap" }}>
           {CONSENT_TEXT}

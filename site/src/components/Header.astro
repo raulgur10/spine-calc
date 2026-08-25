@@ -1,0 +1,88 @@
+---
+const pathname = Astro.url.pathname;
+const links = [
+  { href: '/', label: 'Inicio', exact: true },
+  { href: '/conceptos', label: 'Conceptos' },
+  { href: '/referencias', label: 'Referencias' },
+  { href: '/equipo', label: 'Equipo' },
+  { href: '/descargo', label: 'Descargo' },
+];
+---
+
+<header class="site-head">
+  <div class="container head-row">
+    <a href="/" class="brand" aria-label="SpineCalc — inicio">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>SpineCalc</span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      {links.map((l) => {
+        const active = l.exact ? pathname === l.href : pathname.startsWith(l.href);
+        return (
+          <a href={l.href} class:list={[{ active }]} aria-current={active ? 'page' : undefined}>
+            {l.label}
+          </a>
+        );
+      })}
+    </nav>
+    <a class="btn btn--primary" href="/calc">Abrir la calculadora</a>
+  </div>
+</header>
+
+<style>
+  .site-head {
+    position: sticky;
+    top: 0;
+    background: var(--c-bg);
+    border-bottom: 1px solid var(--c-line);
+    z-index: 10;
+  }
+  .head-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--c-primary-strong);
+  }
+  .brand:hover { text-decoration: none; }
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--c-primary);
+    color: #fff;
+    font-size: 1.05rem;
+  }
+  .nav {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .nav a {
+    color: var(--c-muted);
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 10px 10px; /* target táctil ≥44px */
+  }
+  .nav a:hover { color: var(--c-primary); text-decoration: none; }
+  .nav a.active {
+    color: var(--c-primary);
+    font-weight: 600;
+  }
+  @media (max-width: 720px) {
+    .nav { order: 3; width: 100%; flex-wrap: wrap; gap: 2px; }
+    .head-row { gap: 10px; }
+  }
+</style>

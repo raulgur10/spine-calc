@@ -1,14 +1,11 @@
-# Calculadora de alineación sagital espinopélvica
+# SpineCalc
 
 Aplicación web de uso libre y gratuito para la medición de parámetros espinopélvicos
 directamente sobre radiografías laterales digitales y su análisis mediante múltiples marcos
 publicados, en un flujo de trabajo único.
 
-> **Nota:** el nombre definitivo del proyecto está pendiente de definición. El nombre interno
-> del repositorio (`gap-calculator`) es descriptivo y no implica afiliación alguna con los
-> autores del GAP score ni con la calculadora oficial asociada al European Spine Study Group.
-
-**Aplicación:** https://gap-calculator-beta.vercel.app/
+**Aplicación:** https://spinecalc.app/calc
+**Repositorio:** https://github.com/raulgur10/spine-calc
 **Licencia:** Apache 2.0 · © 2026 Virtual Medical Learning (VML)
 **Estado:** versión beta — no validada. Véase [Limitaciones conocidas](#limitaciones-conocidas-de-la-implementación).
 
@@ -136,8 +133,8 @@ corregida ni validada en la versión actual.**
   ningún servidor.
 - El **módulo de registro de casos es opcional** y requiere aceptar un consentimiento electrónico
   versionado. Las reglas de seguridad restringen la lectura y escritura de cada caso a su
-  propietario, mediante lista de autorización por correo y verificación de consentimiento
-  (véanse `firestore.rules` y `storage.rules`).
+  propietario, mediante lista de autorización y verificación de consentimiento
+  (véase `supabase/schema.sql`).
 - El uso de iniciales **no garantiza la anonimización** si otros metadatos permiten la
   reidentificación.
 - Una implementación clínica institucional deberá documentar cifrado, control de acceso,
@@ -158,8 +155,9 @@ npm run preview  # previsualización de la compilación
 npm run lint     # ESLint
 ```
 
-Para la persistencia opcional se requiere configurar las credenciales de Firebase mediante
-variables de entorno (véase `src/firebase.js`). **La aplicación funciona sin ellas**: todos los
+Para la persistencia opcional se requiere configurar las credenciales de Supabase mediante
+variables de entorno (`.env.local`: `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`;
+plantilla en `.env.example`). **La aplicación funciona sin ellas**: todos los
 cálculos, la anotación y la exportación operan sin backend.
 
 ### Estructura
@@ -172,9 +170,8 @@ src/
                          horizontal de referencia, mediciones libres.
   App.jsx                Formulario, cálculo clínico, clasificaciones,
                          persistencia y generación de reportes.
-  firebase.js            Inicialización condicional de Firebase.
-firestore.rules          Reglas de acceso por propietario + allowlist + consentimiento.
-storage.rules            Reglas de acceso a imágenes de casos.
+  data/                  Capa de persistencia con adaptadores (Supabase activo; Firebase como respaldo).
+supabase/schema.sql      Esquema, RLS y funciones de seguridad.
 public/landmarks/        Ilustraciones anatómicas de elaboración propia.
 ```
 
