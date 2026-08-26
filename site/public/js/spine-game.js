@@ -22,7 +22,11 @@
   var overlay = null, canvas = null, ctx = null;
   var raf = null, last = 0;
   var started = false, dead = false, closed = false;
-  var speed = BASE_SPEED, score = 0, dist = 0;
+  // Medidas del área de juego en píxeles CSS. El canvas se dibuja con el
+  // contexto escalado por devicePixelRatio, así que toda la lógica y el dibujo
+  // usan estas medidas, nunca canvas.width / canvas.height (píxeles de device).
+  var viewW = 0, viewH = 0;
+  var speed = BASE_SPEED, score = 0, dist = 0, bonus = 0;
   var gnome = null, vertebrae = [], screws = [], parts = [];
   var spawnT = 0, screwCd = 0, high = 0;
 
@@ -65,13 +69,13 @@
     s.id = "sg-styles";
     s.textContent =
       "#spine-game-overlay{position:fixed;inset:0;z-index:2147483000;background:rgba(10,16,22,.92);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}" +
-      ".sg-frame{position:relative;width:min(680px,94vw);height:min(460px,74vh);border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.55);border:1px solid #2a3540;background:#0f1a22}" +
-      ".sg-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#141f28;color:#cfd8de;font-size:12px;letter-spacing:.04em}" +
+      ".sg-frame{position:relative;display:flex;flex-direction:column;width:min(680px,94vw);height:min(460px,74vh);border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.55);border:1px solid #2a3540;background:#0f1a22}" +
+      ".sg-bar{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:10px 14px;background:#141f28;color:#cfd8de;font-size:12px;letter-spacing:.04em}" +
       ".sg-title{font-weight:700;color:#e6b980;letter-spacing:.08em}" +
       ".sg-score{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:#e8e3d5}" +
       ".sg-close{border:none;background:none;color:#7d8a94;font-size:16px;cursor:pointer;line-height:1;padding:4px 6px}" +
       ".sg-close:hover{color:#fff}" +
-      "#sg-canvas{display:block;width:100%;height:calc(100% - 40px);cursor:pointer;touch-action:manipulation}" +
+      "#sg-canvas{display:block;flex:1 1 auto;width:100%;min-height:0;cursor:pointer;touch-action:manipulation}" +
       ".sg-hint{position:absolute;left:14px;bottom:10px;color:#7d8a94;font-size:11px;pointer-events:none;letter-spacing:.03em}" +
       ".sg-throw{position:absolute;right:14px;bottom:10px;width:46px;height:46px;border-radius:50%;border:1px solid #3a4650;background:#1b2833;color:#fff;font-size:20px;cursor:pointer;touch-action:manipulation}" +
       ".sg-throw:active{background:#2a3946}" +
@@ -89,6 +93,7 @@
   function reset() {
     speed = BASE_SPEED;
     score = 0;
+    bonus = 0;
     dist = 0;
     spawnT = 0.6;
     screwCd = 0;
@@ -104,17 +109,18 @@
   }
 
   function groundY() {
-    return canvas ? Math.round(canvas.height * 0.82) : 300;
+    return viewH ? Math.round(viewH * 0.82) : 300;
   }
 
   // ── Entidades ──────────────────────────────────────────────────────────
   function spawnVertebra() {
     var h = 34 + Math.random() * 26;
     var w = 30 + Math.random() * 14;
-    vertebrae.push({ x: canvas.width + 40, y: groundY() - h, w: w, h: h, vy: 0 });
+    vertebrae.push({ x: viewW + 40, y: groundY() - h, w: w, h: h, vy: 0 });
   }
 
   function fireScrew() {
+    if (!started || dead || !gnome) return;
     if (screwCd > 0) return;
     screwCd = SCREW_COOLDOWN;
     var cy = gnome.y + GNOME_H * 0.42;
@@ -135,7 +141,7 @@
 
     speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
     dist += speed * dt;
-    score = Math.floor(dist / 14);
+    score = Math.floor(dist / 14) + bonus;
 
     // gnome
     if (!gnome.onGround) {
@@ -154,13 +160,14 @@
       var sc = screws[i];
       sc.x += SCREW_SPEED * dt;
       sc.spin += dt * 26;
-      if (sc.x > canvas.width + 30) { screws.splice(i, 1); continue; }
+      if (sc.x > viewW + 30) { screws.splice(i, 1); continue; }
       for (var j = vertebrae.length - 1; j >= 0; j--) {
         var v = vertebrae[j];
         if (sc.x + sc.w > v.x && sc.x < v.x + v.w && sc.y + sc.h > v.y && sc.y < v.y + v.h) {
           burst(v.x + v.w / 2, v.y + v.h / 2);
           vertebrae.splice(j, 1);
           screws.splice(i, 1);
+          bonus += 5;
           score += 5;
           break;
         }
@@ -178,7 +185,8 @@
       vv.x -= speed * dt;
       if (vv.x + vv.w < -20) { vertebrae.splice(k, 1); continue; }
       // colisión con el duende
-      if (vv.x < gnome.x + GNOME_W && vv.x + vv.w > gnome.x && vv.y < gnome.y + GNOME_H && vv.y + vv.h > gnome.y) {
+      var hx = gnome.x + 5, hw = GNOME_W - 10, hy = gnome.y + 6, hh = GNOME_H - 6;
+      if (vv.x < hx + hw && vv.x + vv.w > hx && vv.y < hy + hh && vv.y + vv.h > hy) {
         die();
         return;
       }
@@ -208,7 +216,7 @@
   }
 
   function postScore(s) {
-    return fetch(SB_URL + "/rpc/actualizar_record_juego", {
+    return fetch(SB_URL + "/rest/v1/rpc/actualizar_record_juego", {
       method: "POST",
       headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ puntaje: s })
@@ -231,7 +239,7 @@
 
   // ── Dibujo ─────────────────────────────────────────────────────────────
   function draw() {
-    var W = canvas.width, H = canvas.height, gy = groundY();
+    var W = viewW, H = viewH, gy = groundY();
     ctx.clearRect(0, 0, W, H);
 
     // fondo
@@ -418,7 +426,7 @@
 
   // ── Loop ───────────────────────────────────────────────────────────────
   function frame(t) {
-    if (closed) return;
+    if (closed || !ctx) return;
     var dt = last ? Math.min((t - last) / 1000, 0.033) : 0.016;
     last = t;
     if (started) update(dt);
@@ -448,21 +456,29 @@
     }
   }
 
+  // ── Canvas ─────────────────────────────────────────────────────────────
+  function sizeCanvas() {
+    if (!canvas || !ctx) return;
+    var r = canvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    viewW = Math.max(1, Math.round(r.width));
+    viewH = Math.max(1, Math.round(r.height));
+    canvas.width = Math.round(viewW * dpr);
+    canvas.height = Math.round(viewH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // El suelo cambia de altura al redimensionar: reasentar al duende.
+    if (gnome && gnome.onGround) gnome.y = groundY() - GNOME_H;
+  }
+
   // ── Apertura / cierre ──────────────────────────────────────────────────
   function open() {
     if (overlay) return;
+    closed = false;
     injectStyles();
     overlay = buildOverlay();
     canvas = overlay.querySelector("#sg-canvas");
     ctx = canvas.getContext("2d");
 
-    function sizeCanvas() {
-      var r = canvas.getBoundingClientRect();
-      var dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(r.width * dpr);
-      canvas.height = Math.round(r.height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
     sizeCanvas();
     window.addEventListener("resize", sizeCanvas);
 
@@ -481,8 +497,9 @@
     closed = true;
     if (raf) cancelAnimationFrame(raf);
     window.removeEventListener("keydown", onKey);
+    window.removeEventListener("resize", sizeCanvas);
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    overlay = null; canvas = null; ctx = null;
+    overlay = null; canvas = null; ctx = null; raf = null;
     started = false; dead = false; closed = false;
   }
 

@@ -1,0 +1,6 @@
+# El HTML ya se sirve con max-age=0 (lo controla Cloudflare Pages).
+# El script del juego es estático y sin hash: si se cachea 4h, los cambios
+# no llegan a los usuarios. Le ponemos caché corta para que las actualizaciones
+# del easter egg se vean sin hard refresh.
+/js/*
+  Cache-Control: public, max-age=60, must-revalidate
