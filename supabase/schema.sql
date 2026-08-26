@@ -507,24 +507,21 @@ create policy casos_imagenes_propias on storage.objects
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 8. Leaderboard del easter egg (juego del duende de la columna)
+-- 8. Récord global del easter egg (juego del duende de la columna)
 -- ═══════════════════════════════════════════════════════════════════════════
--- Marcador global del juego oculto de la landing. Cualquiera puede subir su
--- puntuación y leer el top. No es dato clínico ni identificable.
+-- Una sola cifra en la tabla `stats` (key='juego_record'): el mejor puntaje
+-- global. NO se guarda un log de partidas, solo el máximo.
 
-create table if not exists public.game_scores (
-  id uuid primary key default gen_random_uuid(),
-  score integer not null check (score >= 0),
-  device_id text,
-  created_at timestamptz not null default now()
-);
+insert into public.stats (key, count) values ('juego_record', 0) on conflict (key) do nothing;
 
-alter table public.game_scores enable row level security;
+create or replace function public.actualizar_record_juego(puntaje bigint)
+returns bigint
+language sql security definer set search_path = ''
+as $$
+  insert into public.stats (key, count, updated_at) values ('juego_record', puntaje, now())
+  on conflict (key) do update set count = greatest(public.stats.count, puntaje), updated_at = now()
+  returning count;
+$$;
 
-drop policy if exists game_scores_anon_insert on public.game_scores;
-create policy game_scores_anon_insert on public.game_scores
-  for insert to anon with check (true);
-
-drop policy if exists game_scores_anon_select on public.game_scores;
-create policy game_scores_anon_select on public.game_scores
-  for select to anon using (true);
+revoke execute on function public.actualizar_record_juego(bigint) from public;
+grant execute on function public.actualizar_record_juego(bigint) to anon, authenticated;
