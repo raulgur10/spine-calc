@@ -504,3 +504,27 @@ create policy casos_imagenes_propias on storage.objects
 --    El alta por sí sola NO autoriza a guardar casos.
 -- 3. El dataset del artículo sale con un select sobre `casos`; los landmarks
 --    para entrenar salen de `caso_landmarks` filtrando lm_edited_after_apply.
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 8. Leaderboard del easter egg (juego del duende de la columna)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Marcador global del juego oculto de la landing. Cualquiera puede subir su
+-- puntuación y leer el top. No es dato clínico ni identificable.
+
+create table if not exists public.game_scores (
+  id uuid primary key default gen_random_uuid(),
+  score integer not null check (score >= 0),
+  device_id text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.game_scores enable row level security;
+
+drop policy if exists game_scores_anon_insert on public.game_scores;
+create policy game_scores_anon_insert on public.game_scores
+  for insert to anon with check (true);
+
+drop policy if exists game_scores_anon_select on public.game_scores;
+create policy game_scores_anon_select on public.game_scores
+  for select to anon using (true);

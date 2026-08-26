@@ -28,6 +28,18 @@
 
   try { high = parseInt(localStorage.getItem("spinecalc_game_high") || "0", 10) || 0; } catch (e) {}
 
+  // ── Supabase (leaderboard global) ──────────────────────────────────────
+  var SB_URL = "https://fvrzkckfcqmtywwpyflp.supabase.co";
+  var SB_KEY = "sb_publishable_w3g6gmcC0667KI0z8a1pyg_-PwoI3Cy";
+  var deviceId = (function () {
+    var k = "spinecalc_game_device";
+    try {
+      var id = localStorage.getItem(k);
+      if (!id) { id = "dev-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); localStorage.setItem(k, id); }
+      return id;
+    } catch (e) { return "dev-anon"; }
+  })();
+
   // ── DOM overlay ────────────────────────────────────────────────────────
   function buildOverlay() {
     var ov = document.createElement("div");
@@ -46,6 +58,7 @@
           '<div class="sg-dead-box">' +
             '<div class="sg-dead-title">¡Aplastado!</div>' +
             '<div class="sg-dead-score" id="sg-dead-score"></div>' +
+            '<div class="sg-board" id="sg-board"></div>' +
             '<button class="sg-retry" id="sg-retry">Reintentar (R)</button>' +
           '</div>' +
         '</div>' +
@@ -73,7 +86,11 @@
       ".sg-dead{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,12,16,.55)}" +
       ".sg-dead-box{text-align:center;color:#e8e3d5}" +
       ".sg-dead-title{font-size:26px;font-weight:800;color:#e36b5a;letter-spacing:.05em;margin-bottom:6px}" +
-      ".sg-dead-score{font-size:14px;color:#cfd8de;margin-bottom:16px}" +
+      ".sg-dead-score{font-size:14px;color:#cfd8de;margin-bottom:14px}" +
+      ".sg-board{max-width:280px;margin:0 auto 16px;text-align:left;font-size:12px;color:#9fb0bc}" +
+      ".sg-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #2a3540}" +
+      ".sg-pos{color:#7d8a94;font-weight:700}" +
+      ".sg-val{font-weight:700;color:#e8e3d5;font-variant-numeric:tabular-nums}" +
       ".sg-retry{border:1px solid #3a4650;background:#1b2833;color:#fff;font-size:14px;font-weight:700;padding:10px 22px;border-radius:8px;cursor:pointer}" +
       ".sg-retry:hover{background:#2a3946}";
     document.head.appendChild(s);
@@ -197,7 +214,35 @@
     if (db) {
       db.hidden = false;
       document.getElementById("sg-dead-score").textContent = "Puntuación: " + score + "  ·  Récord: " + high;
+      postScore(score);
+      loadBoard();
     }
+  }
+
+  function postScore(s) {
+    fetch(SB_URL + "/rest/v1/game_scores", {
+      method: "POST",
+      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ score: s, device_id: deviceId })
+    }).catch(function () {});
+  }
+
+  function loadBoard() {
+    var el = document.getElementById("sg-board");
+    if (!el) return;
+    el.textContent = "Cargando marcador global…";
+    fetch(SB_URL + "/rest/v1/game_scores?select=score,created_at&order=score.desc&limit=10", {
+      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY }
+    }).then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+      .then(function (rows) {
+        if (!rows || !rows.length) { el.textContent = "Aún no hay récords. ¡Sé el primero!"; return; }
+        var html = "";
+        for (var i = 0; i < rows.length; i++) {
+          html += '<div class="sg-row"><span class="sg-pos">' + (i + 1) + '.</span><span class="sg-val">' + rows[i].score + '</span></div>';
+        }
+        el.innerHTML = html;
+      })
+      .catch(function () { el.textContent = "Sin conexión al marcador global."; });
   }
 
   // ── Dibujo ─────────────────────────────────────────────────────────────
