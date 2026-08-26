@@ -22,7 +22,7 @@ export function buildPDF(inputs, result) {
   doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont("helvetica", "bold");
   doc.text("CIRUGIA DE COLUMNA", M, 9.5);
   doc.setFontSize(8); doc.setFont("helvetica", "normal");
-  doc.text("Calculadora GAP Score - Analisis espinopelvico", M, 13.5);
+  doc.text("SpineCalc - Análisis espinopélvico", M, 13.5);
   const tipoInfo = MOMENTOS[tipoEvaluacion];
   const badgeColor = tipoEvaluacion === "preoperatorio" ? [29, 78, 216] : [21, 128, 61];
   doc.setFillColor(...badgeColor); doc.roundedRect(W - M - 42, 4, 40, 8, 2, 2, "F");

@@ -108,12 +108,11 @@ export default function GAPCalculator() {
   // Anotador de landmarks
   const [showAnnotator, setShowAnnotator] = useState(false);
 
-  // Splash inicial — dos etapas: 1) VML  2) Dr. Samano
-  const [splashStage, setSplashStage] = useState("vml"); // "vml" | "samano" | "done"
+  // Splash inicial — VML
+  const [splashStage, setSplashStage] = useState("vml"); // "vml" | "done"
   useEffect(() => {
-    const t1 = setTimeout(() => setSplashStage("samano"), 1800);
-    const t2 = setTimeout(() => setSplashStage("done"), 4000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t1 = setTimeout(() => setSplashStage("done"), 2400);
+    return () => { clearTimeout(t1); };
   }, []);
 
   // Tracking anónimo (modo público)
@@ -804,7 +803,7 @@ export default function GAPCalculator() {
 
       {toast && <div style={{ position: "fixed", top: 20, right: 20, zIndex: 9999, padding: "12px 20px", borderRadius: 10, background: toast.ok ? COLORS.green : COLORS.red, color: "#fff", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,0.15)", maxWidth: 320 }}>{toast.msg}</div>}
 
-      {/* Splash inicial — Etapa 1: VML, luego Etapa 2: Dr. Samano */}
+      {/* Splash inicial — VML */}
       {splashStage !== "done" && (
         <div
           onClick={() => setSplashStage("done")}
@@ -814,33 +813,15 @@ export default function GAPCalculator() {
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             padding: 24, cursor: "pointer"
           }}>
-          {splashStage === "vml" && (
-            <div key="vml" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, animation: "splashStage 1800ms ease both" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", color: COLORS.textMuted }}>
-                Una aplicación de
-              </div>
-              <img
-                src="/vml-logo.png"
-                alt="Virtual Medical Learning"
-                style={{ width: "min(180px, 45vw)", height: "auto", objectFit: "contain" }} />
+          <div key="vml" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, animation: "splashStage 1800ms ease both" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", color: COLORS.textMuted }}>
+              Una aplicación de
             </div>
-          )}
-          {splashStage === "samano" && (
-            <div key="samano" style={{ display: "flex", flexDirection: "column", alignItems: "center", animation: "splashStage 2200ms ease both" }}>
-              <img
-                src="/samano.jpeg"
-                alt="Logo Dr. Iván Samano López"
-                style={{ width: "min(220px, 55vw)", height: "auto", objectFit: "contain" }} />
-              <div style={{ marginTop: 26, textAlign: "center" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", color: COLORS.textMuted, marginBottom: 6 }}>
-                  Dr.
-                </div>
-                <div style={{ fontSize: 30, fontWeight: 600, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 96, 'SOFT' 50", color: COLORS.ink, letterSpacing: "-0.015em", lineHeight: 1.05 }}>
-                  Iván Samano López
-                </div>
-              </div>
-            </div>
-          )}
+            <img
+              src={`${import.meta.env.BASE_URL}vml-logo.png`}
+              alt="Virtual Medical Learning"
+              style={{ width: "min(180px, 45vw)", height: "auto", objectFit: "contain" }} />
+          </div>
           <div style={{ position: "absolute", bottom: 22, fontSize: 10, color: COLORS.textMuted, fontWeight: 500, opacity: 0.7 }}>
             Toca para saltar
           </div>
@@ -884,7 +865,7 @@ export default function GAPCalculator() {
           <span aria-hidden="true" style={{ width: 22, height: 1, background: COLORS.accent, opacity: 0.7 }} />
         </div>
         <h1 style={{ fontSize: "clamp(34px, 7vw, 48px)", fontWeight: 600, margin: "0 0 10px", fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 144, 'SOFT' 30", color: COLORS.ink, letterSpacing: "-0.025em", lineHeight: 1.02 }}>
-          Calculadora <em style={{ fontStyle: "italic", fontWeight: 500, color: COLORS.accent, fontVariationSettings: "'opsz' 144, 'SOFT' 100" }}>GAP&nbsp;Score</em>
+          Spine<em style={{ fontStyle: "italic", fontWeight: 500, color: COLORS.accent, fontVariationSettings: "'opsz' 144, 'SOFT' 100" }}>Calc</em>
         </h1>
         <p style={{ fontSize: 13.5, color: COLORS.textDim, lineHeight: 1.55, maxWidth: 440, margin: "0 auto", fontFamily: FONT_SANS }}>
           Alineación global y proporción · análisis espinopélvico individualizado.
@@ -1002,15 +983,15 @@ export default function GAPCalculator() {
             <InputField label="Incidencia Pélvica (PI)" value={pi} onChange={setPI} min={0} max={120}
               placeholder={spinopelvic.derivedKey === "pi" && spinopelvic.effPI !== null ? spinopelvic.effPI.toFixed(1) : ""}
               tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: PI = SS + PT. (Legaye, Duval-Beaupère 1998)"
-              tooltipFigure="/landmarks/angulo_pi.png" />
+              tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_pi.png`} />
             <InputField label="Pendiente Sacra (SS)" value={ss} onChange={setSS} min={-30} max={90}
               placeholder={spinopelvic.derivedKey === "ss" && spinopelvic.effSS !== null ? spinopelvic.effSS.toFixed(1) : ""}
               tooltip="Parámetro postural. Ángulo entre el platillo superior de S1 y la horizontal. Aumenta con la anteversión pélvica y disminuye con la retroversión. Determina en buena medida la lordosis lumbar."
-              tooltipFigure="/landmarks/angulo_ss.png" />
+              tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_ss.png`} />
             <InputField label="Versión Pélvica (PT)" value={pt} onChange={setPT} min={-30} max={60}
               placeholder={spinopelvic.derivedKey === "pt" && spinopelvic.effPT !== null ? spinopelvic.effPT.toFixed(1) : ""}
               tooltip="Pelvic Tilt. Parámetro postural. Ángulo entre la vertical y la línea del centro del eje bicoxofemoral al centro del platillo superior de S1. Aumenta en retroversión pélvica (mecanismo compensatorio del desbalance sagital). Relación: PT = PI − SS."
-              tooltipFigure="/landmarks/angulo_pt.png" />
+              tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_pt.png`} />
           </div>
           {/* Banner de derivación / inconsistencia */}
           {(() => {
@@ -1043,14 +1024,14 @@ export default function GAPCalculator() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <InputField label="Lordosis L1-S1" value={l1s1} onChange={setL1S1} min={0} max={120}
               tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la PI. Meta GAP: 0.62·PI + 29°."
-              tooltipFigure="/landmarks/angulo_l1s1.png" />
+              tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`} />
             <InputField label="Lordosis L4-S1" value={l4s1} onChange={setL4S1} min={0} max={90}
               tooltip="Lordosis lumbar distal. Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Aporta ≈ 65% de la lordosis total. Base del Índice de Distribución (ILD = L4-S1 / L1-S1 × 100; normal 50–80%)."
-              tooltipFigure="/landmarks/angulo_l4s1.png" />
+              tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_l4s1.png`} />
           </div>
           <InputField label="Inclinación Global (GT)" value={gt} onChange={setGT} min={-30} max={70}
             tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·PI − 15."
-            tooltipFigure="/landmarks/angulo_gt.png" />
+            tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_gt.png`} />
         </Card>
 
         {/* Eje T4-L1-Cadera (Hills 2022) — colapsable, opcional */}
@@ -1078,10 +1059,10 @@ export default function GAPCalculator() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
                   tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)"
-                  tooltipFigure="/landmarks/angulo_gt.png" />
+                  tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_gt.png`} />
                 <InputField label="T4 Pelvic Angle (T4PA)" value={t4pa} onChange={setT4PA} min={-30} max={40}
                   tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)."
-                  tooltipFigure="/landmarks/cervical_t4.png" />
+                  tooltipFigure={`${import.meta.env.BASE_URL}landmarks/cervical_t4.png`} />
               </div>
               {hillsResult && (
                 <div style={{ marginTop: 8 }}>
@@ -1828,7 +1809,7 @@ export default function GAPCalculator() {
             Una aplicación de
           </span>
           <img
-            src="/vml-logo.png"
+            src={`${import.meta.env.BASE_URL}vml-logo.png`}
             alt="Virtual Medical Learning"
             style={{ width: 88, height: "auto", objectFit: "contain" }} />
           <span style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "center", lineHeight: 1.4, fontFamily: FONT_SERIF, fontStyle: "italic", fontVariationSettings: "'opsz' 18" }}>

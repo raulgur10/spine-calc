@@ -25,37 +25,37 @@ const ANGLE_DEFS = {
     label: "PI",
     fullName: "Pelvic Incidence · Incidencia Pélvica",
     explicacion: "Ángulo entre la perpendicular al platillo superior de S1 (en su punto medio) y la línea S1 mid → centro bicoxofemoral. Es una constante anatómica de cada persona: no cambia con la postura. Por identidad geométrica, PI = PT + SS siempre.",
-    figureSrc: "/landmarks/angulo_pi.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pi.png`
   },
   ss: {
     label: "SS",
     fullName: "Sacral Slope · Pendiente Sacra",
     explicacion: "Inclinación del platillo superior de S1 respecto a la horizontal real. Valor típico 30–50°. Refleja la posición postural del sacro: aumenta al inclinar la pelvis hacia adelante.",
-    figureSrc: "/landmarks/angulo_ss.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_ss.png`
   },
   pt: {
     label: "PT",
     fullName: "Pelvic Tilt · Versión Pélvica",
     explicacion: "Ángulo entre la vertical y la línea fémur mid → S1 mid. Valor típico 5–20°. Refleja la rotación pélvica: aumenta como mecanismo compensador frente a desbalance sagital.",
-    figureSrc: "/landmarks/angulo_pt.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pt.png`
   },
   l1s1: {
     label: "L1–S1",
     fullName: "Lordosis Lumbar Total",
     explicacion: "Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Es la lordosis lumbar total. El target ideal individual depende de la PI (≈ 0.62·PI + 29).",
-    figureSrc: "/landmarks/angulo_l1s1.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`
   },
   l4s1: {
     label: "L4–S1",
     fullName: "Lordosis Distal",
     explicacion: "Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Captura los segmentos lumbares más caudales, donde reside ≈65% de la lordosis total en una columna fisiológica.",
-    figureSrc: "/landmarks/angulo_l4s1.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l4s1.png`
   },
   gt: {
     label: "GT",
     fullName: "Global Tilt · Inclinación Global",
     explicacion: "Ángulo en fémur mid entre las rectas fémur mid → C7 y fémur mid → S1 mid. Mide el desbalance global del tronco respecto a la pelvis. 0° cuando C7, S1 mid y eje bicoxofemoral son colineales.",
-    figureSrc: "/landmarks/angulo_gt.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png`
   }
 };
 
@@ -64,31 +64,31 @@ const HILLS_DEFS = {
     label: "L1PA",
     fullName: "L1 Pelvic Angle (Hills 2022)",
     explicacion: "Ángulo en fémur mid entre la línea al centroide de L1 y la línea a S1 mid, con signo (positivo si L1 cae anterior al eje fémur–S1). Es el target normativo propuesto por Hills 2022: L1PA ideal ≈ 0.5·PI − 21.",
-    figureSrc: "/landmarks/angulo_gt.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png`
   },
   t4pa: {
     label: "T4PA",
     fullName: "T4 Pelvic Angle (Hills 2022)",
     explicacion: "Análogo a L1PA pero usando el centroide de T4. En una columna alineada T4PA ≈ L1PA (eje T4–L1–cadera alineado). Una diferencia |T4PA − L1PA| > 4° sugiere desalineación cefálica.",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
   },
   c2tilt: {
     label: "C2 tilt",
     fullName: "Tilt vertebral C2 (Hills 2022)",
     explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide C2. Rango normal: −4.4° a −1.1° (ligeramente posterior al eje bicoxofemoral). Fuera del intervalo indica compensación cervical.",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
   },
   t1tilt: {
     label: "T1 tilt",
     fullName: "Tilt vertebral T1 (Hills 2022)",
     explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide T1. Rango normal: −7.0° a −3.6°. Valores positivos sugieren desbalance torácico anterior.",
-    figureSrc: "/landmarks/cervical_t4.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
   },
   l1tilt: {
     label: "L1 tilt",
     fullName: "Tilt vertebral L1 (Hills 2022)",
     explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide L1. Rango normal: −10.3° a −5.1°. Útil como complemento al L1PA para evaluar la posición del ápex lordótico.",
-    figureSrc: "/landmarks/angulo_l1s1.png"
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`
   }
 };
 
