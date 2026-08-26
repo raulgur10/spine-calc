@@ -20,6 +20,12 @@
     <p class="foot-legal">
       © 2026 Virtual Medical Learning (VML) · Distribuido bajo la licencia Apache 2.0.
     </p>
+    <button id="spine-easter-egg" class="spine-egg" type="button" aria-label="Columna vertebral">
+      <svg width="20" height="22" viewBox="0 0 20 22" fill="currentColor" aria-hidden="true">
+        <path d="M10 1.2 3.6 3.9v4.3L10 10.6l6.4-2.4V3.9L10 1.2z"/>
+        <path d="M10 11.4 3.6 14.1v4.3L10 20.8l6.4-2.4v-4.3L10 11.4z"/>
+      </svg>
+    </button>
   </div>
 </footer>
 
@@ -42,4 +48,27 @@
   }
   .foot-links a { color: #f3efe6; font-weight: 500; }
   .foot-legal { margin: 0; color: #9b927e; font-size: 0.85rem; }
+  .spine-egg {
+    display: block;
+    margin: 18px 0 0 auto;
+    padding: 6px;
+    background: none;
+    border: none;
+    color: #9b927e;
+    opacity: 0.45;
+    cursor: pointer;
+    line-height: 0;
+    border-radius: 6px;
+    transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  }
+  .spine-egg:hover,
+  .spine-egg:focus-visible {
+    opacity: 0.9;
+    color: #e6b980;
+    transform: translateY(-2px);
+    outline: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spine-egg { transition: none; }
+  }
 </style>

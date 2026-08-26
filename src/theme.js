@@ -44,7 +44,9 @@ export const FONT_SERIF = "'Fraunces', 'Georgia', serif";
 export const FONT_SANS = "'DM Sans', system-ui, sans-serif";
 export const FONT_MONO = "'JetBrains Mono', ui-monospace, monospace";
 
+// `label` y `short` se conservan en español porque se persisten y se usan en
+// módulos que no pasan por i18n; la interfaz renderiza `key` / `shortKey`.
 export const MOMENTOS = {
-  preoperatorio:  { label: "Preoperatorio",  icon: "🔵", color: COLORS.blue,  bg: COLORS.blueBg,  short: "Pre-op" },
-  postoperatorio: { label: "Postoperatorio", icon: "🟢", color: COLORS.green, bg: COLORS.greenBg, short: "Post-op" }
+  preoperatorio:  { key: "momento.pre",  shortKey: "momento.pre.short",  label: "Preoperatorio",  icon: "🔵", color: COLORS.blue,  bg: COLORS.blueBg,  short: "Pre-op" },
+  postoperatorio: { key: "momento.post", shortKey: "momento.post.short", label: "Postoperatorio", icon: "🟢", color: COLORS.green, bg: COLORS.greenBg, short: "Post-op" }
 };

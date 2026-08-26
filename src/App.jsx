@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
 import LandmarkAnnotator from "./landmarkAnnotator";
 import {
-  CIRUJANOS, MEDIDORES, TIPOS_CIRUGIA, SEGMENTOS, CATEGORIAS_FOTO, STORAGE_KEY,
+  CIRUJANOS, MEDIDORES, SEGMENTOS, CATEGORIAS_FOTO, CATEGORIA_FOTO_ANOTADA, STORAGE_KEY,
   REFERENCIAS, APP_VERSION, CONSENT_VERSION, CONSENT_CONTACT,
   PUBLIC_CONSENT_VERSION, PUBLIC_CONSENT_LS_KEY, PUBLIC_CASES_LS_KEY, TILTS_FULL_MODE,
 } from "./constants";
 import { COLORS, FONT_SERIF, FONT_SANS, FONT_MONO, MOMENTOS } from "./theme";
 import {
   normalizeName, resizeImage, uid, hoy, generarCasoId,
-  normalizeIniciales, nombreCompleto, calcularIMC, calcularDiferencia,
+  normalizeIniciales, nombreCompleto, calcularIMC, calcularDiferencia, diffMensaje,
 } from "./utils";
 import {
   classify, gapIdeals, rpvCalc, rllCalc, ldiCalc, rsaCalc, afCalc,
@@ -33,10 +33,19 @@ import {
   Chip, CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
   PdfSaveModal, EmailLoginModal, PublicConsentModal, ConsentModal,
 } from "./components";
+import { useI18n } from "./i18n";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+// Valor centinela de la opción "otro" en los selectores de cirujano y medidor.
+// Se persiste tal cual: sólo su etiqueta visible depende del idioma.
+const OTRO = "Otro (especificar)";
+
 // ═══════════════════════════════════════════════════════════════════════════
 // APP
 // ═══════════════════════════════════════════════════════════════════════════
 export default function GAPCalculator() {
+  const { t, lang } = useI18n();
+  // Locale para toLocaleDateString / toLocaleString en la interfaz.
+  const dateLocale = { es: "es-MX", en: "en-GB", fr: "fr-FR" }[lang] || "es-MX";
   const [tipoEvaluacion, setTipoEvaluacion] = useState("preoperatorio");
   const [fechaEstudio, setFechaEstudio] = useState(hoy());
   const [fechaCirugia, setFechaCirugia] = useState(hoy());
@@ -50,11 +59,11 @@ export default function GAPCalculator() {
   const [cirujanoSel, setCirujanoSel] = useState("");
   const [cirujanoCustom, setCirujanoCustom] = useState("");
   const [medicoPublic, setMedicoPublic] = useState(""); // input opcional en modo público (solo PDF, no se guarda)
-  const medicoBase = cirujanoSel === "Otro (especificar)" ? normalizeName(cirujanoCustom) : cirujanoSel;
+  const medicoBase = cirujanoSel === OTRO ? normalizeName(cirujanoCustom) : cirujanoSel;
   const medico = medicoBase || (medicoPublic ? normalizeName(medicoPublic) : "");
   const [medidorSel, setMedidorSel] = useState("");
   const [medidorCustom, setMedidorCustom] = useState("");
-  const medidor = medidorSel === "Otro (especificar)" ? normalizeName(medidorCustom) : medidorSel;
+  const medidor = medidorSel === OTRO ? normalizeName(medidorCustom) : medidorSel;
   const [cirugias, setCirugias] = useState([]);
   const [pi, setPI] = useState("");
   const [ss, setSS] = useState("");
@@ -154,8 +163,8 @@ export default function GAPCalculator() {
   }, []);
 
   const submitFeedback = async () => {
-    if (!feedbackRating) { showToast("Califica con estrellas primero", false); return; }
-    if (!dataAvailable) { showToast("Servicio no disponible", false); return; }
+    if (!feedbackRating) { showToast(t("toast.feedback.sin_estrellas"), false); return; }
+    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
     setFeedbackBusy(true);
     try {
       await sendFeedback({
@@ -165,10 +174,10 @@ export default function GAPCalculator() {
       });
       try { localStorage.setItem("gap_feedback_done", "1"); } catch (e) {}
       setFeedbackDone(true);
-      showToast("¡Gracias por tu opinión! ✓");
+      showToast(t("toast.feedback.gracias"));
     } catch (e) {
       console.error(e);
-      showToast("Error enviando opinión", false);
+      showToast(t("toast.feedback.error"), false);
     }
     setFeedbackBusy(false);
   };
@@ -257,7 +266,7 @@ export default function GAPCalculator() {
     } catch (e) {
       console.error("Login error:", e);
       if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
-        showToast("Error iniciando sesión", false);
+        showToast(t("toast.login.error"), false);
       }
     }
     setAuthBusy(false);
@@ -268,7 +277,7 @@ export default function GAPCalculator() {
     setAuthBusy(true);
     try {
       await signOutSession();
-      showToast("Sesión cerrada");
+      showToast(t("toast.sesion_cerrada"));
     } catch (e) { console.error(e); }
     setAuthBusy(false);
   };
@@ -279,11 +288,11 @@ export default function GAPCalculator() {
     setLoginError("");
     const email = loginEmail.trim().toLowerCase();
     if (!email || !loginPwd) {
-      setLoginError("Completa correo y contraseña.");
+      setLoginError(t("login.error.faltan_campos"));
       return;
     }
     if (!dataAvailable) {
-      setLoginError("Servicio no disponible.");
+      setLoginError(t("toast.servicio_no_disponible"));
       return;
     }
     setAuthBusy(true);
@@ -292,11 +301,11 @@ export default function GAPCalculator() {
       // onAuthStateChanged dispara el flujo de allowlist + consentimiento.
       setShowLoginModal(false);
       setLoginEmail(""); setLoginPwd(""); setLoginError("");
-      showToast("Sesión iniciada ✓");
+      showToast(t("toast.sesion_iniciada"));
     } catch (err) {
       // El mensaje sale del código estable de la capa de datos, no del código
       // del proveedor: así los textos sobreviven al cambio de motor.
-      setLoginError(messageForError(err, "Error al iniciar sesión."));
+      setLoginError(messageForError(err, t("login.error.generico")));
     }
     setAuthBusy(false);
   };
@@ -308,11 +317,11 @@ export default function GAPCalculator() {
       await acceptConsentRemote(user, CONSENT_VERSION);
       setConsentAccepted(true);
       setShowConsentModal(false);
-      showToast("Consentimiento registrado ✓");
+      showToast(t("toast.consent.ok"));
       loadCasos(user);
     } catch (e) {
       console.error(e);
-      showToast("Error registrando consentimiento", false);
+      showToast(t("toast.consent.error"), false);
     }
     setAuthBusy(false);
   };
@@ -369,15 +378,15 @@ export default function GAPCalculator() {
     const l1paDiff = l1paN - idealL1PA;
     const idealLL_Hills = 1.4 * piN - 1.7 * l1paN - 2;
     const idealLL_Hills_L4S1 = idealLL_Hills * 0.65;
-    let ejeDiff = null, ejeStatus = null, ejeLabel = null;
+    let ejeDiff = null, ejeStatus = null, ejeLabelKey = null;
     if (t4pa !== "") {
       ejeDiff = Number(t4pa) - l1paN;
       const abs = Math.abs(ejeDiff);
-      if (abs <= 4)      { ejeStatus = "ok";   ejeLabel = "Eje T4-L1-cadera alineado"; }
-      else if (abs <= 8) { ejeStatus = "warn"; ejeLabel = "Desalineación moderada"; }
-      else               { ejeStatus = "bad";  ejeLabel = "Desalineación severa"; }
+      if (abs <= 4)      { ejeStatus = "ok";   ejeLabelKey = "hills.eje.alineado"; }
+      else if (abs <= 8) { ejeStatus = "warn"; ejeLabelKey = "hills.eje.moderada"; }
+      else               { ejeStatus = "bad";  ejeLabelKey = "hills.eje.severa"; }
     }
-    return { idealL1PA, l1paDiff, idealLL_Hills, idealLL_Hills_L4S1, ejeDiff, ejeStatus, ejeLabel };
+    return { idealL1PA, l1paDiff, idealLL_Hills, idealLL_Hills_L4S1, ejeDiff, ejeStatus, ejeLabelKey };
   }, [spinopelvic, l1pa, t4pa]);
 
   // Contador atómico de mediciones (una vez por sesión, al primer GAP completo)
@@ -410,9 +419,9 @@ export default function GAPCalculator() {
     const svaN = sva === "" || sva === null ? null : Number(sva);
     const grade = (v, t0, t1) => {
       if (v === null || v === undefined || Number.isNaN(v)) return null;
-      if (v < t0)  return { g: "0",  label: "Normal",   color: COLORS.green,  bg: COLORS.greenBg };
-      if (v <= t1) return { g: "+",  label: "Moderado", color: COLORS.yellow, bg: COLORS.yellowBg };
-      return       { g: "++", label: "Marcado",  color: COLORS.red,    bg: COLORS.redBg };
+      if (v < t0)  return { g: "0",  key: "schwab.normal",   label: "Normal",   color: COLORS.green,  bg: COLORS.greenBg };
+      if (v <= t1) return { g: "+",  key: "schwab.moderado", label: "Moderado", color: COLORS.yellow, bg: COLORS.yellowBg };
+      return       { g: "++", key: "schwab.marcado",  label: "Marcado",  color: COLORS.red,    bg: COLORS.redBg };
     };
     const piLLVal = (piN !== null && llN !== null && !Number.isNaN(llN)) ? piN - llN : null;
     return {
@@ -448,7 +457,7 @@ export default function GAPCalculator() {
         level,
         ok: level !== "bad",
         piLow: piN < 50,
-        esperadoLabel: piN < 50 ? "tipo 1 ó 2" : "tipo 3 ó 4",
+        esperadoKey: piN < 50 ? "roussouly.esperado.bajo" : "roussouly.esperado.alto",
         antevertedWarn,
       };
     }
@@ -465,16 +474,16 @@ export default function GAPCalculator() {
     return {
       type: curDef.short,
       typeKey: cur.key,
-      label: curDef.label,
-      desc: curDef.desc,
+      labelKey: curDef.key,
+      descKey: `${curDef.key}.desc`,
       uncertain: cur.uncertain || null,
       color, bg, params,
       esPost: tipoEvaluacion === "postoperatorio",
       ideal: idealDef ? {
         type: idealDef.short,
         key: ideal.key,
-        label: idealDef.label,
-        desc: idealDef.desc,
+        labelKey: idealDef.key,
+        descKey: `${idealDef.key}.desc`,
         uncertain: ideal.uncertain || null,
         inferred: ideal.inferred || false,
         same: ideal.key === cur.key,
@@ -497,9 +506,9 @@ export default function GAPCalculator() {
     const lp = -11.0 + 0.250 * bmiN + (-1.284) * tN + 0.377 * gapN;
     const prob = 1 / (1 + Math.exp(-lp));
     let cat;
-    if (prob < 0.25)      cat = { label: "Riesgo bajo",      color: COLORS.green,  bg: COLORS.greenBg };
-    else if (prob < 0.55) cat = { label: "Riesgo moderado",  color: COLORS.yellow, bg: COLORS.yellowBg };
-    else                  cat = { label: "Riesgo alto",      color: COLORS.red,    bg: COLORS.redBg };
+    if (prob < 0.25)      cat = { key: "riesgo.bajo",     label: "Riesgo bajo",     color: COLORS.green,  bg: COLORS.greenBg };
+    else if (prob < 0.55) cat = { key: "riesgo.moderado", label: "Riesgo moderado", color: COLORS.yellow, bg: COLORS.yellowBg };
+    else                  cat = { key: "riesgo.alto",     label: "Riesgo alto",     color: COLORS.red,    bg: COLORS.redBg };
     return { bmi: bmiN, tscore: tN, gap: gapN, lp, prob, cat };
   }, [result, imc, bmdTscore]);
 
@@ -508,17 +517,17 @@ export default function GAPCalculator() {
   const submitSubscribe = async () => {
     const email = subEmail.trim().toLowerCase();
     const name = subName.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Correo no válido", false); return; }
-    if (name.length < 2) { showToast("Ingresa tu nombre", false); return; }
-    if (!dataAvailable) { showToast("Servicio no disponible", false); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast(t("toast.correo_invalido"), false); return; }
+    if (name.length < 2) { showToast(t("toast.falta_nombre"), false); return; }
+    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
     setSubBusy(true);
     try {
       await subscribeToUpdates({ email, name, deviceId: deviceId || null });
       setSubDone(true);
       setSubEmail(""); setSubName("");
-      showToast("✓ Gracias, te avisaremos");
+      showToast(t("toast.suscripcion.ok"));
     } catch (e) {
-      showToast("No se pudo registrar. Intenta más tarde.", false);
+      showToast(t("toast.suscripcion.error"), false);
     }
     setSubBusy(false);
   };
@@ -566,15 +575,15 @@ export default function GAPCalculator() {
   const handleFotos = async (e) => {
     const files = Array.from(e.target.files);
     const nuevas = [];
-    for (const f of files) { try { const dataUrl = await resizeImage(f); nuevas.push({ id: uid(), name: f.name, dataUrl, categoria: CATEGORIAS_FOTO[0] }); } catch (err) {} }
+    for (const f of files) { try { const dataUrl = await resizeImage(f); nuevas.push({ id: uid(), name: f.name, dataUrl, categoria: CATEGORIAS_FOTO[0].value }); } catch (err) {} }
     setFotos([...fotos, ...nuevas]); e.target.value = "";
-    if (nuevas.length > 0) showToast(`${nuevas.length} foto${nuevas.length > 1 ? "s" : ""} agregada${nuevas.length > 1 ? "s" : ""}`);
+    if (nuevas.length > 0) showToast(t(nuevas.length === 1 ? "toast.foto_agregada" : "toast.fotos_agregadas", { n: nuevas.length }));
   };
   const removeFoto = (id) => setFotos(fotos.filter(f => f.id !== id));
   const updateFotoCat = (id, categoria) => setFotos(fotos.map(f => f.id === id ? { ...f, categoria } : f));
 
   const buildPdfFile = () => {
-    const docP = buildPDF(inputs, result);
+    const docP = buildPDF(inputs, result, t, lang);
     const tipoTag = tipoEvaluacion === "preoperatorio" ? "PRE" : "POST";
     const filename = `GAP_${tipoTag}${paciente ? "_" + paciente.replace(/\s+/g, "_") : (iniciales ? "_" + iniciales : "")}_${fechaEstudio}.pdf`;
     const blob = docP.output("blob");
@@ -586,11 +595,11 @@ export default function GAPCalculator() {
     const url = URL.createObjectURL(file);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
-    showToast("PDF descargado ✓");
+    showToast(t("toast.pdf_descargado"));
   };
 
   const handleDownload = () => {
-    if (!hasAnyMeasurement) { showToast("Ingresa al menos una medición", false); return; }
+    if (!hasAnyMeasurement) { showToast(t("toast.sin_mediciones"), false); return; }
     // Modo público + caso no guardado todavía → ofrecer guardar primero
     // (solo cuando el GAP está completo; guardar requiere result)
     if (result && !canEdit && dataAvailable && savedPublicCaseId !== casoId) {
@@ -611,34 +620,34 @@ export default function GAPCalculator() {
 
   // Texto resumido para el cuerpo del correo cuando hay que adjuntar manualmente
   const buildEmailBody = () => {
-    const fTxt = new Date(fechaEstudio + "T00:00:00").toLocaleDateString("es-MX");
-    const tLabel = MOMENTOS[tipoEvaluacion].label;
-    const cTxt = fechaCirugia ? new Date(fechaCirugia + "T00:00:00").toLocaleDateString("es-MX") : null;
+    const fTxt = new Date(fechaEstudio + "T00:00:00").toLocaleDateString(dateLocale);
+    const tLabel = t(MOMENTOS[tipoEvaluacion].key);
+    const cTxt = fechaCirugia ? new Date(fechaCirugia + "T00:00:00").toLocaleDateString(dateLocale) : null;
     const ref = paciente || iniciales || casoId;
     return [
       `GAP Score · ${tLabel}${ref ? " · " + ref : ""}`,
-      `Fecha del estudio: ${fTxt}`,
-      ...(cTxt ? [`Fecha de cirugía: ${cTxt}`] : []),
-      ...(diffInfo ? [diffInfo.mensaje] : []),
-      ...(age ? [`Edad: ${age} años`] : []),
-      ...(imc ? [`IMC: ${imc.valor.toFixed(1)} (${imc.categoria})`] : []),
-      ...(medico ? [`Médico: ${medico}`] : []),
+      t("pdf.fecha_estudio", { fecha: fTxt }),
+      ...(cTxt ? [t("pdf.fecha_cirugia", { fecha: cTxt })] : []),
+      ...(diffInfo ? [diffMensaje(t, diffInfo)] : []),
+      ...(age ? [t("mail.edad", { n: age })] : []),
+      ...(imc ? [t("mail.imc", { v: imc.valor.toFixed(1), cat: t(imc.categoriaKey) })] : []),
+      ...(medico ? [t("mail.medico", { nombre: medico })] : []),
       "",
       ...(result
-        ? [`Resultado: ${result.total}/13 — ${result.cat.label}`, result.cat.risk]
-        : ["Reporte parcial — GAP Score no calculado (mediciones incompletas)."])
+        ? [t("mail.resultado", { total: result.total, cat: t(result.cat.key) }), t(result.cat.riskKey)]
+        : [t("mail.parcial")])
     ].join("\n");
   };
 
   const handleEmail = async () => {
-    if (!hasAnyMeasurement) { showToast("Ingresa al menos una medición", false); return; }
+    if (!hasAnyMeasurement) { showToast(t("toast.sin_mediciones"), false); return; }
     const { file, filename } = buildPdfFile();
     // Web Share API con archivos (móvil + algunos desktop)
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `GAP Score · ${MOMENTOS[tipoEvaluacion].label}`,
+          title: `GAP Score · ${t(MOMENTOS[tipoEvaluacion].key)}`,
           text: buildEmailBody()
         });
         return;
@@ -650,10 +659,10 @@ export default function GAPCalculator() {
     const url = URL.createObjectURL(file);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
-    const subject = `GAP Score · ${MOMENTOS[tipoEvaluacion].label}${paciente ? " · " + paciente : ""}`;
-    const body = buildEmailBody() + "\n\n📎 Adjunta al correo el PDF que se descargó automáticamente.";
+    const subject = `GAP Score · ${t(MOMENTOS[tipoEvaluacion].key)}${paciente ? " · " + paciente : ""}`;
+    const body = buildEmailBody() + "\n\n📎 " + t("mail.adjunta_pdf");
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    showToast("PDF descargado · adjúntalo al correo", true);
+    showToast(t("toast.pdf_adjuntar"), true);
   };
 
   // Arma el DTO del caso a partir del formulario y de los derivados ya
@@ -667,10 +676,10 @@ export default function GAPCalculator() {
   });
 
   const saveCaso = async () => {
-    if (!result) { showToast("Completa las mediciones primero", false); return; }
+    if (!result) { showToast(t("toast.completa_mediciones"), false); return; }
     if (dataAvailable) {
       if (!user) { setShowLoginModal(true); return; }
-      if (!allowlisted) { showToast("Tu cuenta aún no está autorizada. Contacta al administrador.", false); return; }
+      if (!allowlisted) { showToast(t("toast.cuenta_no_autorizada"), false); return; }
       if (!consentAccepted) { setShowConsentModal(true); return; }
     }
     setSaving(true);
@@ -680,22 +689,22 @@ export default function GAPCalculator() {
       try {
         await saveCasoRemote(caso);
         await loadCasos(user);
-        showToast("Caso guardado ✓");
-      } catch (e) { console.error(e); showToast(messageForError(e, "Error guardando el caso."), false); }
+        showToast(t("toast.caso_guardado"));
+      } catch (e) { console.error(e); showToast(messageForError(e, t("toast.error_guardando")), false); }
     } else {
       try {
         const updated = [{ ...caso, id: uid() }, ...casosGuardados];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         setCasosGuardados(updated);
-        showToast(`Caso guardado localmente (${updated.length} totales)`);
-      } catch (e) { showToast("Error: almacenamiento lleno (fotos pesadas).", false); }
+        showToast(t("toast.caso_guardado_local", { n: updated.length }));
+      } catch (e) { showToast(t("toast.storage_lleno"), false); }
     }
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 4000);
   };
 
   const savePublicCase = async (skipConsentCheck = false) => {
-    if (!result) { showToast("Completa las mediciones primero", false); return; }
-    if (!dataAvailable) { showToast("Servicio no disponible", false); return; }
+    if (!result) { showToast(t("toast.completa_mediciones"), false); return; }
+    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
     if (!skipConsentCheck && !publicConsentAccepted) { setShowPublicConsentModal(true); return; }
     setSaving(true);
     try {
@@ -705,18 +714,18 @@ export default function GAPCalculator() {
       await savePublicCasoRemote(caso);
       try {
         const arr = JSON.parse(localStorage.getItem(PUBLIC_CASES_LS_KEY) || "[]");
-        const entry = { id: casoId, fechaCaso: caso.createdAt, tipoEvaluacion, gapTotal: result.total, gapCategoria: result.cat.label };
+        const entry = { id: casoId, fechaCaso: caso.createdAt, tipoEvaluacion, gapTotal: result.total, gapCategoria: result.cat.label, gapCategoriaKey: result.cat.key };
         const updated = [entry, ...arr.filter(x => x.id !== casoId)].slice(0, 50);
         localStorage.setItem(PUBLIC_CASES_LS_KEY, JSON.stringify(updated));
         setMyPublicCases(updated);
       } catch (e) {}
       setSavedPublicCaseId(casoId);
       setSaved(true);
-      showToast(`Caso ${casoId} guardado ✓`);
+      showToast(t("toast.caso_id_guardado", { id: casoId }));
       setTimeout(() => setSaved(false), 5000);
     } catch (e) {
       console.error(e);
-      showToast(messageForError(e, "Error guardando caso"), false);
+      showToast(messageForError(e, t("toast.error_guardando")), false);
     }
     setSaving(false);
   };
@@ -730,35 +739,35 @@ export default function GAPCalculator() {
 
   const loadPublicCase = async (overrideId) => {
     const id = (overrideId || loadCaseIdInput).trim().toUpperCase();
-    if (!/^GAP-\d{4}-[A-Z0-9]{4}$/i.test(id)) { showToast("ID inválido. Formato: GAP-AAAA-XXXX", false); return; }
-    if (!dataAvailable) { showToast("Servicio no disponible", false); return; }
+    if (!/^GAP-\d{4}-[A-Z0-9]{4}$/i.test(id)) { showToast(t("toast.id_invalido"), false); return; }
+    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
     setLoadingCase(true);
     try {
       const caso = await getPublicCaso(id);
-      if (!caso) { showToast("Caso no encontrado", false); setLoadingCase(false); return; }
+      if (!caso) { showToast(t("toast.caso_no_encontrado"), false); setLoadingCase(false); return; }
       applyForm(casoToForm(caso));
       setCasoId(id);
       if (!caso.studyDate) setFechaEstudio(hoy());
       setLoadCaseIdInput("");
       setSavedPublicCaseId(id);
-      showToast(`Caso ${id} cargado ✓`);
+      showToast(t("toast.caso_cargado", { id }));
     } catch (e) {
       console.error(e);
-      showToast(messageForError(e, "Error cargando caso"), false);
+      showToast(messageForError(e, t("toast.error_cargando")), false);
     }
     setLoadingCase(false);
   };
 
   const deleteCaso = async (id) => {
-    if (!confirm("¿Eliminar este caso?")) return;
+    if (!confirm(t("confirm.eliminar_caso"))) return;
     if (dataAvailable) {
-      try { await deleteCasoRemote(id); await loadCasos(user); showToast("Caso eliminado"); }
-      catch (e) { console.error(e); showToast(messageForError(e, "Error eliminando caso"), false); }
+      try { await deleteCasoRemote(id); await loadCasos(user); showToast(t("toast.caso_eliminado")); }
+      catch (e) { console.error(e); showToast(messageForError(e, t("toast.error_eliminando")), false); }
     } else {
       const updated = casosGuardados.filter(c => c.id !== id);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       setCasosGuardados(updated);
-      showToast("Caso eliminado");
+      showToast(t("toast.caso_eliminado"));
     }
   };
 
@@ -766,16 +775,16 @@ export default function GAPCalculator() {
     const blob = new Blob([JSON.stringify(casosGuardados, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `GAP_dataset_${hoy()}.json`; a.click();
-    URL.revokeObjectURL(url); showToast(`Dataset JSON exportado (${casosGuardados.length} casos)`);
+    URL.revokeObjectURL(url); showToast(t("toast.json_exportado", { n: casosGuardados.length }));
   };
 
   const exportCSV = () => {
-    const csv = casosToCSV(casosGuardados);
+    const csv = casosToCSV(casosGuardados, t);
     // BOM for Excel UTF-8
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `GAP_dataset_${hoy()}.csv`; a.click();
-    URL.revokeObjectURL(url); showToast(`CSV exportado (${casosGuardados.length} casos)`);
+    URL.revokeObjectURL(url); showToast(t("toast.csv_exportado", { n: casosGuardados.length }));
   };
 
   // Limpiar es aplicar el formulario vacío. La versión anterior enumeraba los
@@ -815,7 +824,7 @@ export default function GAPCalculator() {
           }}>
           <div key="vml" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, animation: "splashStage 1800ms ease both" }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", color: COLORS.textMuted }}>
-              Una aplicación de
+              {t("splash.una_app_de")}
             </div>
             <img
               src={`${import.meta.env.BASE_URL}vml-logo.png`}
@@ -823,60 +832,63 @@ export default function GAPCalculator() {
               style={{ width: "min(180px, 45vw)", height: "auto", objectFit: "contain" }} />
           </div>
           <div style={{ position: "absolute", bottom: 22, fontSize: 10, color: COLORS.textMuted, fontWeight: 500, opacity: 0.7 }}>
-            Toca para saltar
+            {t("splash.saltar")}
           </div>
           <style>{`@keyframes splashStage { 0% { opacity: 0; transform: translateY(10px); } 12% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-6px); } }`}</style>
         </div>
       )}
 
-      {/* Barra de autenticación */}
-      {dataAvailable && authReady && (
-        <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {/* Barra superior: idioma + autenticación */}
+      <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <LanguageSwitcher />
+        {dataAvailable && authReady && (
+          <>
           {user ? (
             <>
               <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
                 <div style={{ fontWeight: 600, color: COLORS.text, fontSize: 12 }}>{user.displayName || user.email}</div>
                 <div style={{ fontSize: 10 }}>
-                  {canEdit ? <span style={{ color: COLORS.green, fontWeight: 600 }}>✓ Modo clínico activo</span>
-                   : allowlisted && !consentAccepted ? <span style={{ color: COLORS.yellow, fontWeight: 600 }}>⏳ Falta aceptar consentimiento</span>
-                   : <span style={{ color: COLORS.textMuted }}>Pendiente de autorización</span>}
+                  {canEdit ? <span style={{ color: COLORS.green, fontWeight: 600 }}>✓ {t("auth.modo_clinico")}</span>
+                   : allowlisted && !consentAccepted ? <span style={{ color: COLORS.yellow, fontWeight: 600 }}>⏳ {t("auth.falta_consentimiento")}</span>
+                   : <span style={{ color: COLORS.textMuted }}>{t("auth.pendiente")}</span>}
                 </div>
               </div>
-              <button onClick={handleLogout} disabled={authBusy} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600 }}>Salir</button>
+              <button onClick={handleLogout} disabled={authBusy} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600 }}>{t("auth.salir")}</button>
             </>
           ) : (
             <>
               <button onClick={() => setShowLoginModal(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 14 }}>🔐</span> Acceso clínico
+                <span style={{ fontSize: 14 }}>🔐</span> {t("login.titulo")}
               </button>
-              <button onClick={handleLogin} disabled={authBusy} title="Iniciar sesión con Google (admin)" style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <button onClick={handleLogin} disabled={authBusy} title={t("auth.google.title")} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 13 }}>🅖</span> Google
               </button>
             </>
           )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
 
       {/* Encabezado — composición editorial */}
       <div style={{ maxWidth: 560, margin: "0 auto 36px", textAlign: "center", padding: "0 8px" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <span aria-hidden="true" style={{ width: 22, height: 1, background: COLORS.accent, opacity: 0.7 }} />
-          <span style={{ fontSize: 10, fontWeight: 600, color: COLORS.accent, letterSpacing: 3, textTransform: "uppercase", fontFamily: FONT_SANS }}>Cirugía de Columna</span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: COLORS.accent, letterSpacing: 3, textTransform: "uppercase", fontFamily: FONT_SANS }}>{t("app.eyebrow")}</span>
           <span aria-hidden="true" style={{ width: 22, height: 1, background: COLORS.accent, opacity: 0.7 }} />
         </div>
         <h1 style={{ fontSize: "clamp(34px, 7vw, 48px)", fontWeight: 600, margin: "0 0 10px", fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 144, 'SOFT' 30", color: COLORS.ink, letterSpacing: "-0.025em", lineHeight: 1.02 }}>
           Spine<em style={{ fontStyle: "italic", fontWeight: 500, color: COLORS.accent, fontVariationSettings: "'opsz' 144, 'SOFT' 100" }}>Calc</em>
         </h1>
         <p style={{ fontSize: 13.5, color: COLORS.textDim, lineHeight: 1.55, maxWidth: 440, margin: "0 auto", fontFamily: FONT_SANS }}>
-          Alineación global y proporción · análisis espinopélvico individualizado.
+          {t("app.subtitulo")}
         </p>
         {dataAvailable && !user && (
           <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 999, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}33`, fontSize: 11, color: COLORS.accentDark, fontWeight: 500 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.accent }} />
-            Calculadora abierta · inicia sesión para guardar
+            {t("app.calculadora_abierta")}
             {usageCount !== null && usageCount > 0 && (
               <span style={{ paddingLeft: 8, marginLeft: 4, borderLeft: `1px solid ${COLORS.accent}33`, fontFamily: FONT_MONO, fontWeight: 700 }}>
-                {usageCount.toLocaleString("es-MX")} <span style={{ fontFamily: FONT_SANS, fontWeight: 500, opacity: 0.75 }}>mediciones</span>
+                {usageCount.toLocaleString(dateLocale)} <span style={{ fontFamily: FONT_SANS, fontWeight: 500, opacity: 0.75 }}>{t("app.mediciones")}</span>
               </span>
             )}
           </div>
@@ -888,52 +900,52 @@ export default function GAPCalculator() {
         {/* Datos del caso */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📋 Datos del caso</h2>
-            <button onClick={clearAll} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12, cursor: "pointer" }}>Limpiar</button>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📋 {t("caso.titulo")}</h2>
+            <button onClick={clearAll} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12, cursor: "pointer" }}>{t("common.limpiar")}</button>
           </div>
           <TipoEvaluacionToggle value={tipoEvaluacion} onChange={setTipoEvaluacion} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <InputField label="Fecha del estudio" value={fechaEstudio} onChange={setFechaEstudio} type="date" unit="" />
-            <InputField label="Fecha de cirugía" value={fechaCirugia} onChange={setFechaCirugia} type="date" unit="" />
+            <InputField label={t("campo.fecha_estudio")} value={fechaEstudio} onChange={setFechaEstudio} type="date" unit="" />
+            <InputField label={t("campo.fecha_cirugia")} value={fechaCirugia} onChange={setFechaCirugia} type="date" unit="" />
           </div>
           <DiffInfoBox diffInfo={diffInfo} />
           {canEdit && (
             <>
-              <SelectField label="Cirujano responsable" value={cirujanoSel} onChange={setCirujanoSel} options={[...CIRUJANOS, "Otro (especificar)"]} />
-              {cirujanoSel === "Otro (especificar)" && <InputField label="Nombre del cirujano" value={cirujanoCustom} onChange={setCirujanoCustom} type="text" unit="" placeholder="DR. APELLIDO, NOMBRE" transform={normalizeName} maxLength={60} />}
-              <SelectField label="Medición radiográfica realizada por" value={medidorSel} onChange={setMedidorSel}
-                options={[...MEDIDORES, "Otro (especificar)"]} />
-              {medidorSel === "Otro (especificar)" && (
-                <InputField label="Nombre del medidor" value={medidorCustom} onChange={setMedidorCustom}
-                  type="text" unit="" placeholder="APELLIDO NOMBRE" transform={normalizeName} maxLength={60} />
+              <SelectField label={t("campo.cirujano")} value={cirujanoSel} onChange={setCirujanoSel} options={[...CIRUJANOS, { value: OTRO, label: t("cirugia.otro") }]} />
+              {cirujanoSel === OTRO && <InputField label={t("campo.nombre_cirujano")} value={cirujanoCustom} onChange={setCirujanoCustom} type="text" unit="" placeholder={t("placeholder.dr_apellido")} transform={normalizeName} maxLength={60} />}
+              <SelectField label={t("campo.medidor")} value={medidorSel} onChange={setMedidorSel}
+                options={[...MEDIDORES, { value: OTRO, label: t("cirugia.otro") }]} />
+              {medidorSel === OTRO && (
+                <InputField label={t("campo.nombre_medidor")} value={medidorCustom} onChange={setMedidorCustom}
+                  type="text" unit="" placeholder={t("placeholder.apellido_nombre")} transform={normalizeName} maxLength={60} />
               )}
             </>
           )}
           {canEdit ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <InputField label="Apellidos" value={apellidos} onChange={setApellidos} type="text" unit="" placeholder="EJ: GARCIA LOPEZ" transform={normalizeName} maxLength={50} />
-              <InputField label="Nombre" value={nombre} onChange={setNombre} type="text" unit="" placeholder="EJ: JUAN CARLOS" transform={normalizeName} maxLength={50} />
+              <InputField label={t("campo.apellidos")} value={apellidos} onChange={setApellidos} type="text" unit="" placeholder={t("placeholder.apellidos")} transform={normalizeName} maxLength={50} />
+              <InputField label={t("campo.nombre")} value={nombre} onChange={setNombre} type="text" unit="" placeholder={t("placeholder.nombre")} transform={normalizeName} maxLength={50} />
             </div>
           ) : (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, alignItems: "start" }}>
-                <InputField label="Iniciales del paciente" value={iniciales} onChange={setIniciales} type="text" unit="" placeholder="EJ: JCR" transform={normalizeIniciales} maxLength={5} />
+                <InputField label={t("campo.iniciales")} value={iniciales} onChange={setIniciales} type="text" unit="" placeholder={t("placeholder.iniciales")} transform={normalizeIniciales} maxLength={5} />
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>ID del caso</label>
-                    <InfoTooltip text="Identificador auto-generado. Si guardas el caso, podrás recuperarlo después usando este ID desde cualquier dispositivo." />
+                    <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>{t("campo.id_caso")}</label>
+                    <InfoTooltip text={t("tooltip.id_caso")} />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${COLORS.inputBorder}`, overflow: "hidden" }}>
                     <span style={{ flex: 1, padding: "10px 12px", color: COLORS.accentDark, fontSize: 14, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: 0.5, userSelect: "all" }}>{casoId}</span>
-                    <button type="button" onClick={() => setCasoId(generarCasoId())} title="Generar nuevo ID" style={{ padding: "10px 12px", background: COLORS.inputHover, border: "none", borderLeft: `1px solid ${COLORS.inputBorder}`, color: COLORS.textDim, cursor: "pointer", fontSize: 14 }}>↻</button>
+                    <button type="button" onClick={() => setCasoId(generarCasoId())} title={t("caso.generar_id")} style={{ padding: "10px 12px", background: COLORS.inputHover, border: "none", borderLeft: `1px solid ${COLORS.inputBorder}`, color: COLORS.textDim, cursor: "pointer", fontSize: 14 }}>↻</button>
                   </div>
                 </div>
               </div>
-              <InputField label="Nombre del médico (opcional, solo para el reporte)" value={medicoPublic} onChange={setMedicoPublic} type="text" unit="" placeholder="DR. APELLIDO, NOMBRE" transform={normalizeName} maxLength={60} />
+              <InputField label={t("campo.medico_publico")} value={medicoPublic} onChange={setMedicoPublic} type="text" unit="" placeholder={t("placeholder.dr_apellido")} transform={normalizeName} maxLength={60} />
               {/* Cargar caso anterior */}
               <div style={{ marginTop: 4, padding: 12, borderRadius: 10, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}` }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textDim, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  🔎 ¿Tienes un ID de un caso anterior?
+                  🔎 {t("caso.cargar.pregunta")}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <input
@@ -944,16 +956,16 @@ export default function GAPCalculator() {
                     maxLength={13}
                     style={{ flex: 1, padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.accentDark, fontSize: 14, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: 0.5, outline: "none" }} />
                   <button onClick={loadPublicCase} disabled={loadingCase || !loadCaseIdInput} style={{ padding: "10px 18px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: loadingCase || !loadCaseIdInput ? COLORS.inputBg : COLORS.accent, color: loadingCase || !loadCaseIdInput ? COLORS.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: loadingCase ? "wait" : !loadCaseIdInput ? "not-allowed" : "pointer" }}>
-                    {loadingCase ? "..." : "Cargar"}
+                    {loadingCase ? "..." : t("common.cargar")}
                   </button>
                 </div>
               </div>
             </>
           )}
-          <InputField label="Edad del paciente" value={age} onChange={setAge} unit="años" min={15} max={90} list="ages-list" placeholder="15-90" />
+          <InputField label={t("campo.edad_paciente")} value={age} onChange={setAge} unit={t("unidad.anos")} min={15} max={90} list="ages-list" placeholder="15-90" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <InputField label="Peso" value={peso} onChange={setPeso} unit="kg" min={20} max={300} step="0.1" placeholder="Ej: 72.5" />
-            <InputField label="Talla" value={talla} onChange={setTalla} unit="cm" min={100} max={230} placeholder="Ej: 170" />
+            <InputField label={t("campo.peso")} value={peso} onChange={setPeso} unit="kg" min={20} max={300} step="0.1" placeholder={t("placeholder.peso")} />
+            <InputField label={t("campo.talla")} value={talla} onChange={setTalla} unit="cm" min={100} max={230} placeholder={t("placeholder.talla")} />
           </div>
           <IMCBadge imc={imc} />
         </Card>
@@ -961,36 +973,36 @@ export default function GAPCalculator() {
         {/* Cirugías */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>{tipoEvaluacion === "preoperatorio" ? "🔧 Cirugías planificadas" : "🔧 Cirugías realizadas"}</h2>
-            <button onClick={addCirugia} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>+ Agregar</button>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🔧 {tipoEvaluacion === "preoperatorio" ? t("cirugias.planificadas") : t("cirugias.realizadas")}</h2>
+            <button onClick={addCirugia} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>{t("common.agregar")}</button>
           </div>
-          {cirugias.length === 0 && <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 13, background: COLORS.inputHover, borderRadius: 10, border: `1px dashed ${COLORS.inputBorder}` }}>Toca <strong style={{ color: COLORS.accentDark }}>+ Agregar</strong> para registrar cirugías con sus segmentos.</div>}
+          {cirugias.length === 0 && <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 13, background: COLORS.inputHover, borderRadius: 10, border: `1px dashed ${COLORS.inputBorder}` }}>{t("cirugias.vacio.1")}<strong style={{ color: COLORS.accentDark }}>{t("common.agregar")}</strong>{t("cirugias.vacio.2")}</div>}
           {cirugias.map((c, i) => <CirugiaCard key={c.id} cirugia={c} index={i} onUpdate={(n) => updateCirugia(c.id, n)} onRemove={() => removeCirugia(c.id)} />)}
         </Card>
 
         {/* Mediciones */}
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 Medición GAP</h2>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📐 {t("gap.medicion.titulo")}</h2>
             <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+              <span style={{ fontSize: 14 }}>📐</span> {t("gap.medir_radiografia")}
             </button>
           </div>
           <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>
-            Ingresa <strong>2 de 3</strong> entre PI · SS · PT y la app calcula el tercero (relación: <strong>PI = PT + SS</strong>).
+            {t("gap.dos_de_tres.1")}<strong>{t("gap.dos_de_tres.strong")}</strong>{t("gap.dos_de_tres.2")}<strong>PI = PT + SS</strong>{t("gap.dos_de_tres.3")}
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
-            <InputField label="Incidencia Pélvica (PI)" value={pi} onChange={setPI} min={0} max={120}
+            <InputField label={t("param.pi")} value={pi} onChange={setPI} min={0} max={120}
               placeholder={spinopelvic.derivedKey === "pi" && spinopelvic.effPI !== null ? spinopelvic.effPI.toFixed(1) : ""}
-              tooltip="Parámetro morfológico fijo (no cambia con la postura). Ángulo entre la línea perpendicular al platillo superior de S1 en su punto medio y la línea que une ese punto con el centro del eje bicoxofemoral. Normal ≈ 50°. Relación: PI = SS + PT. (Legaye, Duval-Beaupère 1998)"
+              tooltip={t("tooltip.pi")}
               tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_pi.png`} />
-            <InputField label="Pendiente Sacra (SS)" value={ss} onChange={setSS} min={-30} max={90}
+            <InputField label={t("param.ss")} value={ss} onChange={setSS} min={-30} max={90}
               placeholder={spinopelvic.derivedKey === "ss" && spinopelvic.effSS !== null ? spinopelvic.effSS.toFixed(1) : ""}
-              tooltip="Parámetro postural. Ángulo entre el platillo superior de S1 y la horizontal. Aumenta con la anteversión pélvica y disminuye con la retroversión. Determina en buena medida la lordosis lumbar."
+              tooltip={t("tooltip.ss")}
               tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_ss.png`} />
-            <InputField label="Versión Pélvica (PT)" value={pt} onChange={setPT} min={-30} max={60}
+            <InputField label={t("param.pt")} value={pt} onChange={setPT} min={-30} max={60}
               placeholder={spinopelvic.derivedKey === "pt" && spinopelvic.effPT !== null ? spinopelvic.effPT.toFixed(1) : ""}
-              tooltip="Pelvic Tilt. Parámetro postural. Ángulo entre la vertical y la línea del centro del eje bicoxofemoral al centro del platillo superior de S1. Aumenta en retroversión pélvica (mecanismo compensatorio del desbalance sagital). Relación: PT = PI − SS."
+              tooltip={t("tooltip.pt")}
               tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_pt.png`} />
           </div>
           {/* Banner de derivación / inconsistencia */}
@@ -1000,7 +1012,7 @@ export default function GAPCalculator() {
               const d = labels[spinopelvic.derivedKey];
               return (
                 <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, fontSize: 12, color: COLORS.accentDark, marginTop: 4, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span>↻ <strong>{d.name}</strong> derivado automáticamente ({d.formula})</span>
+                  <span>↻ <strong>{d.name}</strong> {t("gap.derivado_auto", { formula: d.formula })}</span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{d.val.toFixed(1)}°</span>
                 </div>
               );
@@ -1008,29 +1020,29 @@ export default function GAPCalculator() {
             if (spinopelvic.filledCount === 3 && spinopelvic.inconsistencyDelta !== null && Math.abs(spinopelvic.inconsistencyDelta) > 1) {
               return (
                 <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.yellowBg, border: `1px solid ${COLORS.yellow}66`, fontSize: 12, color: COLORS.yellow, marginTop: 4, marginBottom: 8, fontWeight: 600 }}>
-                  ⚠️ Inconsistencia: PI debería = SS + PT (Δ {spinopelvic.inconsistencyDelta >= 0 ? "+" : ""}{spinopelvic.inconsistencyDelta.toFixed(1)}°). Revisa la medición.
+                  ⚠️ {t("gap.inconsistencia", { delta: `${spinopelvic.inconsistencyDelta >= 0 ? "+" : ""}${spinopelvic.inconsistencyDelta.toFixed(1)}` })}
                 </div>
               );
             }
             if (spinopelvic.filledCount === 1) {
               return (
                 <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, marginTop: 4, marginBottom: 8, textAlign: "center" }}>
-                  Ingresa al menos 2 de PI / SS / PT para que el GAP Score pueda calcularse.
+                  {t("gap.faltan_dos")}
                 </div>
               );
             }
             return null;
           })()}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <InputField label="Lordosis L1-S1" value={l1s1} onChange={setL1S1} min={0} max={120}
-              tooltip="Lordosis lumbar total. Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Valor ideal depende de la PI. Meta GAP: 0.62·PI + 29°."
+            <InputField label={t("param.l1s1")} value={l1s1} onChange={setL1S1} min={0} max={120}
+              tooltip={t("tooltip.l1s1")}
               tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`} />
-            <InputField label="Lordosis L4-S1" value={l4s1} onChange={setL4S1} min={0} max={90}
-              tooltip="Lordosis lumbar distal. Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Aporta ≈ 65% de la lordosis total. Base del Índice de Distribución (ILD = L4-S1 / L1-S1 × 100; normal 50–80%)."
+            <InputField label={t("param.l4s1")} value={l4s1} onChange={setL4S1} min={0} max={90}
+              tooltip={t("tooltip.l4s1")}
               tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_l4s1.png`} />
           </div>
-          <InputField label="Inclinación Global (GT)" value={gt} onChange={setGT} min={-30} max={70}
-            tooltip="Global Tilt. Ángulo entre la vertical y la línea del centro del cuerpo vertebral de C7 al centro del eje bicoxofemoral. Mide el desbalance sagital global. Meta GAP: 0.48·PI − 15."
+          <InputField label={t("param.gt")} value={gt} onChange={setGT} min={-30} max={70}
+            tooltip={t("tooltip.gt")}
             tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_gt.png`} />
         </Card>
 
@@ -1042,9 +1054,9 @@ export default function GAPCalculator() {
             aria-expanded={hillsOpen}
             style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
             <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🎯 Eje T4-L1-Cadera</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🎯 {t("hills.titulo")}</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Hills et al., Spine 2022 · <em>Opcional, complementa al GAP</em>
+                Hills et al., Spine 2022 · <em>{t("comun.opcional_complementa")}</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: hillsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -1053,22 +1065,22 @@ export default function GAPCalculator() {
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                 <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+                  <span style={{ fontSize: 14 }}>📐</span> {t("gap.medir_radiografia")}
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <InputField label="L1 Pelvic Angle (L1PA)" value={l1pa} onChange={setL1PA} min={-30} max={40}
-                  tooltip="Ángulo vertebro-pélvico de L1. Subtendido desde el eje bicoxofemoral al centro del platillo de S1 y al centroide del cuerpo de L1. Geométricamente: L1PA = Versión Pélvica + inclinación de L1. Parámetro relativamente fijo que captura magnitud y distribución de la lordosis. Normal ≈ 0.5·PI − 21°. (Hills, Spine 2022)"
+                  tooltip={t("tooltip.l1pa")}
                   tooltipFigure={`${import.meta.env.BASE_URL}landmarks/angulo_gt.png`} />
                 <InputField label="T4 Pelvic Angle (T4PA)" value={t4pa} onChange={setT4PA} min={-30} max={40}
-                  tooltip="Ángulo vertebro-pélvico de T4. Análogo al L1PA pero al centroide del cuerpo de T4. En columnas normales se alinea con el L1PA (diferencia < 4°), definiendo el eje T4-L1-cadera. Una diferencia > 4° indica desalineación torácica y activación de mecanismos compensatorios (retroversión pélvica, hipocifosis)."
+                  tooltip={t("tooltip.t4pa")}
                   tooltipFigure={`${import.meta.env.BASE_URL}landmarks/cervical_t4.png`} />
               </div>
               {hillsResult && (
                 <div style={{ marginTop: 8 }}>
                   {/* L1PA ideal */}
                   <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}44`, marginBottom: 10, fontSize: 12, color: COLORS.accentDark, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span><strong>L1PA ideal</strong> = 0.5·PI − 21</span>
+                    <span><strong>{t("hills.l1pa_ideal")}</strong> = 0.5·PI − 21</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
                       {hillsResult.idealL1PA.toFixed(1)}°
                       <span style={{ color: Math.abs(hillsResult.l1paDiff) < 4 ? COLORS.green : Math.abs(hillsResult.l1paDiff) < 8 ? COLORS.yellow : COLORS.red, marginLeft: 8 }}>
@@ -1078,7 +1090,7 @@ export default function GAPCalculator() {
                   </div>
                   {/* L1-S1 Hills ideal */}
                   <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.purpleBg, border: `1px solid ${COLORS.purple}44`, marginBottom: 10, fontSize: 12, color: COLORS.purple, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span><strong>L1-S1 ideal (Hills)</strong> = 1.4·PI − 1.7·L1PA − 2</span>
+                    <span><strong>{t("hills.l1s1_ideal")}</strong> = 1.4·PI − 1.7·L1PA − 2</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{hillsResult.idealLL_Hills.toFixed(1)}°</span>
                   </div>
                   {/* Semáforo eje T4-L1-Hip */}
@@ -1087,7 +1099,7 @@ export default function GAPCalculator() {
                     const bg = hillsResult.ejeStatus === "ok" ? COLORS.greenBg : hillsResult.ejeStatus === "warn" ? COLORS.yellowBg : COLORS.redBg;
                     return (
                       <div style={{ padding: "12px 14px", borderRadius: 8, background: bg, border: `1.5px solid ${c}44`, fontSize: 12, color: c, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <span>🎯 {hillsResult.ejeLabel}</span>
+                        <span>🎯 {t(hillsResult.ejeLabelKey)}</span>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800 }}>
                           T4PA − L1PA = {hillsResult.ejeDiff >= 0 ? "+" : ""}{hillsResult.ejeDiff.toFixed(1)}°
                         </span>
@@ -1098,7 +1110,7 @@ export default function GAPCalculator() {
               )}
               {!hillsResult && (
                 <div style={{ padding: 12, borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, textAlign: "center" }}>
-                  Ingresa la Incidencia Pélvica (PI) y el L1PA para activar el análisis Hills.
+                  {t("hills.faltan")}
                 </div>
               )}
             </div>
@@ -1113,9 +1125,9 @@ export default function GAPCalculator() {
             aria-expanded={tiltsOpen}
             style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
             <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 Tilts vertebrales</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 {t("tilts.titulo")}</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Hills 2022 · IC 80% poblacional · <em>opcional, complementa al GAP</em>
+                Hills 2022 · {t("tilts.ic80")} · <em>{t("comun.opcional_complementa")}</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: tiltsOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -1124,16 +1136,16 @@ export default function GAPCalculator() {
             <div style={{ marginTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
                 <button onClick={() => setShowAnnotator(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14 }}>📐</span> Medir desde radiografía
+                  <span style={{ fontSize: 14 }}>📐</span> {t("gap.medir_radiografia")}
                 </button>
               </div>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px" }}>
-                Para cada nivel: mide el tilt directo en PACS o ingresa el Pelvic Angle correspondiente; la app deriva tilt = <strong>PA − PT</strong>.
+                {t("tilts.ayuda")}<strong>PA − PT</strong>.
               </p>
               {[
-                { key: "c2", titulo: "C2", direct: c2tiltDirect, setDirect: setC2TiltDirect, pa: cpa, setPA: setCPA, paLabel: "C2 Pelvic Angle (CPA)", paTooltip: "Ángulo C2-pélvico: subtendido desde el eje bicoxofemoral al centro del platillo S1 y al centroide del cuerpo de C2. CPA = C2 tilt + PT.", directTooltip: "C2 tilt directo: ángulo entre la línea del eje bicoxofemoral al centroide del cuerpo de C2 y la vertical. Convención: positivo si C2 está anterior a las cabezas femorales, negativo si posterior. Normal: −4.4° a −1.1° (Hills 2022, IC 80%)." },
-                { key: "t1", titulo: "T1", direct: t1tiltDirect, setDirect: setT1TiltDirect, pa: t1pa, setPA: setT1PA, paLabel: "T1 Pelvic Angle (T1PA)", paTooltip: "Ángulo T1-pélvico: análogo al CPA pero al centroide de T1. T1PA = T1 tilt + PT.", directTooltip: "T1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de T1 y la vertical (positivo anterior, negativo posterior). Normal: −7.0° a −3.6° (Hills 2022, IC 80%)." },
-                { key: "l1", titulo: "L1", direct: l1tiltDirect, setDirect: setL1TiltDirect, pa: l1pa, setPA: setL1PA, paLabel: "L1 Pelvic Angle (L1PA)", paTooltip: "L1PA = L1 tilt + PT. Mismo dato usado en el bloque Eje T4-L1-Cadera.", directTooltip: "L1 tilt directo: ángulo entre el eje bicoxofemoral al centroide de L1 y la vertical (positivo anterior, negativo posterior). Normal: −10.3° a −5.1° (Hills 2022, IC 80%)." }
+                { key: "c2", titulo: "C2", direct: c2tiltDirect, setDirect: setC2TiltDirect, pa: cpa, setPA: setCPA, paLabel: "C2 Pelvic Angle (CPA)", paTooltip: t("tooltip.cpa"), directTooltip: t("tooltip.c2tilt") },
+                { key: "t1", titulo: "T1", direct: t1tiltDirect, setDirect: setT1TiltDirect, pa: t1pa, setPA: setT1PA, paLabel: "T1 Pelvic Angle (T1PA)", paTooltip: t("tooltip.t1pa"), directTooltip: t("tooltip.t1tilt") },
+                { key: "l1", titulo: "L1", direct: l1tiltDirect, setDirect: setL1TiltDirect, pa: l1pa, setPA: setL1PA, paLabel: "L1 Pelvic Angle (L1PA)", paTooltip: t("tooltip.l1pa.tilt"), directTooltip: t("tooltip.l1tilt") }
               ].map(row => {
                 const r = tiltsResult ? tiltsResult[row.key] : null;
                 const norm = TILT_NORMS[row.key];
@@ -1145,7 +1157,7 @@ export default function GAPCalculator() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <InputField
-                        label="Tilt directo"
+                        label={t("campo.tilt_directo")}
                         value={row.direct}
                         onChange={row.setDirect}
                         min={-30}
@@ -1166,14 +1178,14 @@ export default function GAPCalculator() {
                     {r && (
                       <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: 8, background: r.cls.bg, border: `1px solid ${r.cls.color}44`, fontSize: 12, color: r.cls.color }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                          <span style={{ fontWeight: 700 }}>{row.titulo} tilt · {r.cls.label}</span>
+                          <span style={{ fontWeight: 700 }}>{row.titulo} tilt · {t(r.cls.key)}</span>
                         </div>
                         <div style={{ display: "flex", gap: 14, marginTop: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: COLORS.text, flexWrap: "wrap" }}>
-                          {r.direct !== null && <span><strong>Directo:</strong> {r.direct.toFixed(1)}°</span>}
-                          {r.derived !== null && <span><strong>Derivado (PA−PT):</strong> {r.derived.toFixed(1)}°</span>}
+                          {r.direct !== null && <span><strong>{t("tabla.directo")}:</strong> {r.direct.toFixed(1)}°</span>}
+                          {r.derived !== null && <span><strong>{t("tabla.derivado_pa_pt")}:</strong> {r.derived.toFixed(1)}°</span>}
                           {r.delta !== null && (
                             <span style={{ color: Math.abs(r.delta) <= 1 ? COLORS.green : Math.abs(r.delta) <= 3 ? COLORS.yellow : COLORS.red }}>
-                              <strong>Δ directo−derivado:</strong> {r.delta >= 0 ? "+" : ""}{r.delta.toFixed(1)}°
+                              <strong>{t("pdf.delta_directo_derivado")}:</strong> {r.delta >= 0 ? "+" : ""}{r.delta.toFixed(1)}°
                             </span>
                           )}
                         </div>
@@ -1184,11 +1196,11 @@ export default function GAPCalculator() {
               })}
               {tiltsResult && tiltsResult.pt !== null ? (
                 <div style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4 }}>
-                  PT efectivo = {tiltsResult.pt.toFixed(1)}° {spinopelvic.derivedKey === "pt" ? "(derivado de PI − SS)" : ""}
+                  {t("tilts.pt_efectivo", { v: tiltsResult.pt.toFixed(1) })} {spinopelvic.derivedKey === "pt" ? t("tilts.pt_derivado_nota") : ""}
                 </div>
               ) : (
                 <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
-                  Para el cálculo derivado se requieren PI y SS llenos (o PT directo).
+                  {t("tilts.faltan")}
                 </div>
               )}
             </div>
@@ -1203,9 +1215,9 @@ export default function GAPCalculator() {
             aria-expanded={schwabOpen}
             style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
             <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📊 Clasificación SRS-Schwab</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📊 {t("schwab.titulo")}</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Schwab 2012 · modificadores sagitales · <em>opcional, complementa al GAP</em>
+                Schwab 2012 · {t("schwab.modificadores")} · <em>{t("comun.opcional_complementa")}</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: schwabOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -1213,7 +1225,7 @@ export default function GAPCalculator() {
           {schwabOpen && (
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
-                Tres modificadores sagitales (Schwab et al., Spine 2012). <strong>PI−LL</strong> y <strong>PT</strong> se derivan de los parámetros espinopélvicos. <strong>SVA</strong> requiere medición directa en la radiografía (distancia horizontal del plomo desde el centro del cuerpo de C7 hasta el borde posterosuperior de S1).
+                {t("schwab.intro.1")}<strong>PI−LL</strong>{t("schwab.intro.2")}<strong>PT</strong>{t("schwab.intro.3")}<strong>SVA</strong>{t("schwab.intro.4")}
               </p>
               <InputField
                 label="SVA (Sagittal Vertical Axis)"
@@ -1221,12 +1233,12 @@ export default function GAPCalculator() {
                 onChange={setSVA}
                 unit="cm"
                 min={-20} max={30} step={0.1}
-                tooltip="Sagittal Vertical Axis: distancia horizontal entre el plomo trazado desde el centro del cuerpo de C7 y el borde posterosuperior de S1. Positivo si C7 está anterior a S1. Mide la alineación sagital global. Normal < 4 cm. (Schwab et al., Spine 2012)"
+                tooltip={t("tooltip.sva")}
               />
               {[
-                { key: "piLL", titulo: "PI − LL", subtitulo: "Mismatch lumbo-pélvico (deformidad regional)", val: schwabResult.piLLVal, grade: schwabResult.piLL, unit: "°", t0: "< 10°", t1: "10–20°", t2: "> 20°" },
-                { key: "pt",   titulo: "PT",       subtitulo: "Pelvic Tilt (mecanismo compensatorio)",        val: schwabResult.ptVal,   grade: schwabResult.pt,   unit: "°", t0: "< 20°", t1: "20–30°", t2: "> 30°" },
-                { key: "sva",  titulo: "SVA",      subtitulo: "Sagittal Vertical Axis (alineación global)",   val: schwabResult.svaVal,  grade: schwabResult.sva,  unit: " cm", t0: "< 4 cm", t1: "4–9.5 cm", t2: "> 9.5 cm" },
+                { key: "piLL", titulo: "PI − LL", subtitulo: t("schwab.pill.sub"), val: schwabResult.piLLVal, grade: schwabResult.piLL, unit: "°", t0: "< 10°", t1: "10–20°", t2: "> 20°" },
+                { key: "pt",   titulo: "PT",       subtitulo: t("schwab.pt.sub"),   val: schwabResult.ptVal,   grade: schwabResult.pt,   unit: "°", t0: "< 20°", t1: "20–30°", t2: "> 30°" },
+                { key: "sva",  titulo: "SVA",      subtitulo: t("schwab.sva.sub"),  val: schwabResult.svaVal,  grade: schwabResult.sva,  unit: " cm", t0: "< 4 cm", t1: "4–9.5 cm", t2: "> 9.5 cm" },
               ].map(row => (
                 <div key={row.key} style={{ marginBottom: 10, padding: 12, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}` }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -1256,14 +1268,14 @@ export default function GAPCalculator() {
               ))}
               {(schwabResult.piLL && schwabResult.pt && schwabResult.sva) ? (
                 <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 10, background: COLORS.inputBg, border: `1px solid ${COLORS.cardBorder}` }}>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>Modificadores sagitales</div>
+                  <div style={{ fontSize: 11, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>{t("schwab.modificadores")}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.ink, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.04em" }}>
                     PI−LL <span style={{ color: schwabResult.piLL.color }}>{schwabResult.piLL.g}</span> · PT <span style={{ color: schwabResult.pt.color }}>{schwabResult.pt.g}</span> · SVA <span style={{ color: schwabResult.sva.color }}>{schwabResult.sva.g}</span>
                   </div>
                 </div>
               ) : (
                 <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
-                  Llena PI, L1-S1 y SVA para obtener la clasificación completa.
+                  {t("schwab.faltan")}
                 </div>
               )}
             </div>
@@ -1278,9 +1290,9 @@ export default function GAPCalculator() {
             aria-expanded={roussoulyOpen}
             style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
             <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🧬 Clasificación Roussouly</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🧬 {t("roussouly.titulo")}</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Laouissat 2017 · Sebaaly 2020 · Bari 2020 · <em>tipo actual, ideal y concordancia con la PI</em>
+                Laouissat 2017 · Sebaaly 2020 · Bari 2020 · <em>{t("roussouly.sub")}</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: roussoulyOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -1288,34 +1300,34 @@ export default function GAPCalculator() {
           {roussoulyOpen && (
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
-                Tipos sagitales según <strong>SS</strong>, número de vértebras lordóticas y <strong>PT</strong> (algoritmo de Bari 2020, Fig. 2). Se calcula además el <strong>tipo ideal</strong> a restaurar (Fig. 3) y la concordancia con la <strong>PI</strong>: no restaurar la forma sagital multiplica ×3 el riesgo de complicación mecánica (Sebaaly 2020).
+                {t("roussouly.intro.1")}<strong>SS</strong>{t("roussouly.intro.2")}<strong>PT</strong>{t("roussouly.intro.3")}<strong>{t("roussouly.intro.tipo_ideal")}</strong>{t("roussouly.intro.4")}<strong>PI</strong>{t("roussouly.intro.5")}
               </p>
               <InputField
-                label="Vértebras lordóticas (NVL)"
+                label={t("campo.nvl")}
                 value={nvl}
                 onChange={setNvl}
-                unit="vért."
+                unit={t("unidad.vert")}
                 min={0} max={12} step={1}
-                tooltip="Número de vértebras incluidas en la lordosis: desde S1 hasta la vértebra del punto de inflexión. Sólo se usa cuando SS < 35°, para separar tipo 1 (≤ 3 vértebras, lordosis corta) de tipo 2 (> 3 vértebras, dorso plano). Media en población normal ≈ 6 (Sebaaly 2020)."
+                tooltip={t("tooltip.nvl")}
               />
               {roussoulyResult ? (
                 <>
                   <div style={{ padding: 14, borderRadius: 10, background: roussoulyResult.bg, border: `1.5px solid ${roussoulyResult.color}66` }}>
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Tipo actual</div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{t("roussouly.tipo_actual")}</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                       <span style={{ fontSize: 28, fontWeight: 800, color: roussoulyResult.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{roussoulyResult.type}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: roussoulyResult.color }}>{roussoulyResult.label}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: roussoulyResult.color }}>{t(roussoulyResult.labelKey)}</span>
                     </div>
                     <div style={{ fontSize: 11, color: COLORS.textMuted, fontFamily: "'JetBrains Mono', monospace", marginBottom: 8 }}>{roussoulyResult.params}</div>
-                    <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{roussoulyResult.desc}</div>
+                    <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{t(roussoulyResult.descKey)}</div>
                     {roussoulyResult.uncertain === "nvl" && (
                       <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
-                        ⚠ Ingresa el número de vértebras lordóticas para separar tipo 1 de tipo 2.
+                        ⚠ {t("roussouly.falta_nvl")}
                       </div>
                     )}
                     {roussoulyResult.uncertain === "piPt" && (
                       <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
-                        ⚠ Faltan PI y/o PT: no puede descartarse un tipo 3 anteverted (PI &lt; 50° y PT &lt; 5°).
+                        ⚠ {t("roussouly.faltan_pi_pt")}
                       </div>
                     )}
                   </div>
@@ -1323,29 +1335,29 @@ export default function GAPCalculator() {
                   {roussoulyResult.ideal && (
                     <div style={{ marginTop: 10, padding: 14, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}` }}>
                       <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
-                        {roussoulyResult.esPost ? "Tipo ideal · referencia orientativa" : "Tipo ideal · objetivo de corrección"}
+                        {roussoulyResult.esPost ? t("roussouly.ideal.orientativo") : t("roussouly.ideal.objetivo")}
                       </div>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                         <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.text, fontFamily: "'JetBrains Mono', monospace" }}>{roussoulyResult.ideal.type}</span>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{roussoulyResult.ideal.label}</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{t(roussoulyResult.ideal.labelKey)}</span>
                         {roussoulyResult.ideal.same && (
-                          <span style={{ fontSize: 11, color: COLORS.green, fontWeight: 700 }}>= tipo actual, mantener la forma</span>
+                          <span style={{ fontSize: 11, color: COLORS.green, fontWeight: 700 }}>{t("roussouly.mismo_tipo")}</span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{roussoulyResult.ideal.desc}</div>
+                      <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>{t(roussoulyResult.ideal.descKey)}</div>
                       {roussoulyResult.esPost && (
                         <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 8, background: COLORS.inputBg, border: `1px solid ${COLORS.cardBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.45 }}>
-                          Estudio <strong>postoperatorio</strong>: el algoritmo de la Fig. 3 parte del tipo <em>preoperatorio</em>, así que este objetivo derivado de la forma post-op es sólo orientativo. Para juzgar si el paciente quedó "restaurado", usa la concordancia con la PI de abajo, que sí se aplica directamente sobre la forma postoperatoria.
+                          {t("roussouly.nota_post")}
                         </div>
                       )}
                       {roussoulyResult.ideal.uncertain === "pt" && (
                         <div style={{ marginTop: 8, fontSize: 11, color: COLORS.yellow, lineHeight: 1.45 }}>
-                          ⚠ Falta PT para definir entre tipo 3 (PT &lt; 25°) y tipo 4 (PT ≥ 25°).
+                          ⚠ {t("roussouly.falta_pt")}
                         </div>
                       )}
                       {roussoulyResult.ideal.inferred && (
                         <div style={{ marginTop: 8, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.45 }}>
-                          Rama no contemplada en la Fig. 3 de Bari (PI &lt; 50° con PT ≥ 5°): objetivo derivado de la regla por PI de Sebaaly 2020.
+                          {t("roussouly.rama_inferida")}
                         </div>
                       )}
                     </div>
@@ -1355,36 +1367,33 @@ export default function GAPCalculator() {
                     <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 10, background: roussoulyResult.piMatch.level === "ok" ? COLORS.greenBg : roussoulyResult.piMatch.level === "warn" ? COLORS.yellowBg : COLORS.redBg, border: `1.5px solid ${(roussoulyResult.piMatch.level === "ok" ? COLORS.green : roussoulyResult.piMatch.level === "warn" ? COLORS.yellow : COLORS.red)}66` }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: roussoulyResult.piMatch.level === "ok" ? COLORS.green : roussoulyResult.piMatch.level === "warn" ? COLORS.yellow : COLORS.red, marginBottom: 4 }}>
                         {roussoulyResult.piMatch.level === "ok"
-                          ? (roussoulyResult.esPost ? "✓ Forma restaurada (concordante con la PI)" : "✓ Forma concordante con la PI")
+                          ? `✓ ${roussoulyResult.esPost ? t("roussouly.match.restaurada") : t("roussouly.match.concordante")}`
                           : roussoulyResult.piMatch.level === "warn"
-                            ? "⚠ Concordancia con reservas"
-                            : (roussoulyResult.esPost ? "✕ Forma NO restaurada (discordante con la PI)" : "✕ Forma NO concordante con la PI")}
+                            ? `⚠ ${t("roussouly.match.reservas")}`
+                            : `✕ ${roussoulyResult.esPost ? t("roussouly.match.no_restaurada") : t("roussouly.match.no_concordante")}`}
                       </div>
                       <div style={{ fontSize: 12, color: COLORS.text, lineHeight: 1.5 }}>
-                        PI {roussoulyResult.piMatch.piLow ? "< 50°" : "≥ 50°"} → se espera <strong>{roussoulyResult.piMatch.esperadoLabel}</strong>.
-                        {roussoulyResult.piMatch.level === "bad" && " No restaurar la forma sagital según la PI se asoció a RR 3 (IC 1.5–4.3) de complicación mecánica (46.8% vs 22.5%, Sebaaly 2020) y OR 4.7 de revisión por falla mecánica (Bari 2020)."}
-                        {roussoulyResult.piMatch.antevertedWarn && " El tipo 3 anteverted es una variante normal reconocida (Laouissat 2017), pero convertir quirúrgicamente una PI baja en un anteverted es un objetivo desfavorable: se asocia a mayor tasa de PJK."}
+                        PI {roussoulyResult.piMatch.piLow ? "< 50°" : "≥ 50°"} → {t("roussouly.se_espera")} <strong>{t(roussoulyResult.piMatch.esperadoKey)}</strong>.
+                        {roussoulyResult.piMatch.level === "bad" && ` ${t("roussouly.nota_bad")}`}
+                        {roussoulyResult.piMatch.antevertedWarn && ` ${t("roussouly.nota_anteverted")}`}
                       </div>
                     </div>
                   )}
 
                   <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.55 }}>
-                    <strong style={{ color: COLORS.text }}>Algoritmo de asignación (Bari 2020, Fig. 2):</strong><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS &lt; 35° · NVL ≤ 3 → Tipo 1 (lordosis corta, apex L5)</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS &lt; 35° · NVL &gt; 3 → Tipo 2 (dorso plano)</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>35° ≤ SS &lt; 45° · PI &lt; 50° y PT &lt; 5° → Tipo 3-AP</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>35° ≤ SS &lt; 45° · PI ≥ 50° ó PT ≥ 5° → Tipo 3</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>SS ≥ 45° → Tipo 4</span><br/>
-                    <strong style={{ color: COLORS.text }}>Tipo ideal (Fig. 3):</strong><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 1/2 · PI &lt; 50° → se mantiene · PI ≥ 50° → Tipo 3 ó 4</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3 · PI &lt; 50° y PT &lt; 5° → 3-AP</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 3 · PI ≥ 50° → PT &lt; 25° = Tipo 3 · PT ≥ 25° = Tipo 4</span><br/>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>Tipo 4 → Tipo 4</span>
+                    <strong style={{ color: COLORS.text }}>{t("roussouly.algoritmo.titulo")}</strong><br/>
+                    {["roussouly.algoritmo.1", "roussouly.algoritmo.2", "roussouly.algoritmo.3", "roussouly.algoritmo.4", "roussouly.algoritmo.5"].map(k => (
+                      <span key={k}><span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{t(k)}</span><br/></span>
+                    ))}
+                    <strong style={{ color: COLORS.text }}>{t("roussouly.ideal.titulo")}</strong><br/>
+                    {["roussouly.ideal.1", "roussouly.ideal.2", "roussouly.ideal.3", "roussouly.ideal.4"].map(k => (
+                      <span key={k}><span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{t(k)}</span><br/></span>
+                    ))}
                   </div>
                 </>
               ) : (
                 <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
-                  Llena SS (o PI + PT) para obtener la clasificación Roussouly.
+                  {t("roussouly.faltan")}
                 </div>
               )}
             </div>
@@ -1401,7 +1410,7 @@ export default function GAPCalculator() {
             <div style={{ flex: 1 }}>
               <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 GAP-B</h2>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Noh 2020 · GAP + IMC + DMO · <em>predicción de complicaciones mecánicas</em>
+                Noh 2020 · GAP + {t("imc.sigla")} + {t("dmo.sigla")} · <em>{t("gapb.sub")}</em>
               </p>
             </div>
             <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: gapbOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
@@ -1409,26 +1418,26 @@ export default function GAPCalculator() {
           {gapbOpen && (
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
-                Modificación del GAP score que añade <strong>IMC</strong> y <strong>DMO</strong> (T-score de columna o fémur, lo peor). AUC reportado 0.885 vs 0.798 del GAP original (Noh SH et al., Spine J 2020).
+                {t("gapb.intro.1")}<strong>{t("imc.sigla")}</strong>{t("gapb.intro.2")}<strong>{t("dmo.sigla")}</strong>{t("gapb.intro.3")}
               </p>
               <InputField
-                label="DMO (T-score peor de columna/fémur)"
+                label={t("campo.dmo")}
                 value={bmdTscore}
                 onChange={setBmdTscore}
                 unit=""
                 min={-5} max={5} step={0.1}
-                placeholder="Ej. -2.5"
-                tooltip="T-score por DEXA (densitometría). Usar el peor valor entre columna lumbar y fémur. Normal ≥ -1, osteopenia -1 a -2.5, osteoporosis ≤ -2.5. Si no tienes T-score reciente, deja en blanco."
+                placeholder={t("placeholder.tscore")}
+                tooltip={t("tooltip.dmo")}
               />
               <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 12, color: COLORS.text }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, fontFamily: "'JetBrains Mono', monospace" }}>
                   <div>
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>IMC</div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>{t("imc.sigla")}</div>
                     <div style={{ fontWeight: 700, color: imc && imc.valor ? COLORS.text : COLORS.textMuted }}>{imc && imc.valor ? `${Number(imc.valor).toFixed(1)} kg/m²` : "—"}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>GAP</div>
-                    <div style={{ fontWeight: 700, color: result ? COLORS.text : COLORS.textMuted }}>{result ? `${result.total} pts` : "—"}</div>
+                    <div style={{ fontWeight: 700, color: result ? COLORS.text : COLORS.textMuted }}>{result ? `${result.total} ${t("comun.pts")}` : "—"}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>T-score</div>
@@ -1437,7 +1446,7 @@ export default function GAPCalculator() {
                 </div>
                 {(!imc || !imc.valor || !result || bmdTscore === "") && (
                   <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 6, fontStyle: "italic" }}>
-                    Faltan: {[!imc || !imc.valor ? "peso/talla" : null, !result ? "GAP completo" : null, bmdTscore === "" ? "T-score DMO" : null].filter(Boolean).join(" · ")}
+                    {t("comun.faltan")}: {[!imc || !imc.valor ? t("gapb.falta.antropometria") : null, !result ? t("gapb.falta.gap") : null, bmdTscore === "" ? t("gapb.falta.tscore") : null].filter(Boolean).join(" · ")}
                   </div>
                 )}
               </div>
@@ -1445,19 +1454,19 @@ export default function GAPCalculator() {
                 <div style={{ padding: 14, borderRadius: 10, background: gapbResult.cat.bg, border: `1.5px solid ${gapbResult.cat.color}66` }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
                     <span style={{ fontSize: 28, fontWeight: 800, color: gapbResult.cat.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{(gapbResult.prob * 100).toFixed(0)}%</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: gapbResult.cat.color }}>{gapbResult.cat.label}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: gapbResult.cat.color }}>{t(gapbResult.cat.key)}</span>
                   </div>
                   <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
-                    Probabilidad estimada de complicación mecánica postoperatoria (PJK/PJF, fractura de varilla o falla de implante) a 2 años, basada en la regresión logística de Noh 2020.
+                    {t("gapb.explicacion")}
                   </div>
                 </div>
               ) : (
                 <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
-                  Llena peso, talla, los parámetros del GAP y el T-score de DMO para obtener la predicción GAP-B.
+                  {t("gapb.faltan")}
                 </div>
               )}
               <div style={{ marginTop: 10, fontSize: 10, color: COLORS.textMuted, lineHeight: 1.45, fontStyle: "italic" }}>
-                ⚠ Aproximación logística derivada de los HR multivariables publicados (BMI 1.284 · BMD 0.277 · GAP 1.457). El nomograma original de Noh 2020 (Fig. 2) es la referencia clínica formal. No sustituye juicio clínico.
+⚠ {t("gapb.nota")}
               </div>
             </div>
           )}
@@ -1467,14 +1476,14 @@ export default function GAPCalculator() {
         {canEdit && (
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📸 Imágenes ({fotos.length})</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📸 {t("fotos.titulo")} ({fotos.length})</h2>
               <label style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.purple}66`, background: COLORS.purpleBg, color: COLORS.purple, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
-                + Agregar fotos
+                {t("fotos.agregar")}
                 <input type="file" accept="image/*" multiple capture="environment" onChange={handleFotos} style={{ display: "none" }} />
               </label>
             </div>
             {fotos.length === 0 ? (
-              <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 13, background: COLORS.inputHover, borderRadius: 10, border: `1px dashed ${COLORS.inputBorder}` }}>Sube radiografías. Se comprimen automáticamente.</div>
+              <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 13, background: COLORS.inputHover, borderRadius: 10, border: `1px dashed ${COLORS.inputBorder}` }}>{t("fotos.vacio")}</div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
                 {fotos.map(f => (
@@ -1482,7 +1491,7 @@ export default function GAPCalculator() {
                     <img src={f.dataUrl} alt={f.name} style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }} />
                     <button onClick={() => removeFoto(f.id)} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(185,28,28,0.9)", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>×</button>
                     <select value={f.categoria} onChange={e => updateFotoCat(f.id, e.target.value)} style={{ width: "100%", padding: "6px 8px", background: COLORS.card, border: "none", borderTop: `1px solid ${COLORS.inputBorder}`, color: COLORS.text, fontSize: 11, outline: "none", cursor: "pointer" }}>
-                      {CATEGORIAS_FOTO.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      {CATEGORIAS_FOTO.map(cat => <option key={cat.value} value={cat.value}>{t(cat.key)}</option>)}
                     </select>
                   </div>
                 ))}
@@ -1495,17 +1504,17 @@ export default function GAPCalculator() {
         {!canEdit && myPublicCases.length > 0 && (
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: COLORS.text }}>📂 Mis casos guardados ({myPublicCases.length})</h2>
-              <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic" }}>solo en este dispositivo</span>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: COLORS.text }}>📂 {t("miscasos.titulo")} ({myPublicCases.length})</h2>
+              <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic" }}>{t("miscasos.solo_dispositivo")}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 240, overflowY: "auto" }}>
               {myPublicCases.map(c => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: COLORS.inputHover, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}` }}>
                   <span style={{ flex: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: COLORS.accentDark }}>{c.id}</span>
-                  <span style={{ fontSize: 10, color: COLORS.textMuted }}>{c.fechaCaso ? new Date(c.fechaCaso).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : ""}</span>
+                  <span style={{ fontSize: 10, color: COLORS.textMuted }}>{c.fechaCaso ? new Date(c.fechaCaso).toLocaleDateString(dateLocale, { day: "2-digit", month: "short" }) : ""}</span>
                   {c.tipoEvaluacion && <MomentoBadge tipo={c.tipoEvaluacion} />}
                   {typeof c.gapTotal === "number" && <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.text }}>{c.gapTotal}/13</span>}
-                  <button onClick={() => loadPublicCase(c.id)} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>Cargar</button>
+                  <button onClick={() => loadPublicCase(c.id)} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>{t("common.cargar")}</button>
                 </div>
               ))}
             </div>
@@ -1519,26 +1528,26 @@ export default function GAPCalculator() {
               <div style={{ fontSize: 22, lineHeight: 1 }}>📬</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>
-                  Recibe avisos de nuevas funciones
+                  {t("sub.titulo")}
                 </div>
                 <p style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.5, margin: 0 }}>
-                  Tu correo solo se usará para enviarte actualizaciones de la calculadora. No se comparte con terceros.
+                  {t("sub.nota")}
                 </p>
               </div>
             </div>
             {subDone ? (
               <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: COLORS.greenBg, border: `1px solid ${COLORS.green}44`, fontSize: 12, color: COLORS.green, fontWeight: 600, textAlign: "center" }}>
-                ✓ Gracias, te avisaremos cuando haya novedades.
+                ✓ {t("sub.gracias")}
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "end" }}>
-                <InputField label="Nombre" value={subName} onChange={setSubName} type="text" placeholder="Dr. Apellido" unit="" />
-                <InputField label="Correo electrónico" value={subEmail} onChange={setSubEmail} type="text" placeholder="tu@correo.com" unit="" />
+                <InputField label={t("campo.nombre")} value={subName} onChange={setSubName} type="text" placeholder={t("placeholder.dr_apellido_corto")} unit="" />
+                <InputField label={t("campo.correo")} value={subEmail} onChange={setSubEmail} type="text" placeholder={t("placeholder.correo")} unit="" />
                 <button
                   onClick={submitSubscribe}
                   disabled={subBusy}
                   style={{ gridColumn: "1 / -1", padding: "10px 16px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: subBusy ? COLORS.inputHover : COLORS.accent, color: subBusy ? COLORS.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: subBusy ? "wait" : "pointer", marginTop: 4 }}>
-                  {subBusy ? "Registrando..." : "Suscribirme"}
+                  {subBusy ? t("sub.registrando") : t("sub.boton")}
                 </button>
               </div>
             )}
@@ -1560,19 +1569,19 @@ export default function GAPCalculator() {
               <span style={{ fontSize: 18, fontWeight: 500, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36", color: COLORS.textMuted, letterSpacing: "-0.01em" }}>/13</span>
             </div>
             <div style={{ marginTop: 14, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 100", fontSize: 19, fontStyle: "italic", fontWeight: 500, color: result.cat.color, letterSpacing: "-0.005em" }}>
-              {result.cat.label}
+              {t(result.cat.key)}
             </div>
-            <div style={{ marginTop: 6, fontSize: 12, color: COLORS.textDim, fontFamily: FONT_SANS }}>Riesgo: {result.cat.risk}</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: COLORS.textDim, fontFamily: FONT_SANS }}>{t("resultado.riesgo")}: {t(result.cat.riskKey)}</div>
           </div>
         )}
 
         {/* Exportar */}
         <Card style={{ padding: 20 }}>
-          <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>Exportar y guardar</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{result ? "Resultado listo para exportar" : hasAnyMeasurement ? "Mediciones parciales · el PDF incluirá solo lo medido" : "⚠ Ingresa al menos una medición para habilitar exportación"}</p>
+          <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>{t("exportar.titulo")}</h2>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{result ? t("exportar.listo") : hasAnyMeasurement ? t("exportar.parcial") : t("exportar.sin_mediciones")}</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
             <ShareButton icon="📄" label="PDF" color={COLORS.accent} bg={COLORS.accentDim} onClick={handleDownload} disabled={!hasAnyMeasurement} />
-            <ShareButton icon="✉️" label="Correo" color={COLORS.purple} bg={COLORS.purpleBg} onClick={handleEmail} disabled={!hasAnyMeasurement} />
+            <ShareButton icon="✉️" label={t("exportar.correo")} color={COLORS.purple} bg={COLORS.purpleBg} onClick={handleEmail} disabled={!hasAnyMeasurement} />
           </div>
           {(() => {
             const isPublic = !canEdit;
@@ -1581,14 +1590,14 @@ export default function GAPCalculator() {
             const pendingConsent = dataAvailable && user && allowlisted && !consentAccepted;
             const hardDisabled = !result || saving || (saved && !isPublic) || pendingAuth;
             const onClick = isPublic ? () => savePublicCase() : saveCaso;
-            const label = saving ? "⏳ Guardando..."
-              : (saved && isPublic && savedPublicCaseId) ? `✅ Guardado · ${savedPublicCaseId}`
-              : saved ? "✅ Caso guardado"
-              : !dataAvailable ? "💾 Guardar localmente"
-              : isPublic ? "💾 Guardar caso (recuperable con su ID)"
-              : pendingAuth ? "⏳ Cuenta pendiente de autorización"
-              : pendingConsent ? "📝 Aceptar consentimiento y guardar"
-              : "💾 Guardar caso";
+            const label = saving ? `⏳ ${t("common.guardando")}`
+              : (saved && isPublic && savedPublicCaseId) ? `✅ ${t("guardar.guardado_id", { id: savedPublicCaseId })}`
+              : saved ? `✅ ${t("guardar.caso_guardado")}`
+              : !dataAvailable ? `💾 ${t("guardar.localmente")}`
+              : isPublic ? `💾 ${t("guardar.publico")}`
+              : pendingAuth ? `⏳ ${t("guardar.pendiente_autorizacion")}`
+              : pendingConsent ? `📝 ${t("guardar.aceptar_consentimiento")}`
+              : `💾 ${t("guardar.caso")}`;
             const bgColor = saved ? COLORS.greenBg
               : hardDisabled ? COLORS.inputHover
               : isPublic ? COLORS.accentDim
@@ -1620,8 +1629,8 @@ export default function GAPCalculator() {
                 </button>
                 {isPublic && saved && savedPublicCaseId && (
                   <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: COLORS.greenBg, border: `1px solid ${COLORS.green}44`, fontSize: 12, color: COLORS.green, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <span>Guarda este ID para recuperar el caso después:</span>
-                    <button onClick={() => { try { navigator.clipboard.writeText(savedPublicCaseId); showToast("ID copiado ✓"); } catch (e) {} }} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.green}66`, background: COLORS.card, color: COLORS.green, fontSize: 12, cursor: "pointer", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>📋 {savedPublicCaseId}</button>
+                    <span>{t("guardar.guarda_id")}</span>
+                    <button onClick={() => { try { navigator.clipboard.writeText(savedPublicCaseId); showToast(t("toast.id_copiado")); } catch (e) {} }} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.green}66`, background: COLORS.card, color: COLORS.green, fontSize: 12, cursor: "pointer", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>📋 {savedPublicCaseId}</button>
                   </div>
                 )}
               </>
@@ -1636,10 +1645,10 @@ export default function GAPCalculator() {
               <div style={{ fontSize: 22, lineHeight: 1 }}>💬</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>
-                  ¿Qué te pareció la calculadora?
+                  {t("feedback.titulo")}
                 </div>
                 <p style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.5, margin: 0 }}>
-                  Tu opinión es anónima y nos ayuda a mejorar. Esta encuesta solo aparece una vez.
+                  {t("feedback.nota")}
                 </p>
               </div>
             </div>
@@ -1659,14 +1668,14 @@ export default function GAPCalculator() {
             <textarea
               value={feedbackComment}
               onChange={e => setFeedbackComment(e.target.value)}
-              placeholder="Sugerencias o comentarios (opcional, máx 500 caracteres)"
+              placeholder={t("feedback.placeholder")}
               maxLength={500}
               style={{ width: "100%", minHeight: 70, padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 13, fontFamily: "'DM Sans', sans-serif", outline: "none", resize: "vertical", boxSizing: "border-box" }} />
             <button
               onClick={submitFeedback}
               disabled={feedbackBusy || !feedbackRating}
               style={{ width: "100%", marginTop: 10, padding: "10px 16px", borderRadius: 8, border: `1.5px solid ${feedbackRating ? COLORS.accent : COLORS.inputBorder}`, background: feedbackBusy ? COLORS.inputHover : feedbackRating ? COLORS.accent : COLORS.inputBg, color: feedbackBusy ? COLORS.textMuted : feedbackRating ? "#fff" : COLORS.textMuted, fontSize: 13, fontWeight: 700, cursor: feedbackBusy ? "wait" : feedbackRating ? "pointer" : "not-allowed", opacity: feedbackBusy ? 0.7 : 1 }}>
-              {feedbackBusy ? "Enviando..." : feedbackRating ? `Enviar opinión (${feedbackRating}★)` : "Selecciona una calificación"}
+              {feedbackBusy ? t("feedback.enviando") : feedbackRating ? t("feedback.enviar", { n: feedbackRating }) : t("feedback.selecciona")}
             </button>
           </Card>
         )}
@@ -1675,19 +1684,19 @@ export default function GAPCalculator() {
         {result && (
           <>
             <Card>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>Parámetros GAP</h2>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>{t("parametros.titulo")}</h2>
               <p style={{ fontSize: 12, color: COLORS.textMuted, margin: "0 0 12px" }}>RPV · RLL · ILD · ASR · FE</p>
-              <ParamRow name="RPV" diff={result.rpv.diff} score={result.rpv.score} label={result.rpv.label} sub={result.rpv.sub} maxScore={3} />
-              <ParamRow name="RLL" diff={result.rll.diff} score={result.rll.score} label={result.rll.label} sub={result.rll.sub} maxScore={3} />
-              <ParamRow name="ILD" diff={undefined} score={result.ldi.score} label={`${result.ldi.value.toFixed(1)}% — ${result.ldi.label}`} sub={result.ldi.sub} maxScore={3} />
-              <ParamRow name="ASR" diff={result.rsa.diff} score={result.rsa.score} label={result.rsa.label} sub={result.rsa.sub} maxScore={3} />
-              <ParamRow name="FE" diff={undefined} score={result.af.score} label={result.af.label} sub={result.af.sub} maxScore={1} />
+              <ParamRow name="RPV" diff={result.rpv.diff} score={result.rpv.score} label={t(result.rpv.key)} sub={result.rpv.sub} maxScore={3} />
+              <ParamRow name="RLL" diff={result.rll.diff} score={result.rll.score} label={t(result.rll.key)} sub={result.rll.sub} maxScore={3} />
+              <ParamRow name="ILD" diff={undefined} score={result.ldi.score} label={`${result.ldi.value.toFixed(1)}% — ${t(result.ldi.key)}`} sub={result.ldi.sub} maxScore={3} />
+              <ParamRow name="ASR" diff={result.rsa.diff} score={result.rsa.score} label={t(result.rsa.key)} sub={result.rsa.sub} maxScore={3} />
+              <ParamRow name="FE" diff={undefined} score={result.af.score} label={t(result.af.key)} sub={result.af.sub} maxScore={1} />
             </Card>
             <Card>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>Planificación Preoperatoria</h2>
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>Valores ideales según Yilgor et al. 2017 · L4-S1 ideal = L1-S1 × 0.65{hillsResult && " · Hills 2022 añade target normativo"}</p>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>{t("planificacion.titulo")}</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{t("planificacion.nota")}{hillsResult && ` · ${t("planificacion.nota_hills")}`}</p>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead><tr style={{ borderBottom: `2px solid ${COLORS.cardBorder}` }}>{["Parámetro", "Actual", "Ideal", "Corrección"].map(h => <th key={h} style={{ padding: "8px 10px", textAlign: h === "Parámetro" ? "left" : "right", fontWeight: 700, color: COLORS.textDim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>)}</tr></thead>
+                <thead><tr style={{ borderBottom: `2px solid ${COLORS.cardBorder}` }}>{[t("tabla.parametro"), t("tabla.actual"), t("tabla.ideal"), t("tabla.correccion")].map((h, hi) => <th key={h} style={{ padding: "8px 10px", textAlign: hi === 0 ? "left" : "right", fontWeight: 700, color: COLORS.textDim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>)}</tr></thead>
                 <tbody>{[
                   { name: "SS", current: ss, ideal: result.idealSS },
                   { name: "L1-S1", current: l1s1, ideal: result.idealLL },
@@ -1704,37 +1713,37 @@ export default function GAPCalculator() {
         {canEdit && (
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🗄️ Casos guardados</h2>
-            <button onClick={() => setShowCasos(!showCasos)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12, cursor: "pointer" }}>{showCasos ? "Ocultar" : "Ver todos"}</button>
+            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🗄️ {t("casos.titulo")}</h2>
+            <button onClick={() => setShowCasos(!showCasos)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12, cursor: "pointer" }}>{showCasos ? t("common.ocultar") : t("casos.ver_todos")}</button>
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {[{ v: "todos", l: "Todos", c: conteos.todos }, { v: "preoperatorio", l: "🔵 Pre-op", c: conteos.preoperatorio }, { v: "postoperatorio", l: "🟢 Post-op", c: conteos.postoperatorio }].map(t => (
-              <button key={t.v} onClick={() => setFiltroTipo(t.v)} style={{ flex: 1, padding: "6px 8px", borderRadius: 6, border: `1px solid ${filtroTipo === t.v ? COLORS.accent : COLORS.inputBorder}`, background: filtroTipo === t.v ? COLORS.accentDim : "transparent", color: filtroTipo === t.v ? COLORS.accentDark : COLORS.textDim, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
-                {t.l} ({t.c})
+            {[{ v: "todos", l: t("casos.filtro.todos"), c: conteos.todos }, { v: "preoperatorio", l: `🔵 ${t("momento.pre.short")}`, c: conteos.preoperatorio }, { v: "postoperatorio", l: `🟢 ${t("momento.post.short")}`, c: conteos.postoperatorio }].map(f => (
+              <button key={f.v} onClick={() => setFiltroTipo(f.v)} style={{ flex: 1, padding: "6px 8px", borderRadius: 6, border: `1px solid ${filtroTipo === f.v ? COLORS.accent : COLORS.inputBorder}`, background: filtroTipo === f.v ? COLORS.accentDim : "transparent", color: filtroTipo === f.v ? COLORS.accentDark : COLORS.textDim, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+                {f.l} ({f.c})
               </button>
             ))}
           </div>
           {showCasos && casosFiltrados.length > 0 && (
             <div style={{ maxHeight: 350, overflowY: "auto", marginBottom: 12 }}>
               {casosFiltrados.map(c => {
-                const pacDisplay = c.patientFullName || "Sin nombre";
+                const pacDisplay = c.patientFullName || t("casos.sin_nombre");
                 const fechaDisplay = c.studyDate
-                  ? new Date(c.studyDate + "T00:00:00").toLocaleDateString("es-MX")
-                  : (c.createdAt ? new Date(c.createdAt).toLocaleDateString("es-MX") : "");
+                  ? new Date(c.studyDate + "T00:00:00").toLocaleDateString(dateLocale)
+                  : (c.createdAt ? new Date(c.createdAt).toLocaleDateString(dateLocale) : "");
                 return (
                   <div key={c.id} style={{ padding: 10, background: COLORS.inputHover, borderRadius: 8, marginBottom: 6, border: `1px solid ${COLORS.inputBorder}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                       <div style={{ fontSize: 12, color: COLORS.text, flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
                           <strong>{pacDisplay}</strong>
-                          <span style={{ color: COLORS.textMuted }}>· {c.age} años</span>
-                          {c.bmi != null && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>· IMC {c.bmi.toFixed(1)}</span>}
+                          <span style={{ color: COLORS.textMuted }}>· {t("pdf.anos", { n: c.age })}</span>
+                          {c.bmi != null && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>· {t("imc.sigla")} {c.bmi.toFixed(1)}</span>}
                           {c.evaluationType && <MomentoBadge tipo={c.evaluationType} />}
                         </div>
                         <div style={{ color: COLORS.textMuted, fontSize: 11 }}>
                           📅 {fechaDisplay}
                           {c.timeLabel && <> · ⏱️ {c.timeLabel}</>}
-                          {c.gap && <> · GAP: <strong style={{ color: COLORS.accentDark }}>{c.gap.total}/13</strong> · {c.gap.category}</>}
+                          {c.gap && <> · GAP: <strong style={{ color: COLORS.accentDark }}>{c.gap.total}/13</strong> · {t(classify(c.gap.total).key)}</>}
                         </div>
                         {((c.photos?.length || 0) > 0) && <div style={{ fontSize: 11, color: COLORS.purple, marginTop: 2 }}>📸 {c.photos.length}</div>}
                       </div>
@@ -1745,16 +1754,16 @@ export default function GAPCalculator() {
               })}
             </div>
           )}
-          {showCasos && casosFiltrados.length === 0 && <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 12, background: COLORS.inputHover, borderRadius: 8 }}>No hay casos en este filtro.</div>}
+          {showCasos && casosFiltrados.length === 0 && <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 12, background: COLORS.inputHover, borderRadius: 8 }}>{t("casos.sin_resultados")}</div>}
           {casosGuardados.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-              <button onClick={exportCSV} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.green}66`, background: COLORS.greenBg, color: COLORS.green, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📊 Exportar CSV</button>
-              <button onClick={exportJSON} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📥 Exportar JSON</button>
+              <button onClick={exportCSV} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.green}66`, background: COLORS.greenBg, color: COLORS.green, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📊 {t("casos.exportar_csv")}</button>
+              <button onClick={exportJSON} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📥 {t("casos.exportar_json")}</button>
             </div>
           )}
           <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.5 }}>
-            🔒 Solo tú ves los casos que guardas. Sincronizados en la nube.
-            <br />CSV se abre directo en Numbers o Excel. JSON sirve para entrenamiento de IA.
+            🔒 {t("casos.privacidad")}
+            <br />{t("casos.formatos")}
           </div>
         </Card>
         )}
@@ -1762,13 +1771,13 @@ export default function GAPCalculator() {
         {/* Disclaimer — nota editorial */}
         <div style={{ padding: "16px 20px", marginBottom: 16, fontSize: 12, color: COLORS.textDim, lineHeight: 1.6, textAlign: "center", borderTop: `1px solid ${COLORS.rule}`, borderBottom: `1px solid ${COLORS.rule}` }}>
           <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, fontSize: 9, fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", color: COLORS.secondary, background: COLORS.secondaryDim, marginBottom: 8, fontFamily: FONT_SANS }}>
-            Aviso
+            {t("aviso.etiqueta")}
           </span>
           <div style={{ fontFamily: FONT_SERIF, fontStyle: "italic", fontVariationSettings: "'opsz' 24, 'SOFT' 100", fontSize: 13, color: COLORS.text }}>
-            Esta es únicamente una herramienta de cálculo y no representa una recomendación clínica.
+            {t("aviso.texto")}
           </div>
           <div style={{ marginTop: 4, fontSize: 11, color: COLORS.textMuted }}>
-            Su uso es responsabilidad del médico que la utilice.
+            {t("aviso.responsabilidad")}
           </div>
           <div style={{ marginTop: 8, fontSize: 10, color: COLORS.textMuted, fontFamily: FONT_MONO }}>
             v{APP_VERSION}
@@ -1781,8 +1790,8 @@ export default function GAPCalculator() {
             onClick={() => setShowBiblio(!showBiblio)}
             style={{ width: "100%", padding: "14px 18px", background: "transparent", border: "none", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", fontSize: 13, fontWeight: 700, color: COLORS.text, fontFamily: "'DM Sans', sans-serif" }}
           >
-            <span>📚 Bibliografía ({REFERENCIAS.length})</span>
-            <span style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600 }}>{showBiblio ? "▲ Ocultar" : "▼ Mostrar"}</span>
+            <span>📚 {t("biblio.titulo")} ({REFERENCIAS.length})</span>
+            <span style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600 }}>{showBiblio ? `▲ ${t("common.ocultar")}` : `▼ ${t("common.mostrar")}`}</span>
           </button>
           {showBiblio && (
             <div style={{ maxHeight: 320, overflowY: "auto", borderTop: `1px solid ${COLORS.cardBorder}`, padding: "10px 18px 14px" }}>
@@ -1806,7 +1815,7 @@ export default function GAPCalculator() {
           onMouseEnter={e => e.currentTarget.style.opacity = 1}
           onMouseLeave={e => e.currentTarget.style.opacity = 0.85}>
           <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", color: COLORS.textMuted, fontFamily: FONT_SANS }}>
-            Una aplicación de
+            {t("splash.una_app_de")}
           </span>
           <img
             src={`${import.meta.env.BASE_URL}vml-logo.png`}
@@ -1867,9 +1876,9 @@ export default function GAPCalculator() {
         canEdit={canEdit}
         onSaveAnnotated={(dataUrl) => {
           const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-          const foto = { id: uid(), name: `anotada_${stamp}.jpg`, dataUrl, categoria: "Radiografía anotada" };
+          const foto = { id: uid(), name: `anotada_${stamp}.jpg`, dataUrl, categoria: CATEGORIA_FOTO_ANOTADA };
           setFotos(prev => [...prev, foto]);
-          showToast("Imagen anotada agregada al caso ✓");
+          showToast(t("toast.imagen_anotada"));
         }}
         onApply={(v) => {
           if (v.pi !== undefined) setPI(v.pi);
@@ -1891,7 +1900,7 @@ export default function GAPCalculator() {
           // Contar por lista explícita: `geometry` no es una medición y con
           // Object.keys se colaría en el número que ve el usuario.
           const count = MEASUREMENT_KEYS.filter(k => v[k] !== undefined).length;
-          showToast(`${count} medición${count === 1 ? "" : "es"} aplicada${count === 1 ? "" : "s"} al formulario ✓`);
+          showToast(t(count === 1 ? "toast.medicion_aplicada" : "toast.mediciones_aplicadas", { n: count }));
         }}
       />
       </div>

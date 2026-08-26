@@ -103,4 +103,17 @@ const DEFS = [
 if (DEFS.length !== LANDMARK_KEYS.length) {
   throw new Error(`LANDMARK_DEFS (${DEFS.length}) y LANDMARK_KEYS (${LANDMARK_KEYS.length}) no coinciden`);
 }
-export const LANDMARK_DEFS = DEFS.map((d, i) => ({ ...d, key: LANDMARK_KEYS[i] }));
+// Además de la clave persistida se derivan las claves i18n de los textos
+// visibles. Los campos en español se conservan como fuente del diccionario y
+// como respaldo fuera de la interfaz.
+export const LANDMARK_DEFS = DEFS.map((d, i) => {
+  const key = LANDMARK_KEYS[i];
+  return {
+    ...d,
+    key,
+    shortKey: `landmark.${key}.short`,
+    labelKey: `landmark.${key}.label`,
+    queKey: `landmark.${key}.que`,
+    dondeKey: `landmark.${key}.donde`,
+  };
+});

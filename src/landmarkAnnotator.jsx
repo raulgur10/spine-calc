@@ -3,6 +3,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, linePairAngle } from "./geometry";
 import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
+import { useI18n } from "./i18n";
 
 const COLORS = {
   bg: "#1a1a1a",
@@ -21,81 +22,32 @@ const COLORS = {
 // Definiciones de ángulos calculados — explicación + esquema para el desplegable
 // "¿Cómo se calcula?" en el panel derecho.
 const ANGLE_DEFS = {
-  pi: {
-    label: "PI",
-    fullName: "Pelvic Incidence · Incidencia Pélvica",
-    explicacion: "Ángulo entre la perpendicular al platillo superior de S1 (en su punto medio) y la línea S1 mid → centro bicoxofemoral. Es una constante anatómica de cada persona: no cambia con la postura. Por identidad geométrica, PI = PT + SS siempre.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pi.png`
-  },
-  ss: {
-    label: "SS",
-    fullName: "Sacral Slope · Pendiente Sacra",
-    explicacion: "Inclinación del platillo superior de S1 respecto a la horizontal real. Valor típico 30–50°. Refleja la posición postural del sacro: aumenta al inclinar la pelvis hacia adelante.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_ss.png`
-  },
-  pt: {
-    label: "PT",
-    fullName: "Pelvic Tilt · Versión Pélvica",
-    explicacion: "Ángulo entre la vertical y la línea fémur mid → S1 mid. Valor típico 5–20°. Refleja la rotación pélvica: aumenta como mecanismo compensador frente a desbalance sagital.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pt.png`
-  },
-  l1s1: {
-    label: "L1–S1",
-    fullName: "Lordosis Lumbar Total",
-    explicacion: "Ángulo de Cobb entre el platillo superior de L1 y el platillo superior de S1. Es la lordosis lumbar total. El target ideal individual depende de la PI (≈ 0.62·PI + 29).",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`
-  },
-  l4s1: {
-    label: "L4–S1",
-    fullName: "Lordosis Distal",
-    explicacion: "Ángulo de Cobb entre el platillo superior de L4 y el platillo superior de S1. Captura los segmentos lumbares más caudales, donde reside ≈65% de la lordosis total en una columna fisiológica.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l4s1.png`
-  },
-  gt: {
-    label: "GT",
-    fullName: "Global Tilt · Inclinación Global",
-    explicacion: "Ángulo en fémur mid entre las rectas fémur mid → C7 y fémur mid → S1 mid. Mide el desbalance global del tronco respecto a la pelvis. 0° cuando C7, S1 mid y eje bicoxofemoral son colineales.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png`
-  }
+  pi:   { label: "PI",    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pi.png` },
+  ss:   { label: "SS",    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_ss.png` },
+  pt:   { label: "PT",    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_pt.png` },
+  l1s1: { label: "L1–S1", figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png` },
+  l4s1: { label: "L4–S1", figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l4s1.png` },
+  gt:   { label: "GT",    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png` }
 };
 
 const HILLS_DEFS = {
-  l1pa: {
-    label: "L1PA",
-    fullName: "L1 Pelvic Angle (Hills 2022)",
-    explicacion: "Ángulo en fémur mid entre la línea al centroide de L1 y la línea a S1 mid, con signo (positivo si L1 cae anterior al eje fémur–S1). Es el target normativo propuesto por Hills 2022: L1PA ideal ≈ 0.5·PI − 21.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png`
-  },
-  t4pa: {
-    label: "T4PA",
-    fullName: "T4 Pelvic Angle (Hills 2022)",
-    explicacion: "Análogo a L1PA pero usando el centroide de T4. En una columna alineada T4PA ≈ L1PA (eje T4–L1–cadera alineado). Una diferencia |T4PA − L1PA| > 4° sugiere desalineación cefálica.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
-  },
-  c2tilt: {
-    label: "C2 tilt",
-    fullName: "Tilt vertebral C2 (Hills 2022)",
-    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide C2. Rango normal: −4.4° a −1.1° (ligeramente posterior al eje bicoxofemoral). Fuera del intervalo indica compensación cervical.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
-  },
-  t1tilt: {
-    label: "T1 tilt",
-    fullName: "Tilt vertebral T1 (Hills 2022)",
-    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide T1. Rango normal: −7.0° a −3.6°. Valores positivos sugieren desbalance torácico anterior.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png`
-  },
-  l1tilt: {
-    label: "L1 tilt",
-    fullName: "Tilt vertebral L1 (Hills 2022)",
-    explicacion: "Ángulo desde la vertical real de la línea fémur mid → centroide L1. Rango normal: −10.3° a −5.1°. Útil como complemento al L1PA para evaluar la posición del ápex lordótico.",
-    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png`
-  }
+  l1pa:   { label: "L1PA",    figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_gt.png` },
+  t4pa:   { label: "T4PA",    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
+  c2tilt: { label: "C2 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
+  t1tilt: { label: "T1 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
+  l1tilt: { label: "L1 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png` }
 };
+
+// El nombre completo y la explicación de cada ángulo viven en el diccionario:
+// `angulo.<key>.nombre` y `angulo.<key>.explicacion`.
+const angleNameKey = (key) => `angulo.${key}.nombre`;
+const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
 export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onSaveAnnotated }) {
+  const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
   // Identidad del archivo cargado. Sin ella, unas coordenadas en píxeles no se
@@ -880,31 +832,31 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       {/* Top bar */}
       <div style={{ padding: "10px 16px", background: COLORS.panel, borderBottom: `1px solid ${COLORS.panelLight}`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>📐 Anotador de radiografía</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>📐 {t("anot.titulo")}</span>
           {imageSrc && <span style={{ fontSize: 11, color: COLORS.textDim, fontFamily: "'JetBrains Mono', monospace" }}>{imageDims.w} × {imageDims.h} px</span>}
           {calibration && <span style={{ fontSize: 11, color: COLORS.green, fontFamily: "'JetBrains Mono', monospace" }}>· {(1 / calibration.mmPerPx).toFixed(2)} px/mm</span>}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {imageSrc && (
             <>
-              <button onClick={handleUndo} title="Deshacer (⌘Z / Ctrl+Z)" style={btnSecondary(false)}>↶ Deshacer</button>
-              <button onClick={handleRedo} title="Rehacer (⇧⌘Z / Ctrl+Y)" style={btnSecondary(false)}>↷ Rehacer</button>
-              <button onClick={handleResetGAP} style={btnSecondary(false)}>Reiniciar GAP</button>
-              <button onClick={clearFreeMeasurements} style={btnSecondary(false)}>Limpiar mediciones libres</button>
-              <button onClick={handleClearImage} style={btnSecondary(false)}>Cambiar imagen</button>
+              <button onClick={handleUndo} title={t("anot.deshacer.title")} style={btnSecondary(false)}>↶ {t("anot.deshacer")}</button>
+              <button onClick={handleRedo} title={t("anot.rehacer.title")} style={btnSecondary(false)}>↷ {t("anot.rehacer")}</button>
+              <button onClick={handleResetGAP} style={btnSecondary(false)}>{t("anot.reiniciar_gap")}</button>
+              <button onClick={clearFreeMeasurements} style={btnSecondary(false)}>{t("anot.limpiar_libres")}</button>
+              <button onClick={handleClearImage} style={btnSecondary(false)}>{t("anot.cambiar_imagen")}</button>
             </>
           )}
-          <button onClick={onClose} style={{ ...btnSecondary(false), borderColor: COLORS.red, color: COLORS.red }}>✕ Cerrar</button>
+          <button onClick={onClose} style={{ ...btnSecondary(false), borderColor: COLORS.red, color: COLORS.red }}>✕ {t("common.cerrar")}</button>
         </div>
       </div>
 
       {/* Tool selector */}
       {imageSrc && (
         <div style={{ padding: "8px 16px", background: COLORS.panel, borderBottom: `1px solid ${COLORS.panelLight}`, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>Herramienta</span>
+          <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginRight: 4 }}>{t("anot.herramienta")}</span>
           <button onClick={() => { setTool("gap"); setPendingPtId(null); }} style={btnTool(tool === "gap", "#a8927a")}>🎯 GAP</button>
-          <button onClick={() => { setTool("line"); setPendingPtId(null); }} style={btnTool(tool === "line", COLORS.cyan)}>📐 Medir (línea/ángulo)</button>
-          <button onClick={() => { setTool("calibrate"); setPendingPtId(null); }} style={btnTool(tool === "calibrate", COLORS.green)}>⚖ Calibrar</button>
+          <button onClick={() => { setTool("line"); setPendingPtId(null); }} style={btnTool(tool === "line", COLORS.cyan)}>📐 {t("anot.tool.medir")}</button>
+          <button onClick={() => { setTool("calibrate"); setPendingPtId(null); }} style={btnTool(tool === "calibrate", COLORS.green)}>⚖ {t("anot.tool.calibrar")}</button>
           {/* Interruptor: prende y apaga la línea horizontal amarilla. Sin
               línea, SS y PT se calculan contra el eje X de la imagen. */}
           <button onClick={() => {
@@ -922,21 +874,21 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               setPendingPtId(null);
               setTool("horizontal");
             }
-          }} title={horizontalRef ? "Ocultar la línea horizontal" : "Mostrar la línea horizontal"}
+          }} title={horizontalRef ? t("anot.horizontal.ocultar") : t("anot.horizontal.mostrar")}
             style={btnTool(!!horizontalRef, "#fbbf24")}>
-            {horizontalRef ? "✓ 📏 Horizontal" : "📏 Horizontal"}
+            {horizontalRef ? `✓ 📏 ${t("anot.tool.horizontal")}` : `📏 ${t("anot.tool.horizontal")}`}
           </button>
           <button onClick={() => { setTool("pan"); setPendingPtId(null); }} style={btnTool(tool === "pan", "#888")}>🤚 Pan/Zoom</button>
           {tool === "gap" && (
             <button onClick={() => setGapMode(gapMode === "free" ? "wizard" : "free")} style={{ ...btnTool(gapMode === "free", COLORS.yellow), marginLeft: 12 }}>
-              {gapMode === "free" ? "✓ Solo arrastrar" : "Solo arrastrar"}
+              {gapMode === "free" ? `✓ ${t("anot.solo_arrastrar")}` : t("anot.solo_arrastrar")}
             </button>
           )}
           {/* Tamaño de los marcadores. El zoom ya no los agranda, pero el
               tamaño base depende de la resolución de la placa. */}
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 12, padding: "3px 10px", borderRadius: 6, background: COLORS.panelLight }}
-            title="Tamaño de los puntos, líneas y etiquetas (no cambia con el zoom)">
-            <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>⬤ Tamaño</span>
+            title={t("anot.tamano.title")}>
+            <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>⬤ {t("anot.tamano")}</span>
             <input type="range" min="0.4" max="2.5" step="0.1" value={markerScale}
               onChange={e => setMarkerScale(Number(e.target.value))}
               style={{ width: 84, accentColor: COLORS.accent, cursor: "pointer" }} />
@@ -983,13 +935,13 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                   <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>SRS-Schwab</span>
                   {chip("PI−LL", partial.piLL, "°", gPiLL)}
                   {chip("PT", partial.pt, "°", gPt)}
-                  {chip("SVA", svaCm, " cm", gSva, partial.svaPx !== undefined && !calibration ? "calibra →" : null)}
+                  {chip("SVA", svaCm, " cm", gSva, partial.svaPx !== undefined && !calibration ? t("anot.calibra_flecha") : null)}
                 </span>
                 {roussouly && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 10, color: COLORS.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Roussouly</span>
                     <span style={{ padding: "4px 10px", borderRadius: 6, background: roussouly.color + "22", color: roussouly.color, border: `1px solid ${roussouly.color}66`, fontSize: 12, fontWeight: 800, fontFamily: "'JetBrains Mono', monospace" }}>
-                      Tipo {roussouly.type}
+                      {t("roussouly.tipo_n", { n: roussouly.type })}
                     </span>
                   </span>
                 )}
@@ -1002,46 +954,46 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
       {/* Hint compacto: solo nombre del punto activo. Detalle completo vive en el panel derecho. */}
       {imageSrc && tool === "gap" && currentDef && gapMode === "wizard" && (
         <div style={{ padding: "8px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>Punto {step + 1}/{LANDMARK_DEFS.length}{currentDef.optional ? " · opc." : ""}</span>
-          <span style={{ fontWeight: 700, color: COLORS.text }}>{currentDef.label}</span>
-          <span style={{ color: COLORS.textDim, marginLeft: "auto", fontSize: 11, fontStyle: "italic" }}>Detalles → panel derecho · "¿Cómo medir?"</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: currentDef.color, fontSize: 13 }}>{t("anot.punto_n", { n: step + 1, total: LANDMARK_DEFS.length })}{currentDef.optional ? ` · ${t("anot.opc")}` : ""}</span>
+          <span style={{ fontWeight: 700, color: COLORS.text }}>{t(currentDef.labelKey)}</span>
+          <span style={{ color: COLORS.textDim, marginLeft: "auto", fontSize: 11, fontStyle: "italic" }}>{t("anot.detalles_panel")}</span>
         </div>
       )}
       {imageSrc && tool === "gap" && gapMode === "free" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12 }}>
-          Modo "solo arrastrar": clicks en la imagen no colocan puntos nuevos. Arrastra los puntos GAP existentes para reposicionarlos. Cambia a "GAP" wizard si quieres seguir colocando puntos.
+          {t("anot.modo_arrastrar.ayuda")}
         </div>
       )}
       {imageSrc && tool === "line" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12, lineHeight: 1.55 }}>
-          <strong>Línea / ángulo:</strong> click 2 puntos para crear una línea. Sola, muestra su distancia.
-          Al trazar la <strong>segunda</strong>, las dos se emparejan (1ª+2ª, 3ª+4ª…) y se rotula el <strong>ángulo entre ellas</strong>.
-          Arrastra cualquier endpoint para ajustar: el ángulo se recalcula en vivo.
-          Para fusionar dos endpoints en uno, arrastra uno encima del otro.
-          Click sobre una línea para seleccionarla; <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd>/<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Backspace</kbd> la borra. <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Esc</kbd> cancela.
-          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? "Click siguiente punto…" : (selectedSegId ? "Línea seleccionada (Delete para borrar)" : "Click primer punto.")}</span>
+          <strong>{t("anot.linea.titulo")}</strong> {t("anot.linea.p1")}
+          {" "}{t("anot.linea.p2a")}<strong>{t("anot.linea.p2b")}</strong>{t("anot.linea.p2c")}<strong>{t("anot.linea.p2d")}</strong>.
+          {" "}{t("anot.linea.p3")}
+          {" "}{t("anot.linea.p4")}
+          {" "}{t("anot.linea.p5a")}<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Delete</kbd>/<kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Backspace</kbd>{t("anot.linea.p5b")} <kbd style={{ background: COLORS.panel, padding: "1px 5px", borderRadius: 4, border: `1px solid ${COLORS.panelLight}`, fontFamily: "monospace", fontSize: 11 }}>Esc</kbd>{t("anot.linea.p5c")}
+          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? t("anot.click_siguiente") : (selectedSegId ? t("anot.linea_seleccionada") : t("anot.click_primero"))}</span>
           <button onClick={() => setShowPairAngles(v => !v)}
-            title="Mostrar u ocultar el ángulo entre cada par de líneas"
+            title={t("anot.pares.title")}
             style={{ ...btnTool(showPairAngles, COLORS.cyan), marginLeft: 10, padding: "3px 9px", fontSize: 10 }}>
-            {showPairAngles ? "✓ ∠ entre pares" : "∠ entre pares"}
+            {showPairAngles ? `✓ ∠ ${t("anot.entre_pares")}` : `∠ ${t("anot.entre_pares")}`}
           </button>
         </div>
       )}
       {imageSrc && tool === "calibrate" && !calibratePending && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12 }}>
-          Click 2 puntos sobre una distancia conocida (regla en la radiografía, marcador esférico, altura típica de un cuerpo vertebral). Después podrás ingresar a cuántos mm corresponde.
-          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? "Click segundo punto…" : "Click primer punto."}</span>
+          {t("anot.calibrar.ayuda")}
+          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{pendingPtId ? t("anot.click_segundo") : t("anot.click_primero")}</span>
         </div>
       )}
       {imageSrc && tool === "horizontal" && (
         <div style={{ padding: "10px 16px", background: "#fbbf24" + "22", borderBottom: `1px solid #fbbf2466`, color: "#fbbf24", fontSize: 12, lineHeight: 1.55 }}>
-          <strong>Definir horizontal real:</strong> arrastra los dos extremos amarillos de la línea que ya está abajo, o click 2 puntos sobre algo que sabes está horizontal (borde de mesa, plomo, marcador, suelo). Se usa para corregir SS y PT cuando la radiografía no está bien alineada. PI y los Cobb (L1-S1, L4-S1) no necesitan esto — son geométricos.
-          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{horizontalPending ? "Click segundo punto…" : "Click primer punto."}</span>
+          <strong>{t("anot.horizontal.titulo")}</strong> {t("anot.horizontal.ayuda")}
+          <span style={{ color: COLORS.textDim, fontStyle: "italic", marginLeft: 6 }}>{horizontalPending ? t("anot.click_segundo") : t("anot.click_primero")}</span>
         </div>
       )}
       {imageSrc && tool === "pan" && (
         <div style={{ padding: "10px 16px", background: COLORS.panelLight, borderBottom: `1px solid ${COLORS.panelLight}`, color: COLORS.text, fontSize: 12 }}>
-          Pan/Zoom activo: rueda del ratón para zoom, arrastra para mover la imagen.
+          {t("anot.pan.ayuda")}
         </div>
       )}
 
@@ -1052,7 +1004,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         const px = a && b ? distance(a, b) : 0;
         return (
           <div style={{ padding: "10px 16px", background: COLORS.green + "22", borderBottom: `1px solid ${COLORS.green}66`, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 12, color: COLORS.green, fontWeight: 700 }}>⚖ Línea de calibración: {Math.round(px)} px =</span>
+            <span style={{ fontSize: 12, color: COLORS.green, fontWeight: 700 }}>⚖ {t("anot.calib.linea", { px: Math.round(px) })}</span>
             <input
               type="number"
               autoFocus
@@ -1062,8 +1014,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               placeholder="mm"
               style={{ width: 100, padding: "6px 8px", borderRadius: 6, border: `1.5px solid ${COLORS.green}`, background: COLORS.panel, color: COLORS.text, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", outline: "none" }} />
             <span style={{ fontSize: 12, color: COLORS.green, fontWeight: 700 }}>mm</span>
-            <button onClick={applyCalibration} style={{ padding: "6px 12px", borderRadius: 6, border: `1.5px solid ${COLORS.green}`, background: COLORS.green, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Aplicar calibración</button>
-            <button onClick={cancelCalibration} style={btnSecondary(false)}>Cancelar</button>
+            <button onClick={applyCalibration} style={{ padding: "6px 12px", borderRadius: 6, border: `1.5px solid ${COLORS.green}`, background: COLORS.green, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{t("anot.calib.aplicar")}</button>
+            <button onClick={cancelCalibration} style={btnSecondary(false)}>{t("common.cancelar")}</button>
           </div>
         );
       })()}
@@ -1077,11 +1029,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
               <div style={{ textAlign: "center", color: COLORS.textDim, maxWidth: 480 }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>📷</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>Carga una radiografía lateral</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>{t("anot.carga.titulo")}</div>
                 <div style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.6, marginBottom: 20 }}>
-                  Arrastra y suelta una imagen aquí o usa el botón. JPG/PNG. Idealmente teleradiografía completa de columna en bipedestación.
+                  {t("anot.carga.ayuda")}
                 </div>
-                <button onClick={() => fileInputRef.current?.click()} style={{ padding: "12px 22px", borderRadius: 10, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Elegir archivo</button>
+                <button onClick={() => fileInputRef.current?.click()} style={{ padding: "12px 22px", borderRadius: 10, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>{t("anot.carga.elegir")}</button>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={e => loadFile(e.target.files?.[0])} style={{ display: "none" }} />
               </div>
             </div>
@@ -1168,8 +1120,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                         <line x1={horizontalRef.p1.x} y1={horizontalRef.p1.y} x2={horizontalRef.p2.x} y2={horizontalRef.p2.y} stroke="#fbbf24" strokeWidth={dim ? strokeWidth * 0.9 : strokeWidth * 1.2} strokeOpacity={dim ? 0.7 : 0.85} pointerEvents="none" />
                         <text x={(horizontalRef.p1.x + horizontalRef.p2.x) / 2} y={(horizontalRef.p1.y + horizontalRef.p2.y) / 2 - radius * 0.8} fill={dim ? "#fbbf24" : "#fff"} stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" fontSize={dim ? radius * 1.0 : radius * 1.4} fontWeight="700" textAnchor="middle" pointerEvents="none">
                           {dim
-                            ? "referencia horizontal — arrastra solo si la placa está inclinada"
-                            : `horizontal · ${horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : ""} · arrastra ⇄`}
+                            ? t("anot.horizontal.canvas_dim")
+                            : t("anot.horizontal.canvas", { ang: horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : "" })}
                         </text>
                         {["p1", "p2"].map(key => (
                           <circle key={key} cx={horizontalRef[key].x} cy={horizontalRef[key].y} r={dim ? radius * 0.8 : radius * 1.1} fill="#fbbf24" stroke="#000" strokeWidth={strokeWidth * 0.6}
@@ -1289,10 +1241,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           {/* Controles flotantes de zoom */}
           {imageSrc && (
             <div style={{ position: "absolute", right: 14, bottom: 14, display: "flex", flexDirection: "column", gap: 4, zIndex: 20 }}>
-              <button onClick={() => transformRef.current?.zoomIn(0.3)} title="Acercar (zoom +)" style={zoomBtnStyle}>+</button>
-              <button onClick={() => transformRef.current?.zoomOut(0.3)} title="Alejar (zoom −)" style={zoomBtnStyle}>−</button>
-              <button onClick={() => transformRef.current?.resetTransform()} title="Restablecer zoom" style={{ ...zoomBtnStyle, fontSize: 14 }}>⊕</button>
-              <button onClick={() => transformRef.current?.centerView()} title="Centrar imagen" style={{ ...zoomBtnStyle, fontSize: 13 }}>◯</button>
+              <button onClick={() => transformRef.current?.zoomIn(0.3)} title={t("anot.zoom.mas")} style={zoomBtnStyle}>+</button>
+              <button onClick={() => transformRef.current?.zoomOut(0.3)} title={t("anot.zoom.menos")} style={zoomBtnStyle}>−</button>
+              <button onClick={() => transformRef.current?.resetTransform()} title={t("anot.zoom.reset")} style={{ ...zoomBtnStyle, fontSize: 14 }}>⊕</button>
+              <button onClick={() => transformRef.current?.centerView()} title={t("anot.zoom.centrar")} style={{ ...zoomBtnStyle, fontSize: 13 }}>◯</button>
             </div>
           )}
 
@@ -1303,26 +1255,26 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
               <div style={{ maxWidth: 420, background: COLORS.panel, border: `1.5px solid #fbbf2466`, borderRadius: 12, padding: "22px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.6)", textAlign: "center" }}>
                 <div style={{ fontSize: 30, marginBottom: 10 }}>📏</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.text, marginBottom: 10 }}>¿La placa está bien alineada?</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: COLORS.text, marginBottom: 10 }}>{t("anot.align.titulo")}</div>
                 <div style={{ fontSize: 12.5, color: COLORS.textDim, lineHeight: 1.6, marginBottom: 18 }}>
-                  Si está desalineada, ajusta la <strong style={{ color: "#fbbf24" }}>línea horizontal amarilla</strong> que aparece abajo para corregir <strong style={{ color: COLORS.text }}>SS</strong> y <strong style={{ color: COLORS.text }}>PT</strong>.
+                  {t("anot.align.p1a")}<strong style={{ color: "#fbbf24" }}>{t("anot.align.linea_amarilla")}</strong>{t("anot.align.p1b")}<strong style={{ color: COLORS.text }}>SS</strong>{t("anot.align.p1c")}<strong style={{ color: COLORS.text }}>PT</strong>.
                   <br />
-                  El PI y los Cobb (L1-S1, L4-S1) no la necesitan: son geométricos.
+                  {t("anot.align.p2")}
                   <br />
-                  Si eliges que está bien, la línea no se dibuja; puedes prenderla después con el botón 📏 Horizontal.
+                  {t("anot.align.p3", { boton: t("anot.tool.horizontal") })}
                 </div>
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
                   <button onClick={() => { setShowAlignPrompt(false); setTool("horizontal"); setHorizontalPending(null); setHorizontalTouched(true); }}
                     style={{ padding: "10px 18px", borderRadius: 8, border: "1.5px solid #fbbf24", background: "#fbbf24", color: "#1a1a1a", fontSize: 12.5, fontWeight: 800, cursor: "pointer" }}>
-                    Ajustar horizontal
+                    {t("anot.align.ajustar")}
                   </button>
                   <button onClick={() => { setShowAlignPrompt(false); setHorizontalRef(null); setHorizontalPending(null); }}
                     style={{ ...btnSecondary(false), padding: "10px 18px", fontSize: 12.5 }}>
-                    Está bien así
+                    {t("anot.align.esta_bien")}
                   </button>
                 </div>
                 <div style={{ fontSize: 10.5, color: COLORS.textDim, fontStyle: "italic", marginTop: 14, lineHeight: 1.5 }}>
-                  Puedes cambiarla en cualquier momento con el botón 📏 Horizontal de la barra.
+                  {t("anot.align.nota", { boton: t("anot.tool.horizontal") })}
                 </div>
               </div>
             </div>
@@ -1333,7 +1285,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
         <div style={{ width: 320, background: COLORS.panel, borderLeft: `1px solid ${COLORS.panelLight}`, padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
           {/* GAP landmarks (clickeables para saltar) */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Puntos GAP — click para elegir</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.puntos_gap")}</div>
             {LANDMARK_DEFS.map(d => {
               const placed = landmarks[d.idx] !== null;
               const isCurrent = step === d.idx && tool === "gap" && gapMode === "wizard";
@@ -1342,10 +1294,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                   <span style={{ width: 18, height: 18, borderRadius: "50%", background: placed ? d.color : "transparent", border: `2px solid ${d.color}`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
                     {placed ? "✓" : d.idx + 1}
                   </span>
-                  <span style={{ color: placed ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{d.short}</span>
+                  <span style={{ color: placed ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{t(d.shortKey)}</span>
                   {placed && (
                     <span onClick={(e) => { e.stopPropagation(); const newLm = [...landmarks]; newLm[d.idx] = null; setLandmarks(newLm); if (step > d.idx) setStep(d.idx); }}
-                      style={{ color: COLORS.textDim, fontSize: 14, padding: "0 4px", lineHeight: 1, cursor: "pointer" }} title="Borrar este punto">×</span>
+                      style={{ color: COLORS.textDim, fontSize: 14, padding: "0 4px", lineHeight: 1, cursor: "pointer" }} title={t("anot.borrar_punto")}>×</span>
                   )}
                 </button>
               );
@@ -1355,27 +1307,27 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             {currentDef && tool === "gap" && gapMode === "wizard" && (
               <div style={{ marginTop: 8, border: `1px solid ${COLORS.panelLight}`, borderRadius: 6, overflow: "hidden" }}>
                 <button onClick={() => setShowHowTo(s => !s)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: showHowTo ? COLORS.panelLight : "transparent", border: "none", color: COLORS.text, fontSize: 12, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
-                  <span>¿Cómo medir <span style={{ color: currentDef.color }}>{currentDef.short}</span>?</span>
+                  <span>{t("anot.como_medir.1")}<span style={{ color: currentDef.color }}>{t(currentDef.shortKey)}</span>{t("anot.como_medir.2")}</span>
                   <span style={{ color: COLORS.textDim, fontSize: 14 }}>{showHowTo ? "▾" : "▸"}</span>
                 </button>
                 {showHowTo && (
                   <div style={{ padding: "10px 12px", fontSize: 11.5, lineHeight: 1.5, background: COLORS.panel, borderTop: `1px solid ${COLORS.panelLight}` }}>
-                    <div style={{ fontWeight: 700, color: currentDef.color, marginBottom: 6, fontSize: 12 }}>{currentDef.label}</div>
-                    <div style={{ color: COLORS.textDim, marginBottom: 6 }}><strong style={{ color: COLORS.text }}>Qué medir:</strong> {currentDef.que}</div>
-                    <div style={{ color: COLORS.textDim, marginBottom: 8 }}><strong style={{ color: COLORS.text }}>Dónde colocarlo:</strong> {currentDef.donde}</div>
+                    <div style={{ fontWeight: 700, color: currentDef.color, marginBottom: 6, fontSize: 12 }}>{t(currentDef.labelKey)}</div>
+                    <div style={{ color: COLORS.textDim, marginBottom: 6 }}><strong style={{ color: COLORS.text }}>{t("anot.que_medir")}:</strong> {t(currentDef.queKey)}</div>
+                    <div style={{ color: COLORS.textDim, marginBottom: 8 }}><strong style={{ color: COLORS.text }}>{t("anot.donde_colocarlo")}:</strong> {t(currentDef.dondeKey)}</div>
                     {/* Figura esquemática (placeholder hasta que se agreguen los dibujos definitivos) */}
                     <div style={{ background: "#0f172a", borderRadius: 4, padding: 8, display: "flex", alignItems: "center", justifyContent: "center", minHeight: 120, border: `1px dashed ${COLORS.panelLight}` }}>
                       {currentDef.figureSrc ? (
-                        <img src={currentDef.figureSrc} alt={currentDef.label} style={{ maxWidth: "100%", maxHeight: 180, objectFit: "contain" }} />
+                        <img src={currentDef.figureSrc} alt={t(currentDef.labelKey)} style={{ maxWidth: "100%", maxHeight: 180, objectFit: "contain" }} />
                       ) : (
                         <div style={{ color: COLORS.textDim, fontSize: 10, fontStyle: "italic", textAlign: "center" }}>
-                          (esquema pendiente)<br/>
-                          <span style={{ fontSize: 9 }}>colocar en <code style={{ fontFamily: "monospace" }}>public/landmarks/{currentDef.short.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.png</code></span>
+                          {t("anot.esquema_pendiente")}<br/>
+                          <span style={{ fontSize: 9 }}>{t("anot.colocar_en")} <code style={{ fontFamily: "monospace" }}>public/landmarks/{currentDef.key.toLowerCase()}.png</code></span>
                         </div>
                       )}
                     </div>
                     <div style={{ marginTop: 6, color: COLORS.textDim, fontSize: 10, fontStyle: "italic" }}>
-                      Tip: <kbd style={{ background: COLORS.panel, padding: "0 4px", borderRadius: 3, fontFamily: "monospace", fontSize: 10, border: `1px solid ${COLORS.panelLight}` }}>Delete</kbd> borra el punto seleccionado · no es obligatorio seguir el orden.
+                      {t("anot.tip")}: <kbd style={{ background: COLORS.panel, padding: "0 4px", borderRadius: 3, fontFamily: "monospace", fontSize: 10, border: `1px solid ${COLORS.panelLight}` }}>Delete</kbd> {t("anot.tip.texto")}
                     </div>
                   </div>
                 )}
@@ -1385,7 +1337,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
 
           {/* Resultados parciales */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Cálculos GAP</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.calculos_gap")}</div>
             {["pi", "ss", "pt", "l1s1", "l4s1", "gt"].map(key => {
               const v = partial[key];
               const def = ANGLE_DEFS[key];
@@ -1402,11 +1354,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                   </button>
                   {isOpen && (
                     <div style={{ padding: "8px 10px 10px", fontSize: 11, lineHeight: 1.5, color: COLORS.textDim, background: COLORS.panel, borderTop: `1px dashed ${COLORS.panelLight}` }}>
-                      <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{def.fullName}</div>
-                      <div style={{ marginBottom: 8 }}>{def.explicacion}</div>
+                      <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{t(angleNameKey(key))}</div>
+                      <div style={{ marginBottom: 8 }}>{t(angleExplainKey(key))}</div>
                       {def.figureSrc && (
                         <div style={{ background: "#0f172a", borderRadius: 4, padding: 6, display: "flex", justifyContent: "center", border: `1px solid ${COLORS.panelLight}` }}>
-                          <img src={def.figureSrc} alt={def.fullName} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
+                          <img src={def.figureSrc} alt={t(angleNameKey(key))} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
                         </div>
                       )}
                     </div>
@@ -1418,7 +1370,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
               <div style={{ marginTop: 8, padding: 8, borderRadius: 6, background: COLORS.yellow + "22", border: `1px solid ${COLORS.yellow}66`, color: COLORS.yellow, fontSize: 11, fontWeight: 600, lineHeight: 1.45 }}>
                 ⚠ PI ≠ PT + SS (Δ {partial.consistencyDelta >= 0 ? "+" : ""}{partial.consistencyDelta.toFixed(1)}°).
                 <br />
-                Si la placa está rotada, ajusta la línea horizontal amarilla 📏 arrastrando sus extremos. Si no, revisa los puntos del platillo S1 y las cabezas femorales.
+                {t("anot.inconsistencia.ayuda")}
               </div>
             )}
             {/* Hills 2022 — opcionales (L1PA y L1 tilt salen "gratis" del platillo L1) */}
@@ -1442,11 +1394,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                       </button>
                       {isOpen && (
                         <div style={{ padding: "8px 10px 10px", fontSize: 11, lineHeight: 1.5, color: COLORS.textDim, background: COLORS.panel, borderTop: `1px dashed ${COLORS.panelLight}` }}>
-                          <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{def.fullName}</div>
-                          <div style={{ marginBottom: 8 }}>{def.explicacion}</div>
+                          <div style={{ fontWeight: 700, color: COLORS.text, marginBottom: 6, fontSize: 11.5 }}>{t(angleNameKey(key))}</div>
+                          <div style={{ marginBottom: 8 }}>{t(angleExplainKey(key))}</div>
                           {def.figureSrc && (
                             <div style={{ background: "#0f172a", borderRadius: 4, padding: 6, display: "flex", justifyContent: "center", border: `1px solid ${COLORS.panelLight}` }}>
-                              <img src={def.figureSrc} alt={def.fullName} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
+                              <img src={def.figureSrc} alt={t(angleNameKey(key))} style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain" }} />
                             </div>
                           )}
                         </div>
@@ -1466,10 +1418,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>SRS-Schwab</div>
                   {[
-                    { key: "piLL", label: "PI − LL",  val: partial.piLL, unit: "°",  grade: gPiLL, t: "0:<10° · +:10-20° · ++:>20°" },
-                    { key: "pt",   label: "PT",        val: partial.pt,    unit: "°",  grade: gPt,   t: "0:<20° · +:20-30° · ++:>30°" },
-                    { key: "sva",  label: "SVA",       val: svaCm,         unit: " cm", grade: gSva,  t: "0:<4cm · +:4-9.5cm · ++:>9.5cm",
-                      altText: partial.svaPx !== undefined && !calibration ? `${Math.round(partial.svaPx)} px (calibra para cm)` : null },
+                    { key: "piLL", label: "PI − LL",  val: partial.piLL, unit: "°",  grade: gPiLL },
+                    { key: "pt",   label: "PT",        val: partial.pt,    unit: "°",  grade: gPt },
+                    { key: "sva",  label: "SVA",       val: svaCm,         unit: " cm", grade: gSva,
+                      altText: partial.svaPx !== undefined && !calibration ? t("anot.sva_px", { px: Math.round(partial.svaPx) }) : null },
                   ].map(row => (
                     <div key={row.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", borderBottom: `1px solid ${COLORS.panelLight}` }}>
                       <span style={{ color: COLORS.textDim }}>{row.label}</span>
@@ -1489,7 +1441,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                   ))}
                   {partial.svaPx !== undefined && !calibration && (
                     <div style={{ marginTop: 6, fontSize: 10, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.4 }}>
-                      Para gradar SVA usa ⚖ Calibrar (longitud conocida en mm) o ingresa el valor manualmente en el formulario.
+                      {t("anot.sva.calibrar_nota", { boton: t("anot.tool.calibrar") })}
                     </div>
                   )}
                 </div>
@@ -1497,19 +1449,19 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             })()}
 
             <button onClick={handleApply} disabled={!anyAngle} style={{ marginTop: 12, width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${anyAngle ? COLORS.green : COLORS.panelLight}`, background: anyAngle ? COLORS.green : "transparent", color: anyAngle ? "#fff" : COLORS.textDim, fontSize: 13, fontWeight: 700, cursor: anyAngle ? "pointer" : "not-allowed", opacity: anyAngle ? 1 : 0.5 }}>
-              Aplicar valores disponibles al formulario
+              {t("anot.aplicar")}
             </button>
-            {!anyAngle && <div style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic", marginTop: 6, textAlign: "center" }}>Coloca al menos los puntos S1 (post + ant) para empezar a obtener valores.</div>}
+            {!anyAngle && <div style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic", marginTop: 6, textAlign: "center" }}>{t("anot.aplicar.faltan")}</div>}
           </div>
 
           {/* Mediciones libres */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-              Mediciones libres {freeSegs.length > 0 ? `(${freeSegs.length} línea${freeSegs.length === 1 ? "" : "s"}, ${vertexAngles.length + linePairs.length} ángulo${vertexAngles.length + linePairs.length === 1 ? "" : "s"})` : ""}
+              {t("anot.libres.titulo")} {freeSegs.length > 0 ? `(${t(freeSegs.length === 1 ? "anot.libres.linea_n" : "anot.libres.lineas_n", { n: freeSegs.length })}, ${t(vertexAngles.length + linePairs.length === 1 ? "anot.libres.angulo_n" : "anot.libres.angulos_n", { n: vertexAngles.length + linePairs.length })})` : ""}
             </div>
             {freeSegs.length === 0 ? (
               <div style={{ fontSize: 11, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.5 }}>
-                Cambia a "📐 Medir (línea/ángulo)" arriba. Una línea sola muestra su distancia; al trazar la segunda, las dos se emparejan y queda el ángulo entre ellas.
+                {t("anot.libres.vacio", { boton: t("anot.tool.medir") })}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -1528,9 +1480,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: COLORS.text }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: isCal ? COLORS.green : (isSelected ? COLORS.yellow : COLORS.cyan) }} />
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{fmtDist(distance(a, b))}</span>
-                        <span style={{ color: COLORS.textDim, fontSize: 10 }}>{isCal ? "calib" : `línea ${i + 1}`}</span>
+                        <span style={{ color: COLORS.textDim, fontSize: 10 }}>{isCal ? t("anot.calib_corto") : t("anot.linea_n", { n: i + 1 })}</span>
                       </span>
-                      <button onClick={(e) => { e.stopPropagation(); deleteSeg(s.id); }} title="Borrar esta línea"
+                      <button onClick={(e) => { e.stopPropagation(); deleteSeg(s.id); }} title={t("anot.borrar_linea")}
                         style={{ background: "transparent", border: "none", color: COLORS.textDim, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>×</button>
                     </div>
                   );
@@ -1541,9 +1493,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: COLORS.text }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.cyan }} />
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{pr.angle.toFixed(1)}°</span>
-                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>ángulo {i + 1}</span>
+                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>{t("anot.angulo_n", { n: i + 1 })}</span>
                     </span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteSegs([pr.s1, pr.s2]); }} title="Borrar las dos líneas de este ángulo"
+                    <button onClick={(e) => { e.stopPropagation(); deleteSegs([pr.s1, pr.s2]); }} title={t("anot.borrar_angulo")}
                       style={{ background: "transparent", border: "none", color: COLORS.textDim, cursor: "pointer", fontSize: 14, padding: "0 4px", lineHeight: 1 }}>×</button>
                   </div>
                 ))}
@@ -1552,12 +1504,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: COLORS.text }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: COLORS.pink }} />
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{va.angle.toFixed(1)}°</span>
-                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>ángulo {i + 1} (auto)</span>
+                      <span style={{ color: COLORS.textDim, fontSize: 10 }}>{t("anot.angulo_n_auto", { n: i + 1 })}</span>
                     </span>
                   </div>
                 ))}
                 <button onClick={clearFreeMeasurements} style={{ marginTop: 4, padding: "5px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  Borrar todas las mediciones libres
+                  {t("anot.libres.borrar_todas")}
                 </button>
               </div>
             )}
@@ -1565,46 +1517,46 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
 
           {/* Horizontal real */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Referencia horizontal</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.ref_horizontal")}</div>
             {horizontalRef ? (
               <div style={{ fontSize: 12, color: COLORS.text }}>
                 <div style={{ padding: "6px 8px", borderRadius: 6, background: "#fbbf24" + "22", border: `1px solid #fbbf2444`, color: "#fbbf24", marginBottom: 8, lineHeight: 1.45 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span>📏 Línea horizontal</span>
+                    <span>📏 {t("anot.linea_horizontal")}</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700 }}>{horizontalAngle !== null ? `${horizontalAngle >= 0 ? "+" : ""}${horizontalAngle.toFixed(1)}°` : "—"}</span>
                   </div>
-                  <span style={{ fontSize: 10, opacity: 0.85 }}>Arrastra los círculos amarillos para alinearla con la placa. 0.0° = paralela al eje X de la imagen.</span>
+                  <span style={{ fontSize: 10, opacity: 0.85 }}>{t("anot.horizontal.nota")}</span>
                 </div>
                 <button onClick={() => { const w = imageDims.w, h = imageDims.h; if (w && h) setHorizontalRef({ p1: { x: w*0.20, y: h*0.88 }, p2: { x: w*0.80, y: h*0.88 } }); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", marginBottom: 4 }}>
-                  Resetear al eje X de la imagen
+                  {t("anot.horizontal.reset")}
                 </button>
                 <button onClick={() => setHorizontalRef(null)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  Ocultar línea horizontal
+                  {t("anot.horizontal.ocultar")}
                 </button>
               </div>
             ) : (
               <div style={{ fontSize: 11, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.55 }}>
-                Sin línea horizontal: SS y PT se miden respecto al eje X de la imagen. Usa <strong style={{ color: "#fbbf24" }}>📏 Horizontal</strong> arriba para definirla si la placa está rotada.
+                {t("anot.horizontal.sin.1")}<strong style={{ color: "#fbbf24" }}>📏 {t("anot.tool.horizontal")}</strong>{t("anot.horizontal.sin.2")}
               </div>
             )}
           </div>
 
           {/* Calibración */}
           <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Calibración (distancias)</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.calibracion")}</div>
             {calibration ? (
               <div style={{ fontSize: 12, color: COLORS.text }}>
                 <div style={{ fontFamily: "'JetBrains Mono', monospace", padding: "6px 8px", borderRadius: 6, background: COLORS.green + "22", border: `1px solid ${COLORS.green}44`, color: COLORS.green, marginBottom: 8 }}>
-                  ✓ {calibration.refMm.toFixed(1)} mm = línea de referencia<br/>
+                  ✓ {t("anot.calib.referencia", { mm: calibration.refMm.toFixed(1) })}<br/>
                   <span style={{ fontSize: 10, opacity: 0.85 }}>{(1 / calibration.mmPerPx).toFixed(2)} px/mm · {calibration.mmPerPx.toFixed(4)} mm/px</span>
                 </div>
                 <button onClick={() => setCalibration(null)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: `1px solid ${COLORS.panelLight}`, background: "transparent", color: COLORS.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  Borrar calibración
+                  {t("anot.calib.borrar")}
                 </button>
               </div>
             ) : (
               <div style={{ fontSize: 11, color: COLORS.textDim, fontStyle: "italic", lineHeight: 1.55 }}>
-                Sin calibrar → distancias en píxeles. Para mostrar en mm: usa <strong style={{ color: COLORS.green }}>⚖ Calibrar</strong> arriba sobre una distancia conocida.
+                {t("anot.calib.sin.1")}<strong style={{ color: COLORS.green }}>⚖ {t("anot.tool.calibrar")}</strong>{t("anot.calib.sin.2")}
               </div>
             )}
           </div>
@@ -1612,13 +1564,13 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
           {/* Guardar imagen anotada (solo modo clínico) */}
           {canEdit && (
             <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Imagen anotada</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.imagen_anotada")}</div>
               <button onClick={handleSaveAnnotated} disabled={!imageSrc || savingAnnotated}
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${COLORS.cyan}`, background: COLORS.cyan, color: "#000", fontSize: 12, fontWeight: 700, cursor: !imageSrc || savingAnnotated ? "not-allowed" : "pointer", opacity: !imageSrc || savingAnnotated ? 0.5 : 1 }}>
-                {savingAnnotated ? "Generando…" : "💾 Guardar imagen anotada al caso"}
+                {savingAnnotated ? t("anot.generando") : `💾 ${t("anot.guardar_anotada")}`}
               </button>
               <div style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic", marginTop: 6, lineHeight: 1.5 }}>
-                Captura la radiografía con todas las líneas, ángulos y referencias dibujados encima. La imagen se agrega a las fotos del caso (categoría "Radiografía anotada"). Subirá a Firebase cuando guardes el caso desde el formulario principal.
+                {t("anot.guardar_anotada.nota", { categoria: t("foto.anotada") })}
               </div>
             </div>
           )}

@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import jsPDF from "jspdf";
 import { COLORS, MOMENTOS } from "./theme";
-import { APP_VERSION } from "./constants";
+import { APP_VERSION, CATEGORIAS_FOTO } from "./constants";
+import { diffMensaje } from "./utils";
 
 // Helper: formatea un número con grado, o "-"
 export function fmtDeg(v) {
@@ -11,7 +12,10 @@ export function fmtDeg(v) {
   return `${Number(v).toFixed(1)}°`;
 }
 
-export function buildPDF(inputs, result) {
+// `t` es la función de traducción de useI18n(); el llamador la inyecta porque
+// este módulo vive fuera de React. `lang` fija el locale de las fechas.
+export function buildPDF(inputs, result, t, lang = "es") {
+  const DATE_LOCALE = { es: "es-MX", en: "en-GB", fr: "fr-FR" }[lang] || "es-MX";
   const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult } = inputs;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210, M = 18, CW = W - M * 2;
@@ -20,26 +24,26 @@ export function buildPDF(inputs, result) {
   const ensureSpace = (needed) => { if (y + needed > 268) { doc.addPage(); y = 22; } };
   doc.setFillColor(13, 148, 136); doc.rect(0, 0, W, 16, "F");
   doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont("helvetica", "bold");
-  doc.text("CIRUGIA DE COLUMNA", M, 9.5);
+  doc.text(t("pdf.encabezado"), M, 9.5);
   doc.setFontSize(8); doc.setFont("helvetica", "normal");
-  doc.text("SpineCalc - Análisis espinopélvico", M, 13.5);
+  doc.text(`SpineCalc - ${t("pdf.subtitulo")}`, M, 13.5);
   const tipoInfo = MOMENTOS[tipoEvaluacion];
   const badgeColor = tipoEvaluacion === "preoperatorio" ? [29, 78, 216] : [21, 128, 61];
   doc.setFillColor(...badgeColor); doc.roundedRect(W - M - 42, 4, 40, 8, 2, 2, "F");
   doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-  doc.text(tipoInfo.label.toUpperCase(), W - M - 22, 9.5, { align: "center" });
+  doc.text(t(tipoInfo.key).toUpperCase(), W - M - 22, 9.5, { align: "center" });
   y = 24;
-  const fechaEstTxt = new Date(fechaEstudio + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  const fechaEstTxt = new Date(fechaEstudio + "T00:00:00").toLocaleDateString(DATE_LOCALE, { day: "2-digit", month: "long", year: "numeric" });
   doc.setFontSize(9); doc.setTextColor(71, 85, 105);
-  doc.text(`Fecha del estudio: ${fechaEstTxt}`, M, y);
-  if (fechaCirugia) { const t = new Date(fechaCirugia + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }); doc.text(`Fecha de cirugia: ${t}`, M + 90, y); }
+  doc.text(t("pdf.fecha_estudio", { fecha: fechaEstTxt }), M, y);
+  if (fechaCirugia) { const fc = new Date(fechaCirugia + "T00:00:00").toLocaleDateString(DATE_LOCALE, { day: "2-digit", month: "long", year: "numeric" }); doc.text(t("pdf.fecha_cirugia", { fecha: fc }), M + 90, y); }
   y += 7;
-  if (diffInfo) { doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.text(`⏱  ${diffInfo.mensaje}`, M, y); y += 6; }
+  if (diffInfo) { doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.text(`⏱  ${diffMensaje(t, diffInfo)}`, M, y); y += 6; }
 
   if (paciente || medico) {
     doc.setFillColor(250, 247, 242); doc.rect(M, y, CW, 10, "F"); doc.setDrawColor(231, 226, 217); doc.rect(M, y, CW, 10, "S");
-    if (paciente) { doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("PACIENTE", M + 3, y + 4); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(paciente + (age ? ` (${age} anos)` : ""), M + 3, y + 8); }
-    if (medico) { doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("CIRUJANO RESPONSABLE", M + CW / 2 + 2, y + 4); doc.setTextColor(17, 94, 89); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(medico, M + CW / 2 + 2, y + 8); }
+    if (paciente) { doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text(t("pdf.paciente"), M + 3, y + 4); doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(paciente + (age ? ` (${t("pdf.anos", { n: age })})` : ""), M + 3, y + 8); }
+    if (medico) { doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text(t("pdf.cirujano"), M + CW / 2 + 2, y + 4); doc.setTextColor(17, 94, 89); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(medico, M + CW / 2 + 2, y + 8); }
     y += 14;
   } else { y += 4; }
 
@@ -47,34 +51,35 @@ export function buildPDF(inputs, result) {
   if (peso || talla) {
     doc.setFillColor(250, 247, 242); doc.rect(M, y, CW, 8, "F"); doc.setDrawColor(231, 226, 217); doc.rect(M, y, CW, 8, "S");
     doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal");
-    doc.text("ANTROPOMETRIA", M + 3, y + 3.5);
+    doc.text(t("pdf.antropometria"), M + 3, y + 3.5);
     doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
     let antr = [];
     if (peso) antr.push(`${peso} kg`);
     if (talla) antr.push(`${talla} cm`);
-    if (imc) antr.push(`IMC ${imc.valor.toFixed(1)} (${imc.categoria})`);
+    if (imc) antr.push(`${t("imc.sigla")} ${imc.valor.toFixed(1)} (${t(imc.categoriaKey)})`);
     doc.text(antr.join("  ·  "), M + 3, y + 7);
     y += 12;
   }
 
   if (cirugias && cirugias.length > 0) {
     doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont("helvetica", "bold");
-    doc.text(tipoEvaluacion === "preoperatorio" ? "CIRUGIAS PLANIFICADAS" : "CIRUGIAS REALIZADAS", M + 3, y + 4.8); y += 10;
-    cirugias.forEach((c, i) => { const tipo = c.tipo === "otro" ? c.tipoCustom : c.tipo; const segs = c.segmentos.length > 0 ? c.segmentos.join(", ") : "—"; doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236); doc.rect(M, y, CW, 10, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text(`${i + 1}. ${tipo}`, M + 3, y + 4); doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Segmentos: ${segs}`, M + 3, y + 8); y += 11; });
+    doc.text(tipoEvaluacion === "preoperatorio" ? t("pdf.cirugias.planificadas") : t("pdf.cirugias.realizadas"), M + 3, y + 4.8); y += 10;
+    cirugias.forEach((c, i) => { const tipo = c.tipo === "otro" ? c.tipoCustom : c.tipo; const segs = c.segmentos.length > 0 ? c.segmentos.join(", ") : "—"; doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236); doc.rect(M, y, CW, 10, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text(`${i + 1}. ${tipo}`, M + 3, y + 4); doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(t("pdf.segmentos", { segs }), M + 3, y + 8); y += 11; });
     y += 4;
   }
 
-  doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text("MEDICIONES", M + 3, y + 4.8); y += 10;
-  const piTag = derivedKey === "pi" ? " (auto)" : "";
-  const ssTag = derivedKey === "ss" ? " (auto)" : "";
-  const ptTag = derivedKey === "pt" ? " (auto)" : "";
+  doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text(t("pdf.mediciones"), M + 3, y + 4.8); y += 10;
+  const autoTag = ` (${t("pdf.auto")})`;
+  const piTag = derivedKey === "pi" ? autoTag : "";
+  const ssTag = derivedKey === "ss" ? autoTag : "";
+  const ptTag = derivedKey === "pt" ? autoTag : "";
   const med = [
-    [`Incidencia Pelv. (PI)${piTag}`, fmtDeg(pi)],
-    [`Pendiente Sacra (SS)${ssTag}`, fmtDeg(ss)],
-    [`Version Pelvica (PT)${ptTag}`, fmtDeg(pt)],
-    ["Lordosis L1-S1", fmtDeg(l1s1)],
-    ["Lordosis L4-S1", fmtDeg(l4s1)],
-    ["Inclinacion Global (GT)", fmtDeg(gt)]
+    [`${t("param.pi.corto")}${piTag}`, fmtDeg(pi)],
+    [`${t("param.ss.corto")}${ssTag}`, fmtDeg(ss)],
+    [`${t("param.pt.corto")}${ptTag}`, fmtDeg(pt)],
+    [t("param.l1s1"), fmtDeg(l1s1)],
+    [t("param.l4s1"), fmtDeg(l4s1)],
+    [t("param.gt.corto"), fmtDeg(gt)]
   ];
   if (l1pa !== "" && l1pa !== undefined) med.push(["L1 Pelvic Angle (L1PA)", fmtDeg(l1pa)]);
   if (t4pa !== "" && t4pa !== undefined) med.push(["T4 Pelvic Angle (T4PA)", fmtDeg(t4pa)]);
@@ -88,16 +93,16 @@ export function buildPDF(inputs, result) {
   // Las secciones GAP (categoría, parámetros, planificación) requieren result completo.
   if (result) {
     const catRgb = result.total <= 2 ? [21, 128, 61] : result.total <= 6 ? [180, 83, 9] : [185, 28, 28];
-    doc.setFillColor(...catRgb); doc.roundedRect(M, y, CW, 22, 3, 3, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(28); doc.setFont("helvetica", "bold"); doc.text(String(result.total), M + 14, y + 15, { align: "center" }); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("/ 13", M + 20, y + 18); doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.text(result.cat.label, M + 30, y + 10); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(result.cat.risk, M + 30, y + 17); y += 28;
+    doc.setFillColor(...catRgb); doc.roundedRect(M, y, CW, 22, 3, 3, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(28); doc.setFont("helvetica", "bold"); doc.text(String(result.total), M + 14, y + 15, { align: "center" }); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.text("/ 13", M + 20, y + 18); doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.text(t(result.cat.key), M + 30, y + 10); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.text(t(result.cat.riskKey), M + 30, y + 17); y += 28;
 
-    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PARAMETROS GAP", M + 3, y + 4.8); y += 10;
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(t("pdf.parametros_gap"), M + 3, y + 4.8); y += 10;
     const sc = (s) => s === 0 ? [21, 128, 61] : s <= 1 ? [180, 83, 9] : [185, 28, 28];
-    [{ name: "RPV  Version Pelvica Relativa", r: result.rpv, diff: `${result.rpv.diff >= 0 ? "+" : ""}${result.rpv.diff.toFixed(1)}°` }, { name: "RLL  Lordosis Lumbar Relativa", r: result.rll, diff: `${result.rll.diff >= 0 ? "+" : ""}${result.rll.diff.toFixed(1)}°` }, { name: "ILD  Indice de Distribucion", r: result.ldi, diff: `${result.ldi.value.toFixed(1)}%` }, { name: "ASR  Alineacion Espinopelvica", r: result.rsa, diff: `${result.rsa.diff >= 0 ? "+" : ""}${result.rsa.diff.toFixed(1)}°` }, { name: "FE   Factor de Edad", r: result.af, diff: "" }].forEach(({ name, r, diff }, i) => { const bg = i % 2 === 0 ? [250, 247, 242] : [244, 241, 236]; doc.setFillColor(...bg); doc.rect(M, y, CW - 14, 8, "F"); doc.setFillColor(...sc(r.score)); doc.rect(M + CW - 13, y, 13, 8, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(name, M + 2, y + 3.2); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.text(`${r.label}  ${diff}`, M + 2, y + 6.5); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(String(r.score), M + CW - 6.5, y + 5.5, { align: "center" }); y += 9; });
+    [{ name: `RPV  ${t("param.rpv")}`, r: result.rpv, diff: `${result.rpv.diff >= 0 ? "+" : ""}${result.rpv.diff.toFixed(1)}°` }, { name: `RLL  ${t("param.rll")}`, r: result.rll, diff: `${result.rll.diff >= 0 ? "+" : ""}${result.rll.diff.toFixed(1)}°` }, { name: `ILD  ${t("param.ldi")}`, r: result.ldi, diff: `${result.ldi.value.toFixed(1)}%` }, { name: `ASR  ${t("param.rsa")}`, r: result.rsa, diff: `${result.rsa.diff >= 0 ? "+" : ""}${result.rsa.diff.toFixed(1)}°` }, { name: `FE   ${t("param.af")}`, r: result.af, diff: "" }].forEach(({ name, r, diff }, i) => { const bg = i % 2 === 0 ? [250, 247, 242] : [244, 241, 236]; doc.setFillColor(...bg); doc.rect(M, y, CW - 14, 8, "F"); doc.setFillColor(...sc(r.score)); doc.rect(M + CW - 13, y, 13, 8, "F"); doc.setTextColor(30, 41, 59); doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(name, M + 2, y + 3.2); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.text(`${t(r.key)}  ${diff}`, M + 2, y + 6.5); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.text(String(r.score), M + CW - 6.5, y + 5.5, { align: "center" }); y += 9; });
     y += 4;
 
-    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("PLANIFICACION PREOPERATORIA", M + 3, y + 4.8); y += 10;
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(t("pdf.planificacion"), M + 3, y + 4.8); y += 10;
     doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 7, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(8);
-    ["Parametro", "Actual", "Ideal", "Correccion"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4.8); }); y += 8;
+    [t("tabla.parametro"), t("tabla.actual"), t("tabla.ideal"), t("tabla.correccion")].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4.8); }); y += 8;
 
     // Incluye L4-S1 ideal = L1-S1 ideal × 0.65
     const idealL4S1 = result.idealLL * 0.65;
@@ -132,13 +137,13 @@ export function buildPDF(inputs, result) {
     if (l1s1 === "" || l1s1 === null) faltantes.push("L1-S1");
     if (l4s1 === "" || l4s1 === null) faltantes.push("L4-S1");
     if (gt === "" || gt === null) faltantes.push("GT");
-    if (age === "" || age === null) faltantes.push("Edad");
+    if (age === "" || age === null) faltantes.push(t("campo.edad"));
     doc.setFillColor(244, 241, 236); doc.rect(M, y, CW, 14, "F");
     doc.setDrawColor(231, 226, 217); doc.rect(M, y, CW, 14, "S");
     doc.setTextColor(100, 116, 139); doc.setFont("helvetica", "italic"); doc.setFontSize(9);
-    doc.text("GAP Score no calculado: mediciones incompletas.", M + 3, y + 5.5);
+    doc.text(t("pdf.sin_gap"), M + 3, y + 5.5);
     doc.setFontSize(8);
-    doc.text(faltantes.length ? `Faltan: ${faltantes.join(", ")}.` : "", M + 3, y + 10.5);
+    doc.text(faltantes.length ? t("pdf.faltan", { lista: faltantes.join(", ") }) : "", M + 3, y + 10.5);
     y += 18;
   }
 
@@ -148,7 +153,7 @@ export function buildPDF(inputs, result) {
     y += 4;
     doc.setFillColor(109, 40, 217); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("EJE T4-L1-CADERA  (Hills et al., Spine 2022)", M + 3, y + 4.8); y += 10;
+    doc.text(`${t("pdf.eje_hills")}  (Hills et al., Spine 2022)`, M + 3, y + 4.8); y += 10;
 
     const l1paCur = Number(l1pa);
     const l1paAbs = Math.abs(hillsResult.l1paDiff);
@@ -178,7 +183,7 @@ export function buildPDF(inputs, result) {
       doc.text(`${hillsResult.ejeDiff >= 0 ? "+" : ""}${hillsResult.ejeDiff.toFixed(1)}°`, colX[3], y + 4.8);
       y += 7;
       doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(...ejeCC);
-      doc.text(hillsResult.ejeLabel, M + 2, y + 4); y += 6;
+      doc.text(t(hillsResult.ejeLabelKey), M + 2, y + 4); y += 6;
     }
   }
 
@@ -188,9 +193,9 @@ export function buildPDF(inputs, result) {
     y += 4;
     doc.setFillColor(109, 40, 217); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("TILTS VERTEBRALES  (Hills et al., Spine 2022)", M + 3, y + 4.8); y += 8;
+    doc.text(`${t("pdf.tilts")}  (Hills et al., Spine 2022)`, M + 3, y + 4.8); y += 8;
     doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 6, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(7.5);
-    ["Nivel", "Directo", "Derivado (PA-PT)", "Categoria"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
+    [t("tabla.nivel"), t("tabla.directo"), t("tabla.derivado_pa_pt"), t("tabla.categoria")].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
     y += 7;
     [{ key: "c2", n: "C2 tilt", normal: "-4.4 a -1.1" }, { key: "t1", n: "T1 tilt", normal: "-7.0 a -3.6" }, { key: "l1", n: "L1 tilt", normal: "-10.3 a -5.1" }].forEach((row, i) => {
       const r = tiltsResult[row.key]; if (!r) return;
@@ -203,18 +208,18 @@ export function buildPDF(inputs, result) {
       doc.text(r.direct !== null ? `${r.direct.toFixed(1)}°` : "—", colX[1], y + 4.3);
       doc.text(r.derived !== null ? `${r.derived.toFixed(1)}°` : "—", colX[2], y + 4.3);
       doc.setTextColor(...cc); doc.setFont("helvetica", "bold");
-      doc.text(r.cls.label, colX[3], y + 4.3);
+      doc.text(t(r.cls.key), colX[3], y + 4.3);
       y += 6.5;
       if (r.delta !== null) {
         const dCC = Math.abs(r.delta) <= 1 ? [21, 128, 61] : Math.abs(r.delta) <= 3 ? [180, 83, 9] : [185, 28, 28];
         doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(...dCC);
-        doc.text(`Δ directo - derivado = ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(1)}°  ·  Normal: ${row.normal}°`, M + 4, y + 3.5);
+        doc.text(`${t("pdf.delta_directo_derivado")} = ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(1)}°  ·  ${t("pdf.normal")}: ${row.normal}°`, M + 4, y + 3.5);
         y += 5;
       }
     });
     if (tiltsResult.pt !== null) {
       doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
-      doc.text(`PT derivado de PI - SS = ${tiltsResult.pt.toFixed(1)}°`, M + 2, y + 3.5);
+      doc.text(t("pdf.pt_derivado", { v: tiltsResult.pt.toFixed(1) }), M + 2, y + 3.5);
       y += 5;
     }
   }
@@ -225,9 +230,9 @@ export function buildPDF(inputs, result) {
     y += 4;
     doc.setFillColor(180, 83, 9); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("CLASIFICACION SRS-SCHWAB  (Schwab et al., Spine 2012)", M + 3, y + 4.8); y += 8;
+    doc.text(`${t("pdf.schwab")}  (Schwab et al., Spine 2012)`, M + 3, y + 4.8); y += 8;
     doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 6, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(7.5);
-    ["Modificador", "Valor", "Grado", "Umbrales"].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
+    [t("tabla.modificador"), t("tabla.valor"), t("tabla.grado"), t("tabla.umbrales")].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
     y += 7;
     const gradeRgb = (g) => !g ? [100, 116, 139] : g.g === "0" ? [21, 128, 61] : g.g === "+" ? [180, 83, 9] : [185, 28, 28];
     [
@@ -248,7 +253,7 @@ export function buildPDF(inputs, result) {
     });
     if (schwabResult.piLL && schwabResult.pt && schwabResult.sva) {
       doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(30, 41, 59);
-      doc.text(`Resumen sagital: PI-LL ${schwabResult.piLL.g}  ·  PT ${schwabResult.pt.g}  ·  SVA ${schwabResult.sva.g}`, M + 2, y + 5);
+      doc.text(`${t("pdf.resumen_sagital")}: PI-LL ${schwabResult.piLL.g}  ·  PT ${schwabResult.pt.g}  ·  SVA ${schwabResult.sva.g}`, M + 2, y + 5);
       y += 7;
     }
   }
@@ -256,24 +261,24 @@ export function buildPDF(inputs, result) {
   // Roussouly classification
   if (roussoulyResult) {
     // Wrap description text and compute total box height
-    const descLines = doc.splitTextToSize(roussoulyResult.desc, CW - 44);
+    const descLines = doc.splitTextToSize(t(roussoulyResult.descKey), CW - 44);
     const descH = descLines.length * 3.2;
     const boxH = Math.max(16, 11 + descH);
-    const idealLines = roussoulyResult.ideal ? doc.splitTextToSize(roussoulyResult.ideal.desc, CW - 44) : [];
+    const idealLines = roussoulyResult.ideal ? doc.splitTextToSize(t(roussoulyResult.ideal.descKey), CW - 44) : [];
     const idealH = roussoulyResult.ideal ? Math.max(14, 9 + idealLines.length * 3.2) : 0;
     const matchH = roussoulyResult.piMatch ? 12 : 0;
     ensureSpace(boxH + idealH + matchH + 14);
     y += 4;
     doc.setFillColor(34, 211, 238); doc.rect(M, y, CW, 7, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
-    doc.text("CLASIFICACION ROUSSOULY  (Laouissat 2017 / Sebaaly 2020 / Bari 2020)", M + 3, y + 4.8); y += 9;
+    doc.text(`${t("pdf.roussouly")}  (Laouissat 2017 / Sebaaly 2020 / Bari 2020)`, M + 3, y + 4.8); y += 9;
     const rRgb = roussoulyResult.color === COLORS.green ? [21, 128, 61] : roussoulyResult.color === COLORS.red ? [185, 28, 28] : [14, 116, 144];
     doc.setFillColor(250, 247, 242); doc.rect(M, y, CW, boxH, "F");
     doc.setDrawColor(...rRgb); doc.setLineWidth(0.6); doc.rect(M, y, CW, boxH, "S");
     doc.setTextColor(...rRgb); doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-    doc.text(`Tipo ${roussoulyResult.type}`, M + 4, y + boxH / 2 + 3);
+    doc.text(t("roussouly.tipo_n", { n: roussoulyResult.type }), M + 4, y + boxH / 2 + 3);
     doc.setFontSize(9); doc.setTextColor(30, 41, 59);
-    doc.text(`ACTUAL  ·  ${roussoulyResult.label}`, M + 40, y + 5);
+    doc.text(`${t("pdf.roussouly.actual")}  ·  ${t(roussoulyResult.labelKey)}`, M + 40, y + 5);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
     doc.text(roussoulyResult.params, M + 40, y + 9);
     doc.text(descLines, M + 40, y + 13);
@@ -284,9 +289,9 @@ export function buildPDF(inputs, result) {
       doc.setFillColor(244, 241, 236); doc.rect(M, y, CW, idealH, "F");
       doc.setDrawColor(148, 163, 184); doc.setLineWidth(0.4); doc.rect(M, y, CW, idealH, "S");
       doc.setTextColor(51, 65, 85); doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-      doc.text(`Tipo ${roussoulyResult.ideal.type}`, M + 4, y + idealH / 2 + 2.5);
+      doc.text(t("roussouly.tipo_n", { n: roussoulyResult.ideal.type }), M + 4, y + idealH / 2 + 2.5);
       doc.setFontSize(8.5); doc.setTextColor(30, 41, 59);
-      doc.text(`${roussoulyResult.esPost ? "IDEAL (orientativo)" : "IDEAL / OBJETIVO"}  ·  ${roussoulyResult.ideal.label}`, M + 40, y + 5);
+      doc.text(`${roussoulyResult.esPost ? t("pdf.roussouly.ideal_orientativo") : t("pdf.roussouly.ideal_objetivo")}  ·  ${t(roussoulyResult.ideal.labelKey)}`, M + 40, y + 5);
       doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
       doc.text(idealLines, M + 40, y + 9);
       y += idealH + 3;
@@ -296,21 +301,21 @@ export function buildPDF(inputs, result) {
     if (roussoulyResult.piMatch) {
       const lvl = roussoulyResult.piMatch.level;
       const mRgb = lvl === "ok" ? [21, 128, 61] : lvl === "warn" ? [180, 83, 9] : [185, 28, 28];
-      const piTxt = `PI ${roussoulyResult.piMatch.piLow ? "< 50" : ">= 50"}: se espera ${roussoulyResult.piMatch.esperadoLabel}.`;
+      const piTxt = t("pdf.roussouly.pi_espera", { pi: roussoulyResult.piMatch.piLow ? "< 50" : ">= 50", tipo: t(roussoulyResult.piMatch.esperadoKey) });
       doc.setFillColor(...mRgb); doc.rect(M, y, CW, 10, "F");
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
       doc.text(
-        lvl === "ok" ? (roussoulyResult.esPost ? "FORMA RESTAURADA (concordante con la PI)" : "CONCORDANTE con la PI")
-          : lvl === "warn" ? "CONCORDANCIA CON RESERVAS"
-            : (roussoulyResult.esPost ? "FORMA NO RESTAURADA (discordante con la PI)" : "NO CONCORDANTE con la PI"),
+        lvl === "ok" ? (roussoulyResult.esPost ? t("pdf.roussouly.restaurada") : t("pdf.roussouly.concordante"))
+          : lvl === "warn" ? t("pdf.roussouly.reservas")
+            : (roussoulyResult.esPost ? t("pdf.roussouly.no_restaurada") : t("pdf.roussouly.no_concordante")),
         M + 3, y + 4.2);
       doc.setFont("helvetica", "normal"); doc.setFontSize(7);
       doc.text(
         lvl === "ok"
-          ? `${piTxt} Forma sagital acorde a la incidencia pelvica.`
+          ? `${piTxt} ${t("pdf.roussouly.nota_ok")}`
           : lvl === "warn"
-            ? `${piTxt} Tipo 3 anteverted: variante normal, pero objetivo quirurgico desfavorable (mayor tasa de PJK).`
-            : `${piTxt} No restaurar la forma = RR 3 (IC 1.5-4.3) de complicacion mecanica (Sebaaly 2020); OR 4.7 de revision (Bari 2020).`,
+            ? `${piTxt} ${t("pdf.roussouly.nota_warn")}`
+            : `${piTxt} ${t("pdf.roussouly.nota_bad")}`,
         M + 3, y + 7.8
       );
       y += 13;
@@ -328,27 +333,28 @@ export function buildPDF(inputs, result) {
     doc.setFillColor(...gRgb); doc.roundedRect(M, y, CW, 16, 2, 2, "F");
     doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(18);
     doc.text(`${(gapbResult.prob * 100).toFixed(0)}%`, M + 12, y + 10, { align: "center" });
-    doc.setFontSize(11); doc.text(gapbResult.cat.label, M + 30, y + 7);
+    doc.setFontSize(11); doc.text(t(gapbResult.cat.key), M + 30, y + 7);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-    doc.text(`IMC ${gapbResult.bmi.toFixed(1)}  ·  T-score ${gapbResult.tscore.toFixed(1)}  ·  GAP ${gapbResult.gap} pts`, M + 30, y + 12);
-    doc.text("Probabilidad de complicacion mecanica a 2 anos", M + 30, y + 14.5);
+    doc.text(`${t("imc.sigla")} ${gapbResult.bmi.toFixed(1)}  ·  T-score ${gapbResult.tscore.toFixed(1)}  ·  GAP ${gapbResult.gap} ${t("comun.pts")}`, M + 30, y + 12);
+    doc.text(t("pdf.gapb.prob"), M + 30, y + 14.5);
     y += 19;
     doc.setFont("helvetica", "italic"); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
-    doc.text("Aproximacion logistica de HRs publicados (BMI 1.284, BMD 0.277, GAP 1.457). Nomograma original = Noh 2020 Fig 2.", M + 2, y + 3);
+    doc.text(t("pdf.gapb.nota"), M + 2, y + 3);
     y += 5;
   }
 
   if (fotos && fotos.length > 0) {
     doc.addPage(); y = 18; doc.setFillColor(13, 148, 136); doc.rect(0, 0, W, 16, "F");
     doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont("helvetica", "bold");
-    doc.text(`IMAGENES ADJUNTAS - ${tipoInfo.label.toUpperCase()}`, M, 9.5); y = 24;
+    doc.text(`${t("pdf.imagenes")} - ${t(tipoInfo.key).toUpperCase()}`, M, 9.5); y = 24;
     const thumbW = 80, thumbH = 60, gap = 6; let col = 0;
     fotos.forEach((f) => {
       if (y + thumbH > 270) { doc.addPage(); y = 20; col = 0; }
       const x = M + col * (thumbW + gap);
       try { doc.addImage(f.dataUrl, "JPEG", x, y, thumbW, thumbH); } catch (e) {}
       doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal");
-      doc.text(f.categoria || "Sin categoria", x, y + thumbH + 4);
+      const catDef = CATEGORIAS_FOTO.find(c => c.value === f.categoria);
+      doc.text(catDef ? t(catDef.key) : (f.categoria || t("foto.sin_categoria")), x, y + thumbH + 4);
       col++; if (col >= 2) { col = 0; y += thumbH + 12; }
     });
   }
@@ -358,17 +364,17 @@ export function buildPDF(inputs, result) {
     doc.setPage(p);
     doc.setFillColor(30, 41, 59); doc.rect(0, 278, W, 19, "F");
     doc.setTextColor(148, 163, 184); doc.setFontSize(7); doc.setFont("helvetica", "normal");
-    doc.text("Herramienta de calculo espinopelvico - No sustituye el juicio clinico del medico tratante", M, 284);
-    doc.text("El uso de este calculo es responsabilidad del medico que lo utiliza", M, 287.5);
+    doc.text(t("pdf.pie.1"), M, 284);
+    doc.text(t("pdf.pie.2"), M, 287.5);
     // Version del algoritmo: hace trazable cada reporte a la version que lo genero.
     doc.text(`v${APP_VERSION}`, M, 291);
-    doc.text(`Pagina ${p} de ${totalPages}`, W - M, 287.5, { align: "right" });
+    doc.text(t("pdf.pagina", { p, total: totalPages }), W - M, 287.5, { align: "right" });
     if (medico) {
       doc.setDrawColor(94, 234, 212); doc.setLineWidth(0.5); doc.line(W - M - 50, 288, W - M, 288);
       doc.setTextColor(203, 213, 225); doc.setFontSize(7.5); doc.setFont("helvetica", "bold");
       doc.text(medico, W - M - 25, 292.5, { align: "center" });
       doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
-      doc.text("Cirujano Responsable", W - M - 25, 295.5, { align: "center" });
+      doc.text(t("pdf.cirujano_responsable"), W - M - 25, 295.5, { align: "center" });
     }
   }
   return doc;

@@ -4,23 +4,25 @@
 import { cirugiasTexto } from "./utils";
 import { TILT_NORMS, tiltClass } from "./scoring";
 
-export function casosToCSV(casos) {
+// `t` (la función de traducción de useI18n()) llega desde el llamador: este
+// módulo no es un componente y no puede leer el contexto por su cuenta.
+export function casosToCSV(casos, t) {
   const headers = [
-    "ID", "Fecha guardado", "Fecha estudio", "Fecha cirugia", "Tipo evaluacion", "Dias diferencia", "Tiempo calculado",
-    "Apellidos", "Nombre", "Edad", "Peso kg", "Talla cm", "IMC", "Categoria IMC",
-    "Cirujano", "Cirugias",
-    "PI", "SS", "PT", "Derivado (PI/SS/PT)", "L1-S1", "L4-S1", "GT",
+    t("csv.id"), t("csv.fecha_guardado"), t("csv.fecha_estudio"), t("csv.fecha_cirugia"), t("csv.tipo_evaluacion"), t("csv.dias_diferencia"), t("csv.tiempo_calculado"),
+    t("csv.apellidos"), t("csv.nombre"), t("csv.edad"), t("csv.peso_kg"), t("csv.talla_cm"), t("imc.sigla"), t("csv.categoria_imc"),
+    t("csv.cirujano"), t("csv.cirugias"),
+    "PI", "SS", "PT", t("csv.derivado"), "L1-S1", "L4-S1", "GT",
     "L1PA", "T4PA",
-    "Ideal SS", "Ideal L1-S1", "Ideal L4-S1", "Ideal GT",
-    "Correccion SS", "Correccion L1-S1", "Correccion L4-S1", "Correccion GT",
-    "Ideal L1PA (Hills)", "Delta L1PA", "Ideal L1-S1 (Hills)", "Correccion L1-S1 Hills",
-    "T4PA-L1PA", "Eje T4-L1-cadera",
-    "C2 tilt directo", "CPA", "C2 tilt derivado", "C2 tilt delta", "C2 tilt categoria",
-    "T1 tilt directo", "T1PA", "T1 tilt derivado", "T1 tilt delta", "T1 tilt categoria",
-    "L1 tilt directo", "L1 tilt derivado", "L1 tilt delta", "L1 tilt categoria",
-    "RPV pts", "RLL pts", "LDI pts", "LDI %", "RSA pts", "FE pts",
-    "GAP Total", "Categoria GAP",
-    "SVA cm", "T-score DMO", "Vertebras lordoticas", "Fotos"
+    t("csv.ideal", { p: "SS" }), t("csv.ideal", { p: "L1-S1" }), t("csv.ideal", { p: "L4-S1" }), t("csv.ideal", { p: "GT" }),
+    t("csv.correccion", { p: "SS" }), t("csv.correccion", { p: "L1-S1" }), t("csv.correccion", { p: "L4-S1" }), t("csv.correccion", { p: "GT" }),
+    t("csv.ideal", { p: "L1PA (Hills)" }), t("csv.delta", { p: "L1PA" }), t("csv.ideal", { p: "L1-S1 (Hills)" }), t("csv.correccion", { p: "L1-S1 Hills" }),
+    "T4PA-L1PA", t("csv.eje_hills"),
+    t("csv.tilt_directo", { p: "C2" }), "CPA", t("csv.tilt_derivado", { p: "C2" }), t("csv.tilt_delta", { p: "C2" }), t("csv.tilt_categoria", { p: "C2" }),
+    t("csv.tilt_directo", { p: "T1" }), "T1PA", t("csv.tilt_derivado", { p: "T1" }), t("csv.tilt_delta", { p: "T1" }), t("csv.tilt_categoria", { p: "T1" }),
+    t("csv.tilt_directo", { p: "L1" }), t("csv.tilt_derivado", { p: "L1" }), t("csv.tilt_delta", { p: "L1" }), t("csv.tilt_categoria", { p: "L1" }),
+    t("csv.pts", { p: "RPV" }), t("csv.pts", { p: "RLL" }), t("csv.pts", { p: "LDI" }), "LDI %", t("csv.pts", { p: "RSA" }), t("csv.pts", { p: "FE" }),
+    t("csv.gap_total"), t("csv.categoria_gap"),
+    "SVA cm", t("csv.tscore_dmo"), t("csv.vertebras_lordoticas"), t("csv.fotos")
   ];
   const escape = (v) => {
     if (v === null || v === undefined) return "";
@@ -45,7 +47,7 @@ export function casosToCSV(casos) {
     const idealLL_H = hasL1PA ? (1.4 * m.pi - 1.7 * m.l1pa - 2) : null;
     const corrLL_H = hasL1PA ? (idealLL_H - m.l1s1) : null;
     const ejeDiff = (hasL1PA && hasT4PA) ? (m.t4pa - m.l1pa) : null;
-    const ejeLabel = ejeDiff === null ? "" : Math.abs(ejeDiff) <= 4 ? "Alineado" : Math.abs(ejeDiff) <= 8 ? "Desalineacion moderada" : "Desalineacion severa";
+    const ejeLabel = ejeDiff === null ? "" : Math.abs(ejeDiff) <= 4 ? t("hills.eje.alineado") : Math.abs(ejeDiff) <= 8 ? t("hills.eje.moderada") : t("hills.eje.severa");
     // PT: usar valor guardado, o derivar de PI − SS para casos legados
     const pt = (m.pt !== undefined && m.pt !== null && m.pt !== "") ? Number(m.pt) : ((m.pi !== undefined && m.ss !== undefined) ? (Number(m.pi) - Number(m.ss)) : null);
     const tiltVal = (k) => m[k] !== undefined && m[k] !== null && m[k] !== "" ? Number(m[k]) : null;
@@ -55,7 +57,7 @@ export function casosToCSV(casos) {
       const pa = tiltVal(paKey);
       const derived = (pa !== null && pt !== null) ? (pa - pt) : null;
       const ref = direct !== null ? direct : derived;
-      const cat = ref !== null ? tiltClass(ref, norm.lo, norm.hi).label : "";
+      const cat = ref !== null ? t(tiltClass(ref, norm.lo, norm.hi).key) : "";
       const delta = (direct !== null && derived !== null) ? (direct - derived) : null;
       return {
         direct: direct !== null ? direct.toFixed(1) : "",

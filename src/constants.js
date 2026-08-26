@@ -12,9 +12,22 @@ export const MEDIDORES = [
   "Guillén Rojas Raúl",
   "Sámano López Iván",
 ];
-export const TIPOS_CIRUGIA = ["Instrumentación lumbar anterior", "Instrumentación lumbar posterior"];
+// Los valores persisten tal cual en la base de datos; la etiqueta visible sale
+// del diccionario por su clave i18n.
+export const TIPOS_CIRUGIA = [
+  { value: "Instrumentación lumbar anterior", key: "cirugia.anterior" },
+  { value: "Instrumentación lumbar posterior", key: "cirugia.posterior" },
+];
 export const SEGMENTOS = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"];
-export const CATEGORIAS_FOTO = ["Radiografía lateral", "Radiografía AP", "Radiografía anotada", "Planificación", "Otra"];
+export const CATEGORIAS_FOTO = [
+  { value: "Radiografía lateral", key: "foto.lateral" },
+  { value: "Radiografía AP", key: "foto.ap" },
+  { value: "Radiografía anotada", key: "foto.anotada" },
+  { value: "Planificación", key: "foto.planificacion" },
+  { value: "Otra", key: "foto.otra" },
+];
+// Categoría que se asigna a la imagen que produce el anotador de landmarks.
+export const CATEGORIA_FOTO_ANOTADA = "Radiografía anotada";
 export const STORAGE_KEY = "spinecalc_casos";
 
 export const REFERENCIAS = [
@@ -48,17 +61,8 @@ export const PUBLIC_CASES_LS_KEY = "spinecalc_my_public_cases";
 // Feature flag: en modo simplificado solo se muestra C2 tilt directo en la sección de tilts.
 // Cambia a true para reactivar CPA, T1 tilt directo, T1PA, L1 tilt directo (Hills 2022 completo).
 export const TILTS_FULL_MODE = true;
-export const PUBLIC_CONSENT_TEXT = `Acepto que se guarden los datos de este cálculo (parámetros radiográficos, resultados, edad y antropometría) en una base de datos en la nube, con dos fines:
-
-1) Asistencia propia: poder recuperar el caso después usando el ID generado (formato GAP-AAAA-XXXX) desde cualquier dispositivo, y volver a generar el reporte.
-
-2) Estadística agregada anonimizada: análisis de cohorte para validar GAP Score, eje T4-L1-cadera y tilts vertebrales en una población más amplia.
-
-NO se guardarán datos identificables del paciente (nombre, apellidos, expediente, fotografías) ni datos del médico que realiza la medición. El nombre del médico, si lo capturas, se usa solo para imprimirlo en el PDF y no se persiste en la base de datos.`;
-export const CONSENT_TEXT = `Al guardar casos en esta aplicación acepto que los datos clínicos y radiográficos capturados (identificadores del paciente, parámetros espinopélvicos, diagnóstico, tipo de cirugía y resultados calculados) se almacenen de forma segura en Supabase y sean utilizados con dos fines:
-
-1) Asistencia clínica propia: consulta y seguimiento de los casos que yo mismo registro como cirujano responsable o medidor. Solo yo puedo ver los casos que yo guardo.
-
-2) Investigación y desarrollo de modelos de IA: análisis agregado de la cohorte para estudios de variabilidad interobservador, validación del GAP Score (Yilgor 2017) y del eje T4-L1-cadera (Hills 2022), y entrenamiento de modelos predictivos de alineación espinopélvica. Los resultados publicados serán siempre anónimos y agregados; no se divulgarán datos identificables del paciente.
-
-Entiendo que soy responsable de obtener el consentimiento correspondiente de cada paciente cuyos datos capture, conforme a la NOM-024-SSA3 y buenas prácticas del Centro Médico ABC. Puedo solicitar en cualquier momento la eliminación de los casos que yo haya registrado escribiendo a ${CONSENT_CONTACT}.`;
+// El texto íntegro de ambos consentimientos vive en los diccionarios de idioma
+// (claves `consent.publico.texto` y `consent.texto`). Aquí sólo queda la clave,
+// para que el modal lo resuelva con el idioma activo.
+export const PUBLIC_CONSENT_TEXT_KEY = "consent.publico.texto";
+export const CONSENT_TEXT_KEY = "consent.texto";

@@ -16,15 +16,15 @@ export function gapIdeals(pi) {
 }
 
 export function classify(score) {
-  if (score <= 2) return { label: "Proporcionado", color: COLORS.green, bg: COLORS.greenBg, risk: "Riesgo bajo (~4%)" };
-  if (score <= 6) return { label: "Moderadamente Desproporcionado", color: COLORS.yellow, bg: COLORS.yellowBg, risk: "Riesgo moderado (~36-57%)" };
-  return { label: "Severamente Desproporcionado", color: COLORS.red, bg: COLORS.redBg, risk: "Riesgo alto (~73-100%)" };
+  if (score <= 2) return { key: "gap.proporcionado", riskKey: "gap.riesgo.bajo", label: "Proporcionado", color: COLORS.green, bg: COLORS.greenBg, risk: "Riesgo bajo (~4%)" };
+  if (score <= 6) return { key: "gap.moderado", riskKey: "gap.riesgo.moderado", label: "Moderadamente Desproporcionado", color: COLORS.yellow, bg: COLORS.yellowBg, risk: "Riesgo moderado (~36-57%)" };
+  return { key: "gap.severo", riskKey: "gap.riesgo.alto", label: "Severamente Desproporcionado", color: COLORS.red, bg: COLORS.redBg, risk: "Riesgo alto (~73-100%)" };
 }
-export const rpvCalc = (s, i) => { const d = s - i; return d < -15 ? { score: 3, label: "Retroversion Severa", sub: "< -15°" } : d < -7 ? { score: 2, label: "Retroversion Moderada", sub: "-15° a -7.1°" } : d <= 5 ? { score: 0, label: "Alineado", sub: "-7° a 5°" } : { score: 1, label: "Anteversion", sub: "> 5°" }; };
-export const rllCalc = (s, i) => { const d = s - i; return d < -25 ? { score: 3, label: "Hipolordosis Severa", sub: "< -25°" } : d < -14 ? { score: 2, label: "Hipolordosis Moderada", sub: "-25° a -14.1°" } : d <= 11 ? { score: 0, label: "Alineado", sub: "-14° a 11°" } : { score: 3, label: "Hiperlordosis", sub: "> 11°" }; };
-export const ldiCalc = (l4, l1) => { if (l1 === 0) return { score: 0, label: "N/A", sub: "-", value: 0 }; const p = (l4 / l1) * 100; return p < 40 ? { score: 2, label: "Maldistribuido (bajo)", sub: "< 40%", value: p } : p < 50 ? { score: 1, label: "Maldistribucion Moderada", sub: "40-49%", value: p } : p <= 80 ? { score: 0, label: "Alineado", sub: "50-80%", value: p } : { score: 3, label: "Maldistribuido (alto)", sub: "> 80%", value: p }; };
-export const rsaCalc = (s, i) => { const d = s - i; return d > 18 ? { score: 3, label: "Desajuste Positivo Severo", sub: "> 18°" } : d > 10 ? { score: 1, label: "Desajuste Positivo Moderado", sub: "10.1° a 18°" } : d >= -7 ? { score: 0, label: "Alineado", sub: "-7° a 10°" } : { score: 1, label: "Desajuste Negativo", sub: "< -7°" }; };
-export const afCalc = (a) => a >= 60 ? { score: 1, label: ">= 60 años", sub: "+1 pt" } : { score: 0, label: "< 60 años", sub: "0 pts" };
+export const rpvCalc = (s, i) => { const d = s - i; return d < -15 ? { score: 3, key: "rpv.severa", label: "Retroversion Severa", sub: "< -15°" } : d < -7 ? { score: 2, key: "rpv.moderada", label: "Retroversion Moderada", sub: "-15° a -7.1°" } : d <= 5 ? { score: 0, key: "alineado", label: "Alineado", sub: "-7° a 5°" } : { score: 1, key: "rpv.anteversion", label: "Anteversion", sub: "> 5°" }; };
+export const rllCalc = (s, i) => { const d = s - i; return d < -25 ? { score: 3, key: "rll.severa", label: "Hipolordosis Severa", sub: "< -25°" } : d < -14 ? { score: 2, key: "rll.moderada", label: "Hipolordosis Moderada", sub: "-25° a -14.1°" } : d <= 11 ? { score: 0, key: "alineado", label: "Alineado", sub: "-14° a 11°" } : { score: 3, key: "rll.hiperlordosis", label: "Hiperlordosis", sub: "> 11°" }; };
+export const ldiCalc = (l4, l1) => { if (l1 === 0) return { score: 0, key: "n_a", label: "N/A", sub: "-", value: 0 }; const p = (l4 / l1) * 100; return p < 40 ? { score: 2, key: "ldi.bajo", label: "Maldistribuido (bajo)", sub: "< 40%", value: p } : p < 50 ? { score: 1, key: "ldi.moderada", label: "Maldistribucion Moderada", sub: "40-49%", value: p } : p <= 80 ? { score: 0, key: "alineado", label: "Alineado", sub: "50-80%", value: p } : { score: 3, key: "ldi.alto", label: "Maldistribuido (alto)", sub: "> 80%", value: p }; };
+export const rsaCalc = (s, i) => { const d = s - i; return d > 18 ? { score: 3, key: "rsa.severo", label: "Desajuste Positivo Severo", sub: "> 18°" } : d > 10 ? { score: 1, key: "rsa.moderado", label: "Desajuste Positivo Moderado", sub: "10.1° a 18°" } : d >= -7 ? { score: 0, key: "alineado", label: "Alineado", sub: "-7° a 10°" } : { score: 1, key: "rsa.negativo", label: "Desajuste Negativo", sub: "< -7°" }; };
+export const afCalc = (a) => a >= 60 ? { score: 1, key: "af.mayor60", label: ">= 60 años", sub: "+1 pt" } : { score: 0, key: "af.menor60", label: "< 60 años", sub: "0 pts" };
 
 // Tilts vertebrales (Hills 2022) — IC 80% poblacional sano (n=320)
 // Tres niveles: Normal (dentro IC 80%) · Borderline (≤2° fuera) · Alterado (>2° fuera)
@@ -35,9 +35,9 @@ export const TILT_NORMS = {
 };
 export const TILT_TOL = 2; // ° de tolerancia para "Borderline"
 export const tiltClass = (v, lo, hi) => {
-  if (v >= lo && v <= hi) return { level: "ok", label: "Normal", color: COLORS.green, bg: COLORS.greenBg };
-  if (v >= lo - TILT_TOL && v <= hi + TILT_TOL) return { level: "warn", label: "Borderline", color: COLORS.yellow, bg: COLORS.yellowBg };
-  return { level: "bad", label: "Alterado", color: COLORS.red, bg: COLORS.redBg };
+  if (v >= lo && v <= hi) return { level: "ok", key: "tilt.normal", label: "Normal", color: COLORS.green, bg: COLORS.greenBg };
+  if (v >= lo - TILT_TOL && v <= hi + TILT_TOL) return { level: "warn", key: "tilt.borderline", label: "Borderline", color: COLORS.yellow, bg: COLORS.yellowBg };
+  return { level: "bad", key: "tilt.alterado", label: "Alterado", color: COLORS.red, bg: COLORS.redBg };
 };
 // Calcula tilt directo + derivado (PA−PT) + delta entre ambos + clasificación
 export const computeTilt = (key, direct, pa, pt) => {
@@ -69,13 +69,13 @@ export const computeTilt = (key, direct, pa, pt) => {
 // Regla de concordancia por PI (Sebaaly 2020, Eur Spine J): PI < 50° debe restaurarse
 // a tipo 1 ó 2; PI ≥ 50° a tipo 3 ó 4. No cumplirla: RR 3 de complicación mecánica.
 export const R_TYPES = {
-  "1":    { label: "Tipo 1", short: "1", desc: "SS < 35° con lordosis corta (≤ 3 vértebras lordóticas). Apex bajo (L5), arco inferior corto y cifosis toracolumbar por encima. Asociado a PI baja." },
-  "2":    { label: "Tipo 2", short: "2", desc: "SS < 35° con lordosis larga y plana (> 3 vértebras lordóticas). Dorso plano global con punto de inflexión alto. Asociado a PI baja." },
-  "3":    { label: "Tipo 3 (armónico)", short: "3", desc: "SS 35–45°. Apex en L4, distribución armónica de los arcos lordóticos. El patrón más frecuente en población sana." },
-  "3AP":  { label: "Tipo 3 anteverted", short: "3-AP", desc: "SS ≥ 35° con PI < 50° y PT < 5°: pelvis anteverted. Lordosis prominente sobre una pelvis de baja incidencia (Laouissat 2017)." },
-  "4":    { label: "Tipo 4", short: "4", desc: "SS ≥ 45° con PI alta. Apex en L3 o superior, lordosis larga y angulada con arco inferior prominente." },
-  "1|2":  { label: "Tipo 1 ó 2", short: "1 / 2", desc: "SS < 35°: corresponde a tipo 1 ó 2. Para diferenciarlos se requiere el número de vértebras lordóticas (≤ 3 → tipo 1; > 3 → tipo 2)." },
-  "3|4":  { label: "Tipo 3 ó 4", short: "3 / 4", desc: "Objetivo: restaurar lordosis hasta un shape de PI alta (tipo 3 ó 4). El PT residual esperado define cuál de los dos." },
+  "1":    { key: "roussouly.1", label: "Tipo 1", short: "1", desc: "SS < 35° con lordosis corta (≤ 3 vértebras lordóticas). Apex bajo (L5), arco inferior corto y cifosis toracolumbar por encima. Asociado a PI baja." },
+  "2":    { key: "roussouly.2", label: "Tipo 2", short: "2", desc: "SS < 35° con lordosis larga y plana (> 3 vértebras lordóticas). Dorso plano global con punto de inflexión alto. Asociado a PI baja." },
+  "3":    { key: "roussouly.3", label: "Tipo 3 (armónico)", short: "3", desc: "SS 35–45°. Apex en L4, distribución armónica de los arcos lordóticos. El patrón más frecuente en población sana." },
+  "3AP":  { key: "roussouly.3ap", label: "Tipo 3 anteverted", short: "3-AP", desc: "SS ≥ 35° con PI < 50° y PT < 5°: pelvis anteverted. Lordosis prominente sobre una pelvis de baja incidencia (Laouissat 2017)." },
+  "4":    { key: "roussouly.4", label: "Tipo 4", short: "4", desc: "SS ≥ 45° con PI alta. Apex en L3 o superior, lordosis larga y angulada con arco inferior prominente." },
+  "1|2":  { key: "roussouly.1o2", label: "Tipo 1 ó 2", short: "1 / 2", desc: "SS < 35°: corresponde a tipo 1 ó 2. Para diferenciarlos se requiere el número de vértebras lordóticas (≤ 3 → tipo 1; > 3 → tipo 2)." },
+  "3|4":  { key: "roussouly.3o4", label: "Tipo 3 ó 4", short: "3 / 4", desc: "Objetivo: restaurar lordosis hasta un shape de PI alta (tipo 3 ó 4). El PT residual esperado define cuál de los dos." },
 };
 export const R_LOW_PI = ["1", "2", "1|2"];
 export const R_HIGH_PI = ["3", "4", "3|4"];
