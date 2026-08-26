@@ -507,21 +507,11 @@ create policy casos_imagenes_propias on storage.objects
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- 8. Récord global del easter egg (juego del duende de la columna)
+-- 8. Easter egg (juego del duende de la columna)
 -- ═══════════════════════════════════════════════════════════════════════════
--- Una sola cifra en la tabla `stats` (key='juego_record'): el mejor puntaje
--- global. NO se guarda un log de partidas, solo el máximo.
+-- El juego no guarda nada: ni récord local ni marcador global. Es una
+-- curiosidad que vive y muere en el navegador. Si la base ya trae los restos
+-- de la versión anterior, se limpian con:
+--   drop function if exists public.actualizar_record_juego(bigint);
+--   delete from public.stats where key = 'juego_record';
 
-insert into public.stats (key, count) values ('juego_record', 0) on conflict (key) do nothing;
-
-create or replace function public.actualizar_record_juego(puntaje bigint)
-returns bigint
-language sql security definer set search_path = ''
-as $$
-  insert into public.stats (key, count, updated_at) values ('juego_record', puntaje, now())
-  on conflict (key) do update set count = greatest(public.stats.count, puntaje), updated_at = now()
-  returning count;
-$$;
-
-revoke execute on function public.actualizar_record_juego(bigint) from public;
-grant execute on function public.actualizar_record_juego(bigint) to anon, authenticated;

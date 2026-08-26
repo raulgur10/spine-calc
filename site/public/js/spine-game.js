@@ -28,13 +28,9 @@
   var viewW = 0, viewH = 0;
   var speed = BASE_SPEED, score = 0, dist = 0, bonus = 0;
   var gnome = null, vertebrae = [], screws = [], parts = [];
-  var spawnT = 0, screwCd = 0, high = 0;
-
-  try { high = parseInt(localStorage.getItem("spinecalc_game_high") || "0", 10) || 0; } catch (e) {}
-
-  // ── Supabase (récord global) ───────────────────────────────────────────
-  var SB_URL = "https://fvrzkckfcqmtywwpyflp.supabase.co";
-  var SB_KEY = "sb_publishable_w3g6gmcC0667KI0z8a1pyg_-PwoI3Cy";
+  var spawnT = 0, screwCd = 0;
+  // No se guarda nada: ni récord local ni marcador global. La puntuación vive
+  // lo que dura la partida y se va con ella.
 
   // ── DOM overlay ────────────────────────────────────────────────────────
   function buildOverlay() {
@@ -54,7 +50,6 @@
           '<div class="sg-dead-box">' +
             '<div class="sg-dead-title">¡Aplastado!</div>' +
             '<div class="sg-dead-score" id="sg-dead-score"></div>' +
-            '<div class="sg-board" id="sg-board"></div>' +
             '<button class="sg-retry" id="sg-retry">Reintentar (R)</button>' +
           '</div>' +
         '</div>' +
@@ -80,10 +75,12 @@
       ".sg-throw{position:absolute;right:14px;bottom:10px;width:46px;height:46px;border-radius:50%;border:1px solid #3a4650;background:#1b2833;color:#fff;font-size:20px;cursor:pointer;touch-action:manipulation}" +
       ".sg-throw:active{background:#2a3946}" +
       ".sg-dead{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,12,16,.55)}" +
+      // El display:flex de arriba le gana al atributo hidden, así que hay
+      // que apagarlo a mano o el cartel de muerte tapa el juego siempre.
+      ".sg-dead[hidden]{display:none}" +
       ".sg-dead-box{text-align:center;color:#e8e3d5}" +
       ".sg-dead-title{font-size:26px;font-weight:800;color:#e36b5a;letter-spacing:.05em;margin-bottom:6px}" +
-      ".sg-dead-score{font-size:14px;color:#cfd8de;margin-bottom:14px}" +
-      ".sg-board{font-size:13px;color:#e8e3d5;font-weight:700;margin-bottom:16px;font-variant-numeric:tabular-nums}" +
+      ".sg-dead-score{font-size:14px;color:#cfd8de;margin-bottom:18px}" +
       ".sg-retry{border:1px solid #3a4650;background:#1b2833;color:#fff;font-size:14px;font-weight:700;padding:10px 22px;border-radius:8px;cursor:pointer}" +
       ".sg-retry:hover{background:#2a3946}";
     document.head.appendChild(s);
@@ -101,7 +98,7 @@
     screws = [];
     parts = [];
     dead = false;
-    started = true;
+    started = false;
     var gy = groundY();
     gnome = { x: 70, y: gy - GNOME_H, vy: 0, onGround: true, blink: 0 };
     var deadBox = document.getElementById("sg-dead");
@@ -206,35 +203,11 @@
 
   function die() {
     dead = true;
-    if (score > high) { high = score; try { localStorage.setItem("spinecalc_game_high", String(high)); } catch (e) {} }
     var db = document.getElementById("sg-dead");
     if (db) {
       db.hidden = false;
-      document.getElementById("sg-dead-score").textContent = "Puntuación: " + score + "  ·  Récord: " + high;
-      postScore(score).then(loadGlobal);
+      document.getElementById("sg-dead-score").textContent = "Vértebras esquivadas: " + score;
     }
-  }
-
-  function postScore(s) {
-    return fetch(SB_URL + "/rest/v1/rpc/actualizar_record_juego", {
-      method: "POST",
-      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ puntaje: s })
-    }).then(function (r) { return r.ok; }).catch(function () { return false; });
-  }
-
-  function loadGlobal() {
-    var el = document.getElementById("sg-board");
-    if (!el) return;
-    el.textContent = "Récord global: …";
-    fetch(SB_URL + "/rest/v1/stats?key=eq.juego_record&select=count", {
-      headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY }
-    }).then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-      .then(function (rows) {
-        var g = (rows && rows.length) ? rows[0].count : 0;
-        el.textContent = "Récord global: " + g;
-      })
-      .catch(function () { el.textContent = "Récord global: sin conexión."; });
   }
 
   // ── Dibujo ─────────────────────────────────────────────────────────────
@@ -288,6 +261,15 @@
 
     // duende
     drawGnome();
+
+    // cartel de inicio
+    if (!started && !dead) {
+      ctx.fillStyle = "rgba(232,227,213,0.55)";
+      ctx.font = "700 15px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("Pulsa espacio para empezar", W / 2, gy - 70);
+      ctx.textAlign = "left";
+    }
 
     // score en canvas (grande y tenue)
     ctx.fillStyle = "rgba(232,227,213,0.16)";
@@ -436,8 +418,8 @@
 
   // ── Input ──────────────────────────────────────────────────────────────
   function jump() {
-    if (!started) reset();
     if (dead) return;
+    started = true;
     if (gnome.onGround) { gnome.onGround = false; gnome.vy = JUMP_V; }
   }
 
