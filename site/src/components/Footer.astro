@@ -1,26 +1,24 @@
 ---
+import { getLangFromUrl, useTranslations, pathFor } from '../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
 ---
 
 <footer class="site-foot">
   <div class="container">
     <p class="foot-note">
-      <strong>SpineCalc</strong> es una herramienta de cálculo y apoyo educativo.
-      <strong>No es un dispositivo médico</strong> ni un sistema de apoyo a la decisión clínica.
-      No cuenta con registro sanitario ante COFEPRIS, marcado CE ni autorización de la FDA.
-      La interpretación de los resultados y la responsabilidad de las decisiones clínicas
-      corresponden exclusivamente al médico tratante.
-      <a href="/descargo">Leer el descargo completo</a>.
+      <Fragment set:html={t('foot.note')} />
+      <a href={pathFor('disclaimer', lang)}>{t('foot.readDisclaimer')}</a>.
     </p>
     <div class="foot-links">
-      <a href="/referencias">Referencias</a>
-      <a href="/equipo">Equipo</a>
+      <a href={pathFor('references', lang)}>{t('nav.references')}</a>
+      <a href={pathFor('team', lang)}>{t('nav.team')}</a>
       <a href="https://vml.solutions/" target="_blank" rel="noopener">Virtual Medical Learning</a>
-      <a href="https://github.com/raulgur10/spine-calc" target="_blank" rel="noopener">Código fuente</a>
+      <a href="https://github.com/raulgur10/spine-calc" target="_blank" rel="noopener">{t('foot.source')}</a>
     </div>
-    <p class="foot-legal">
-      © 2026 Virtual Medical Learning (VML) · Distribuido bajo la licencia Apache 2.0.
-    </p>
-    <button id="spine-easter-egg" class="spine-egg" type="button" aria-label="Columna vertebral">
+    <p class="foot-legal">{t('foot.legal')}</p>
+    <button id="spine-easter-egg" class="spine-egg" type="button" aria-label={t('foot.eggAria')}>
       <svg width="20" height="22" viewBox="0 0 20 22" fill="currentColor" aria-hidden="true">
         <path d="M10 1.2 3.6 3.9v4.3L10 10.6l6.4-2.4V3.9L10 1.2z"/>
         <path d="M10 11.4 3.6 14.1v4.3L10 20.8l6.4-2.4v-4.3L10 11.4z"/>
@@ -38,7 +36,8 @@
     line-height: 1.7;
   }
   .foot-note { max-width: 80ch; }
-  .foot-note strong { color: #f3efe6; }
+  /* El <strong> llega por set:html, así que no lleva el hash de scope. */
+  .foot-note :global(strong) { color: #f3efe6; }
   .foot-note a { color: #f3efe6; text-decoration: underline; }
   .foot-links {
     display: flex;

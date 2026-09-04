@@ -1,0 +1,29 @@
+---
+// Una sola ruta genera las ocho páginas internas traducidas: dos idiomas por
+// cuatro páginas. El slug sale de ROUTES, así que /en/concepts y
+// /fr/avertissement se emiten sin duplicar ni el contenido ni la plantilla.
+import Concepts from '../../components/pages/Concepts.astro';
+import References from '../../components/pages/References.astro';
+import Team from '../../components/pages/Team.astro';
+import Disclaimer from '../../components/pages/Disclaimer.astro';
+import { LANG_CODES, DEFAULT_LANG, ROUTES } from '../../i18n/utils.js';
+
+const COMPONENTS = { concepts: Concepts, references: References, team: Team, disclaimer: Disclaimer };
+
+export function getStaticPaths() {
+  const paths = [];
+  for (const lang of LANG_CODES) {
+    if (lang === DEFAULT_LANG) continue;
+    for (const pageKey of Object.keys(ROUTES)) {
+      if (pageKey === 'home') continue;
+      paths.push({ params: { lang, page: ROUTES[pageKey][lang] }, props: { pageKey } });
+    }
+  }
+  return paths;
+}
+
+const { pageKey } = Astro.props;
+const Page = COMPONENTS[pageKey];
+---
+
+<Page />

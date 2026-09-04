@@ -1,0 +1,10 @@
+---
+import Home from '../../components/pages/Home.astro';
+import { LANG_CODES, DEFAULT_LANG } from '../../i18n/utils.js';
+
+export function getStaticPaths() {
+  return LANG_CODES.filter((l) => l !== DEFAULT_LANG).map((lang) => ({ params: { lang } }));
+}
+---
+
+<Home />

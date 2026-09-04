@@ -1,5 +1,5 @@
 // Traduce los errores de Supabase a los códigos estables de la capa de datos.
-// Es el gemelo de fromFirebaseError: la interfaz no distingue cuál de los dos
+// Traduce los errores del motor al código propio: la interfaz no distingue cuál
 // motor produjo el error.
 import { DataError, DataErrorCode } from "../../errors";
 

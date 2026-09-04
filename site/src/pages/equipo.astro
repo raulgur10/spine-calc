@@ -1,52 +1,7 @@
 ---
-import Base from '../layouts/Base.astro';
-
-const equipo = [
-  { nombre: 'Iván Ulises Sámano López', rol: 'Cirujano de columna · autor de correspondencia', org: 'Centro Médico ABC, Ciudad de México' },
-  { nombre: 'Raúl Guillén Rojas', rol: 'Coordinador clínico y de desarrollo', org: 'Centro Médico ABC, Campus Santa Fe' },
-  { nombre: 'Ernesto Eduardo Galván Hernández', rol: 'Cirujano de columna', org: 'Centro Médico ABC, Campus Santa Fe' },
-  { nombre: 'Rafael Avendaño Pradel', rol: 'Cirujano de columna', org: 'Centro Médico ABC, Campus Santa Fe' },
-];
+// Español en la raíz: estas URLs están impresas en el QR y citadas en el
+// borrador del artículo, así que no llevan prefijo de idioma.
+import Team from '../components/pages/Team.astro';
 ---
 
-<Base title="Equipo">
-  <section class="section">
-    <div class="container">
-      <h1>Quiénes la desarrollamos</h1>
-      <p class="lede">
-        SpineCalc es un proyecto conjunto de cirujanos de columna del Centro Médico ABC,
-        en la Ciudad de México, con el desarrollo técnico de Virtual Medical Learning.
-      </p>
-
-      <div class="grid grid--cards" style="margin-top: 32px">
-        {equipo.map((m) => (
-          <div class="card">
-            <h2>{m.nombre}</h2>
-            <p><strong>{m.rol}</strong></p>
-            <p>{m.org}</p>
-          </div>
-        ))}
-      </div>
-
-      <section class="section" style="padding-bottom: 0">
-        <h2>Virtual Medical Learning (VML)</h2>
-        <p class="lede">
-          VML aporta el desarrollo técnico de la aplicación, sin costo para los autores
-          clínicos ni para la institución, y sin participación de la industria de
-          dispositivos médicos o implantes.
-        </p>
-        <p><a href="https://vml.solutions/" target="_blank" rel="noopener">Visitar vml.solutions →</a></p>
-      </section>
-
-      <section class="section" style="padding-bottom: 0">
-        <h2>Atribución científica</h2>
-        <p class="lede">
-          Los métodos que calcula SpineCalc son obra de sus autores originales y se citan
-          en la interfaz, en la documentación y en el aviso de atribución distribuido con
-          el código. SpineCalc no mantiene relación institucional, contractual ni de
-          respaldo con dichos autores ni con las sociedades o editoriales correspondientes.
-        </p>
-      </section>
-    </div>
-  </section>
-</Base>
+<Team />

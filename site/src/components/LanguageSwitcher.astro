@@ -1,0 +1,69 @@
+---
+import { LANGS, pathFor, getLangFromUrl, getPageKeyFromUrl, useTranslations, DEFAULT_LANG } from '../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const pageKey = getPageKeyFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+// Cambiar de idioma conserva la página. Si la ruta no tiene equivalente
+// traducida (una 404), el selector lleva a la portada del otro idioma.
+const options = LANGS.map((l) => ({
+  ...l,
+  href: pathFor(pageKey ?? 'home', l.code),
+  active: l.code === lang,
+}));
+---
+
+<nav class="lang" aria-label={t('nav.langAria')}>
+  {options.map((o) => (
+    <a
+      href={o.href}
+      hreflang={o.code}
+      lang={o.code}
+      title={o.label}
+      class:list={[{ active: o.active }]}
+      aria-current={o.active ? 'true' : undefined}
+      data-lang={o.code}
+    >
+      {o.short}
+    </a>
+  ))}
+</nav>
+
+<script is:inline define:vars={{ DEFAULT_LANG }}>
+  // La calculadora (/calc) tiene su propio i18n en React y lee esta clave de
+  // localStorage. Escribirla aquí es lo que hace que un lector que venía en
+  // /fr/ abra la app en francés sin pedírselo dos veces.
+  document.querySelectorAll('.lang a[data-lang]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      try { localStorage.setItem('spinecalc_lang', a.dataset.lang); } catch (e) { /* modo privado */ }
+    });
+  });
+  // Y al revés: llegar a una página en un idioma fija la preferencia, de modo
+  // que el enlace "Abrir la calculadora" concuerde con lo que se está leyendo.
+  try { localStorage.setItem('spinecalc_lang', document.documentElement.lang || DEFAULT_LANG); } catch (e) {}
+</script>
+
+<style>
+  .lang {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--c-line);
+    border-radius: 999px;
+  }
+  .lang a {
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--c-muted);
+    line-height: 1.4;
+  }
+  .lang a:hover { color: var(--c-primary); text-decoration: none; }
+  .lang a.active {
+    background: var(--c-primary);
+    color: #fff;
+  }
+</style>

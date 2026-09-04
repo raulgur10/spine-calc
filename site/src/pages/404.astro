@@ -1,18 +1,40 @@
 ---
 import Base from '../layouts/Base.astro';
+import { LANGS, useTranslations, pathFor, calcPath, DEFAULT_LANG } from '../i18n/utils.js';
+
+// Cloudflare Pages sirve un único 404.html para todo el sitio, sin importar el
+// prefijo de la URL fallida. Como no hay forma de saber en qué idioma leía
+// quien llegó aquí, se responde en los tres: es más corto que detectarlo con
+// JavaScript y no depende de que este se ejecute.
+const bloques = LANGS.map((l) => {
+  const t = useTranslations(l.code);
+  return {
+    code: l.code,
+    h: t('nf.h1'),
+    lede: t('nf.lede', { link: `<a href="${calcPath(l.code)}">${calcPath(l.code)}</a>` }),
+    calc: t('nav.openCalc'),
+    calcHref: calcPath(l.code),
+    back: t('nf.back'),
+    backHref: pathFor('home', l.code),
+    primary: l.code === DEFAULT_LANG,
+  };
+});
+const t = useTranslations(DEFAULT_LANG);
 ---
 
-<Base title="Página no encontrada">
+<Base title={t('nf.title')}>
   <section class="section">
     <div class="container center">
-      <h1>Página no encontrada</h1>
-      <p class="lede">
-        La ruta que buscas no existe. La calculadora vive en <a href="/calc">/calc</a>.
-      </p>
-      <div class="cta-row">
-        <a class="btn btn--primary" href="/calc">Abrir la calculadora</a>
-        <a class="btn btn--ghost" href="/">Volver al inicio</a>
-      </div>
+      {bloques.map((b) => (
+        <div class="nf-block" lang={b.code} class:list={[{ 'nf-block--primary': b.primary }]}>
+          {b.primary ? <h1>{b.h}</h1> : <h2>{b.h}</h2>}
+          <p class="lede" set:html={b.lede} />
+          <div class="cta-row">
+            <a class="btn btn--primary" href={b.calcHref}>{b.calc}</a>
+            <a class="btn btn--ghost" href={b.backHref}>{b.back}</a>
+          </div>
+        </div>
+      ))}
     </div>
   </section>
 </Base>
@@ -21,4 +43,10 @@ import Base from '../layouts/Base.astro';
   .center { text-align: center; max-width: 640px; margin: 0 auto; }
   .center .lede { margin-left: auto; margin-right: auto; }
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+  .nf-block + .nf-block {
+    margin-top: 48px;
+    padding-top: 40px;
+    border-top: 1px solid var(--c-line);
+  }
+  .nf-block h2 { font-size: 1.5rem; }
 </style>

@@ -170,10 +170,36 @@ src/
                          horizontal de referencia, mediciones libres.
   App.jsx                Formulario, cálculo clínico, clasificaciones,
                          persistencia y generación de reportes.
-  data/                  Capa de persistencia con adaptadores (Supabase activo; Firebase como respaldo).
+  data/                  Capa de persistencia tras una superficie única (adaptador de Supabase).
+  i18n.jsx               Idioma de la app (es/en/fr), con locales/ como diccionarios.
+site/                    Sitio público (Astro). Se compila con la app montada en /calc.
+  src/i18n/              Diccionarios del sitio y resolución de rutas por idioma.
+  src/components/pages/  Cada página, una sola vez, servida en los tres idiomas.
 supabase/schema.sql      Esquema, RLS y funciones de seguridad.
 public/landmarks/        Ilustraciones anatómicas de elaboración propia.
 ```
+
+`scripts/build-site.sh` compila ambas cosas y deja el sitio estático completo en
+`site/dist/`, con la calculadora en `site/dist/calc/`. Es lo que ejecuta el CI.
+
+### Idiomas
+
+Tanto el sitio como la aplicación están en **español, inglés y francés**.
+
+El sitio sirve el español en la raíz (`/conceptos`) y los otros idiomas bajo su prefijo
+(`/en/concepts`, `/fr/avertissement`), con los slugs traducidos y `hreflang` entre las tres
+versiones. Las URLs en español no llevan prefijo a propósito: ya están impresas en el código QR
+y citadas en el borrador del artículo.
+
+La aplicación tiene su propio selector y guarda la preferencia en `localStorage`
+(`spinecalc_lang`). El sitio escribe esa misma clave y añade `?lang=` al enlace de la
+calculadora, de modo que quien venía leyendo en francés abre la app en francés.
+
+Para añadir un idioma: crear `site/src/i18n/<código>.js`, registrarlo en `LANGS` y en `ROUTES`
+dentro de `site/src/i18n/utils.js`, y añadir el diccionario equivalente en `src/locales/` para la
+aplicación. Una clave sin traducir cae al español en vez de mostrarse cruda.
+
+**Las referencias bibliográficas no se traducen**: son la cita literal del artículo original.
 
 ### Convenciones geométricas
 

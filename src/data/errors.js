@@ -45,33 +45,3 @@ const MESSAGES = {
 export function messageForError(err, fallback = "Ocurrió un error.") {
   return MESSAGES[err?.code] ?? fallback;
 }
-
-// Traduce un error de Firebase al código propio. Vive aquí y no en App.jsx
-// justamente para que el día de la migración solo haya que escribir el
-// equivalente de Supabase al lado.
-export function fromFirebaseError(err) {
-  const code = err?.code;
-  switch (code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-    case "auth/invalid-email":
-      return new DataError(DataErrorCode.AUTH_INVALID_CREDENTIALS, null, err);
-    case "auth/too-many-requests":
-      return new DataError(DataErrorCode.AUTH_TOO_MANY_REQUESTS, null, err);
-    case "auth/network-request-failed":
-      return new DataError(DataErrorCode.AUTH_NETWORK, null, err);
-    case "auth/popup-closed-by-user":
-    case "auth/cancelled-popup-request":
-      return new DataError(DataErrorCode.AUTH_POPUP_CANCELLED, null, err);
-    case "permission-denied":
-      return new DataError(DataErrorCode.PERMISSION_DENIED, null, err);
-    case "unavailable":
-      return new DataError(DataErrorCode.UNAVAILABLE, null, err);
-    default:
-      if (typeof code === "string" && code.startsWith("auth/")) {
-        return new DataError(DataErrorCode.AUTH_UNKNOWN, null, err);
-      }
-      return new DataError(DataErrorCode.UNKNOWN, null, err);
-  }
-}

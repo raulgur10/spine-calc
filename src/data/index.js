@@ -4,10 +4,10 @@
 // Lo único que App.jsx importa para hablar con la base. Ninguna función de
 // aquí revela qué motor hay debajo.
 //
-// El motor se elige con la línea de import de abajo y nada más. El adaptador de
-// Firebase sigue en adapters/firebase: cambiar esa línea vuelve a él.
+// El motor se elige con la línea de import de abajo y nada más: sustituirla por
+// otro adaptador que cumpla esta misma superficie cambia el backend entero.
 
-import * as backend from "./adapters/supabase";   // el de Firebase sigue en adapters/firebase
+import * as backend from "./adapters/supabase";
 
 /** ¿Hay backend configurado? Si es false, la app funciona en local y sin login. */
 export const dataAvailable = backend.available;

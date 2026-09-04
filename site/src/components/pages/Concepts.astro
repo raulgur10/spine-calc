@@ -1,0 +1,31 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getLangFromUrl, useTranslations, pathFor } from '../../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+// El orden es el de la lista original: pélvicos, regionales, globales y luego
+// los marcos compuestos.
+const KEYS = ['pi', 'ss', 'pt', 'll', 'sva', 'gt', 'gap', 't4l1', 'rous', 'srs', 'gapb', 'pa'];
+const conceptos = KEYS.map((k) => ({ name: t(`concepts.${k}.n`), desc: t(`concepts.${k}.d`) }));
+
+const ledeLink = `<a href="${pathFor('references', lang)}">${t('concepts.ledeLink')}</a>`;
+---
+
+<Base title={t('concepts.title')}>
+  <section class="section">
+    <div class="container">
+      <h1>{t('concepts.h1')}</h1>
+      <p class="lede" set:html={t('concepts.lede', { link: ledeLink })} />
+      <div class="grid grid--cards" style="margin-top: 32px">
+        {conceptos.map((c) => (
+          <div class="card">
+            <h2>{c.name}</h2>
+            <p>{c.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</Base>

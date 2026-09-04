@@ -7,6 +7,32 @@
 
   var TRIGGER_ID = "spine-easter-egg";
 
+  // ── Idioma ─────────────────────────────────────────────────────────────
+  // El juego se inyecta desde el pie de página, que ya está traducido. Toma el
+  // idioma del <html lang> que puso Astro en vez de detectarlo por su cuenta,
+  // para que nunca discrepe de la página que lo rodea.
+  var STRINGS = {
+    es: {
+      title: "El Duende de la Columna", close: "Cerrar",
+      hint: "Espacio / clic · saltar &nbsp;|&nbsp; X · lanzar tornillo",
+      throw: "Lanzar tornillo", dead: "¡Aplastado!",
+      retry: "Reintentar (R)", dodged: "Vértebras esquivadas: "
+    },
+    en: {
+      title: "The Spine Gnome", close: "Close",
+      hint: "Space / click · jump &nbsp;|&nbsp; X · throw a screw",
+      throw: "Throw a screw", dead: "Crushed!",
+      retry: "Retry (R)", dodged: "Vertebrae dodged: "
+    },
+    fr: {
+      title: "Le Lutin du Rachis", close: "Fermer",
+      hint: "Espace / clic · sauter &nbsp;|&nbsp; X · lancer une vis",
+      throw: "Lancer une vis", dead: "Écrasé !",
+      retry: "Réessayer (R)", dodged: "Vertèbres esquivées : "
+    }
+  };
+  var L = STRINGS[(document.documentElement.lang || "es").slice(0, 2)] || STRINGS.es;
+
   // ── Configuración ──────────────────────────────────────────────────────
   var GRAVITY = 2300;      // px/s²
   var JUMP_V = -820;       // velocidad inicial de salto (px/s)
@@ -39,18 +65,18 @@
     ov.innerHTML =
       '<div class="sg-frame">' +
         '<div class="sg-bar">' +
-          '<span class="sg-title">El Duende de la Columna</span>' +
+          '<span class="sg-title">' + L.title + '</span>' +
           '<span class="sg-score" id="sg-score">0</span>' +
-          '<button class="sg-close" id="sg-close" aria-label="Cerrar">✕</button>' +
+          '<button class="sg-close" id="sg-close" aria-label="' + L.close + '">✕</button>' +
         '</div>' +
         '<canvas id="sg-canvas"></canvas>' +
-        '<div class="sg-hint" id="sg-hint">Espacio / clic · saltar &nbsp;|&nbsp; X · lanzar tornillo</div>' +
-        '<button class="sg-throw" id="sg-throw" aria-label="Lanzar tornillo">🔩</button>' +
+        '<div class="sg-hint" id="sg-hint">' + L.hint + '</div>' +
+        '<button class="sg-throw" id="sg-throw" aria-label="' + L.throw + '">🔩</button>' +
         '<div class="sg-dead" id="sg-dead" hidden>' +
           '<div class="sg-dead-box">' +
-            '<div class="sg-dead-title">¡Aplastado!</div>' +
+            '<div class="sg-dead-title">' + L.dead + '</div>' +
             '<div class="sg-dead-score" id="sg-dead-score"></div>' +
-            '<button class="sg-retry" id="sg-retry">Reintentar (R)</button>' +
+            '<button class="sg-retry" id="sg-retry">' + L.retry + '</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -206,7 +232,7 @@
     var db = document.getElementById("sg-dead");
     if (db) {
       db.hidden = false;
-      document.getElementById("sg-dead-score").textContent = "Vértebras esquivadas: " + score;
+      document.getElementById("sg-dead-score").textContent = L.dodged + score;
     }
   }
 

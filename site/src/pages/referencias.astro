@@ -1,52 +1,7 @@
 ---
-import Base from '../layouts/Base.astro';
-import { referencias } from '../data/referencias.js';
-
-const ordenadas = [...referencias].sort((a, b) => b.year - a.year);
+// Español en la raíz: estas URLs están impresas en el QR y citadas en el
+// borrador del artículo, así que no llevan prefijo de idioma.
+import References from '../components/pages/References.astro';
 ---
 
-<Base title="Referencias">
-  <section class="section">
-    <div class="container">
-      <h1>Referencias</h1>
-      <p class="lede">
-        SpineCalc no propone parámetros, umbrales ni sistemas de clasificación nuevos:
-        automatiza el cálculo de métodos publicados por terceros, cuyo mérito conceptual y
-        científico corresponde íntegramente a sus autores. Esta bibliografía se verificó
-        contra los artículos fuente.
-      </p>
-      <ul class="refs">
-        {ordenadas.map((r) => (
-          <li>
-            <span class="ref-year">{r.year}</span>
-            <span>
-              {r.cite}
-              {r.doi && (
-                <> <a href={`https://doi.org/${r.doi}`} target="_blank" rel="noopener">doi:{r.doi} ↗</a></>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  </section>
-</Base>
-
-<style>
-  .refs { list-style: none; padding: 0; margin: 32px 0 0; }
-  .refs li {
-    display: flex;
-    gap: 16px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--c-line);
-    font-size: 0.9375rem;
-  }
-  .ref-year {
-    flex: 0 0 auto;
-    font-weight: 700;
-    color: var(--c-primary);
-    font-variant-numeric: tabular-nums;
-    min-width: 52px;
-  }
-  .refs a { white-space: nowrap; }
-</style>
+<References />

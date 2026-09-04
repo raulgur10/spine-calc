@@ -1,0 +1,138 @@
+// Français. La terminologie suit la littérature francophone du rachis
+// (Duval-Beaupère, Legaye, Roussouly) et concorde avec src/locales/fr.js.
+export default {
+  // ── Métadonnées ────────────────────────────────────────────────────────
+  'site.description': 'SpineCalc — mesure de l’alignement sagittal spino-pelvien. Score GAP, Roussouly, SRS-Schwab et plus.',
+  'site.skip': 'Aller au contenu',
+
+  // ── Navigation ─────────────────────────────────────────────────────────
+  'nav.home': 'Accueil',
+  'nav.concepts': 'Concepts',
+  'nav.references': 'Références',
+  'nav.team': 'Équipe',
+  'nav.disclaimer': 'Avertissement',
+  'nav.brandAria': 'SpineCalc — accueil',
+  'nav.aria': 'Principale',
+  'nav.openCalc': 'Ouvrir le calculateur',
+  'nav.langAria': 'Langue',
+
+  // ── Pied de page ───────────────────────────────────────────────────────
+  'foot.note': '<strong>SpineCalc</strong> est un outil de calcul et de soutien pédagogique. <strong>Ce n’est pas un dispositif médical</strong>, ni un système d’aide à la décision clinique. Il ne dispose ni d’une autorisation COFEPRIS, ni du marquage CE, ni d’une autorisation de la FDA. L’interprétation des résultats et la responsabilité des décisions cliniques incombent exclusivement au médecin traitant.',
+  'foot.readDisclaimer': 'Lire l’avertissement complet',
+  'foot.source': 'Code source',
+  'foot.legal': '© 2026 Virtual Medical Learning (VML) · Distribué sous licence Apache 2.0.',
+  'foot.eggAria': 'Colonne vertébrale',
+
+  // ── Accueil ────────────────────────────────────────────────────────────
+  'home.hero.h1': 'Mesurez l’alignement sagittal du rachis avec rigueur, sans friction.',
+  'home.hero.lede': 'SpineCalc automatise le calcul du score GAP, de l’axe T4–L1–hanche, de la classification de Roussouly, des modificateurs SRS–Schwab et davantage, directement sur des radiographies de profil numériques. Gratuit, dans le navigateur.',
+  'home.hero.cta1': 'Essayer le calculateur',
+  'home.hero.cta2': 'Accès chirurgiens',
+  'home.hero.note': 'Outil de calcul et de soutien pédagogique. Ce n’est pas un dispositif médical.',
+  'home.hero.alt': 'Radiographie de profil avec les paramètres spino-pelviens mesurés dans SpineCalc',
+  'home.hero.caption': 'Mesure des paramètres spino-pelviens dans SpineCalc.',
+
+  'home.why.h2': 'Pourquoi mesurer l’alignement',
+  'home.why.p1': 'L’inadéquation entre la morphologie du bassin et l’alignement du rachis est un prédicteur reconnu de <strong>complications mécaniques</strong> après chirurgie de déformation rachidienne de l’adulte : descellement des vis, cyphose jonctionnelle proximale et pseudarthrose, entre autres.',
+  'home.why.p2': 'Le <strong>score GAP</strong> (Yilgor et al., 2017) a été développé précisément pour saisir cette proportion globale et prédire le risque. Il a fait l’objet d’une validation externe (Kwan et al., 2021) et d’une réanalyse dans des méta-analyses récentes (Cho et al., 2024 ; Ferraz et al., 2025).',
+  'home.why.p3': 'Bien mesurer — et vite — permet de planifier la chirurgie selon un objectif d’alignement fondé sur les preuves, et de comparer le préopératoire au postopératoire selon le même critère.',
+
+  'home.what.h2': 'Ce que calcule SpineCalc',
+  'home.what.lede': 'Un seul chargement de la radiographie et un seul repérage de points alimentent plusieurs cadres publiés à la fois. Sans recopier d’un calculateur à l’autre.',
+  'home.what.c1.h': 'Score GAP',
+  'home.what.c1.p': 'Proportion et alignement global (Yilgor 2017), avec ses cinq sous-composantes.',
+  'home.what.c2.h': 'Axe T4–L1–hanche',
+  'home.what.c2.p': 'Alignement sagittal idéal normal (Hills 2022), avec les tilts vertébraux.',
+  'home.what.c3.h': 'Roussouly',
+  'home.what.c3.p': 'Morphotype actuel et cible, et leur concordance avec l’incidence pelvienne.',
+  'home.what.c4.h': 'SRS–Schwab',
+  'home.what.c4.p': 'Modificateurs sagittaux standard : PI−LL, PT et SVA.',
+  'home.what.c5.h': 'GAP-B',
+  'home.what.c5.p': 'Variante du GAP avec IMC et densité minérale osseuse (Noh 2020).',
+  'home.what.c6.h': 'Paramètres de base',
+  'home.what.c6.p': 'PI, SS, PT, lordose L1–S1 et L4–S1, global tilt et SVA.',
+  'home.what.link': 'Voir tous les concepts →',
+
+  'home.evidence.h2': 'Fondé sur des données publiées',
+  'home.evidence.lede': 'SpineCalc ne propose ni paramètres ni seuils nouveaux : il automatise l’arithmétique de méthodes publiées par des tiers, dont le mérite scientifique revient à leurs auteurs. La bibliographie va de Legaye 1998 à Haddad 2025.',
+  'home.evidence.cta': 'Voir les références',
+
+  'home.team.h2': 'Qui le développe',
+  'home.team.lede': 'Des chirurgiens du rachis du Centro Médico ABC, à Mexico, avec Virtual Medical Learning (VML).',
+  'home.team.cta': 'Découvrir l’équipe',
+
+  'home.final.h2': 'Commencer à mesurer',
+  'home.final.lede': 'Chargez une radiographie de profil et obtenez l’analyse complète en quelques minutes.',
+
+  // ── Concepts ───────────────────────────────────────────────────────────
+  'concepts.title': 'Concepts',
+  'concepts.h1': 'Concepts clés',
+  'concepts.lede': 'Les paramètres que mesure SpineCalc, expliqués brièvement. Pour la source et le contexte original de chacun, consultez {link}.',
+  'concepts.ledeLink': 'les références',
+
+  'concepts.pi.n': 'Incidence pelvienne (PI)',
+  'concepts.pi.d': 'Paramètre pelvien fondamental et constante morphologique : l’angle entre la perpendiculaire au plateau sacré et la ligne joignant son milieu à l’axe bicoxofémoral. Il détermine la lordose lombaire cible.',
+  'concepts.ss.n': 'Pente sacrée (SS)',
+  'concepts.ss.d': 'Inclinaison du plateau supérieur de S1 par rapport à l’horizontale. Avec la version pelvienne, elle décrit l’orientation du bassin.',
+  'concepts.pt.n': 'Version pelvienne (PT)',
+  'concepts.pt.d': 'Rotation du bassin autour de l’axe bicoxofémoral ; elle compense la perte de lordose du rachis. L’identité PI = PT + SS est toujours vérifiée.',
+  'concepts.ll.n': 'Lordose lombaire (LL)',
+  'concepts.ll.d': 'Courbure lombaire, mesurée entre L1 et S1. Sa valeur cible dépend du morphotype de Roussouly et de l’incidence pelvienne.',
+  'concepts.sva.n': 'Axe sagittal vertical (SVA)',
+  'concepts.sva.d': 'Distance horizontale entre la verticale de C7 et le coin postéro-supérieur de S1. Mesure d’équilibre global ; elle exige un étalonnage d’échelle.',
+  'concepts.gt.n': 'Global tilt (GT)',
+  'concepts.gt.d': 'Angle entre la ligne du centre de T1 au centre de S1 et la ligne du centre de S1 à l’axe bicoxofémoral. Mesure d’équilibre global.',
+  'concepts.gap.n': 'Score GAP',
+  'concepts.gap.d': 'Global Alignment and Proportion (Yilgor 2017) : combine alignement relatif et proportion spino-pelvienne en une échelle qui prédit les complications mécaniques.',
+  'concepts.t4l1.n': 'Axe T4–L1–hanche',
+  'concepts.t4l1.d': 'Hills 2022 : définit l’alignement sagittal normal à partir de l’angle L1PA et de la lordose lombaire idéale. Inclut les tilts vertébraux de C2, T1 et L1.',
+  'concepts.rous.n': 'Roussouly',
+  'concepts.rous.d': 'Classification des morphotypes d’alignement sagittal normal selon l’incidence pelvienne et la forme lombaire. Elle sert de gabarit cible.',
+  'concepts.srs.n': 'SRS–Schwab',
+  'concepts.srs.d': 'Modificateurs sagittaux standard de la Scoliosis Research Society : PI−LL, PT et SVA, avec leurs degrés de sévérité.',
+  'concepts.gapb.n': 'GAP-B',
+  'concepts.gapb.d': 'Variante du GAP (Noh 2020) intégrant l’IMC et la densité minérale osseuse pour améliorer la prédiction des complications.',
+  'concepts.pa.n': 'L1PA et T4PA',
+  'concepts.pa.d': 'Angles vertébro-pelviens reliant le rachis au bassin ; le L1PA est la base de l’axe T4–L1–hanche.',
+
+  // ── Références ─────────────────────────────────────────────────────────
+  'refs.title': 'Références',
+  'refs.h1': 'Références',
+  'refs.lede': 'SpineCalc ne propose ni paramètres, ni seuils, ni systèmes de classification nouveaux : il automatise le calcul de méthodes publiées par des tiers, dont le mérite conceptuel et scientifique revient intégralement à leurs auteurs. Cette bibliographie a été vérifiée sur les articles sources.',
+
+  // ── Équipe ─────────────────────────────────────────────────────────────
+  'team.title': 'Équipe',
+  'team.h1': 'Qui le développe',
+  'team.lede': 'SpineCalc est un projet commun de chirurgiens du rachis du Centro Médico ABC, à Mexico, avec le développement technique de Virtual Medical Learning.',
+  'team.role.corresponding': 'Chirurgien du rachis · auteur correspondant',
+  'team.role.coordinator': 'Coordinateur clinique et du développement',
+  'team.role.surgeon': 'Chirurgien du rachis',
+  'team.org.abc': 'Centro Médico ABC, Mexico',
+  'team.org.abcSantaFe': 'Centro Médico ABC, campus Santa Fe',
+  'team.vml.h2': 'Virtual Medical Learning (VML)',
+  'team.vml.p': 'VML apporte le développement technique de l’application, sans frais pour les auteurs cliniques ni pour l’institution, et sans participation de l’industrie des dispositifs médicaux ou des implants.',
+  'team.vml.link': 'Visiter vml.solutions →',
+  'team.attr.h2': 'Attribution scientifique',
+  'team.attr.p': 'Les méthodes que calcule SpineCalc sont l’œuvre de leurs auteurs originaux et sont citées dans l’interface, dans la documentation et dans l’avis d’attribution distribué avec le code. SpineCalc n’entretient aucune relation institutionnelle, contractuelle ou de soutien avec ces auteurs, ni avec les sociétés ou éditeurs correspondants.',
+
+  // ── Avertissement ──────────────────────────────────────────────────────
+  'disc.title': 'Avertissement',
+  'disc.h1': 'Avertissement',
+  'disc.medical.h2': 'Avis médical',
+  'disc.medical.p1': 'SpineCalc est un outil de calcul et de soutien pédagogique. <strong>Il ne constitue pas un dispositif médical</strong>, ni un système d’aide à la décision clinique. Il ne dispose ni d’une autorisation COFEPRIS, ni du marquage CE, ni d’une autorisation de la FDA.',
+  'disc.medical.p2': 'Il ne doit pas servir de fondement unique à une indication chirurgicale. L’interprétation des résultats et la responsabilité des décisions cliniques incombent <strong>exclusivement au médecin traitant</strong>.',
+  'disc.affil.h2': 'Absence d’affiliation',
+  'disc.affil.p1': 'Ce logiciel ne propose ni paramètres, ni seuils, ni systèmes de classification nouveaux. Il automatise le calcul de méthodes publiées par des tiers, dont le mérite conceptuel et scientifique revient intégralement à leurs auteurs originaux. Virtual Medical Learning et les auteurs de cette implémentation <strong>n’entretiennent aucune relation institutionnelle, contractuelle ou de soutien</strong> avec ces auteurs, ni avec la Scoliosis Research Society, l’European Spine Study Group ou les éditeurs des publications citées.',
+  'disc.affil.p2': 'Aucune figure, table, nomogramme ni matériel graphique protégé par le droit d’auteur des publications sources n’est reproduit dans ce logiciel. Toutes les illustrations anatomiques et les schémas géométriques de l’interface sont des créations originales.',
+  'disc.privacy.h2': 'Confidentialité et données',
+  'disc.privacy.p': 'Le calcul s’exécute dans le navigateur ; les images radiographiques ne sont transmises à aucun serveur, sauf si l’utilisateur active explicitement le module optionnel d’enregistrement des cas, qui exige un consentement électronique et restreint l’accès de chaque cas à son propriétaire. Un déploiement clinique institutionnel doit documenter le chiffrement, le contrôle d’accès, la conservation, la suppression et la conformité à la NOM-024-SSA3.',
+  'disc.license.h2': 'Licence',
+  'disc.license.p': 'Distribué sous {link}, <strong>sans garantie d’aucune sorte</strong>, conformément à ses sections 7 et 8.',
+  'disc.license.link': 'licence Apache 2.0',
+
+  // ── 404 ────────────────────────────────────────────────────────────────
+  'nf.title': 'Page introuvable',
+  'nf.h1': 'Page introuvable',
+  'nf.lede': 'La route que vous cherchez n’existe pas. Le calculateur se trouve à {link}.',
+  'nf.back': 'Retour à l’accueil',
+};

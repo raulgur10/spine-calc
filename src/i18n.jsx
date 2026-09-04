@@ -16,12 +16,20 @@ export const LS_LANG_KEY = "spinecalc_lang";
 
 function detectLang() {
   try {
+    // `?lang=` gana: es lo que manda el sitio al abrir la app desde /en/ o /fr/,
+    // y también hace que un enlace compartido llegue en el idioma correcto
+    // aunque quien lo abra tenga otra preferencia guardada.
+    const q = new URLSearchParams(window.location.search).get("lang");
+    if (q && SUPPORTED_LANGS.includes(q)) {
+      localStorage.setItem(LS_LANG_KEY, q);
+      return q;
+    }
     const saved = localStorage.getItem(LS_LANG_KEY);
     if (saved && SUPPORTED_LANGS.includes(saved)) return saved;
     const nav = (navigator.language || "es").slice(0, 2).toLowerCase();
     if (SUPPORTED_LANGS.includes(nav)) return nav;
   } catch (_) {
-    /* localStorage o navigator no disponibles */
+    /* localStorage, location o navigator no disponibles */
   }
   return "es";
 }

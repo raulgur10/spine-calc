@@ -1,38 +1,7 @@
 ---
-import Base from '../layouts/Base.astro';
-
-const conceptos = [
-  { name: 'Incidencia pélvica (PI)', desc: 'Parámetro pélvico fundamental y constante morfológica: el ángulo entre la perpendicular al platillo de S1 y la línea que une su centro con el eje bicoxofemoral. Determina la lordosis lumbar objetivo.' },
-  { name: 'Pendiente sacra (SS)', desc: 'Inclinación del platillo superior de S1 respecto de la horizontal. Junto con la versión pélvica, describe la orientación de la pelvis.' },
-  { name: 'Versión pélvica (PT)', desc: 'Rotación de la pelvis alrededor del eje bicoxofemoral; se compensa cuando la columna pierde lordosis. Se cumple la identidad PI = PT + SS.' },
-  { name: 'Lordosis lumbar (LL)', desc: 'Curvatura lumbar, medida entre L1 y S1. Su valor objetivo depende del morfotipo de Roussouly y de la incidencia pélvica.' },
-  { name: 'Eje sagital vertical (SVA)', desc: 'Distancia horizontal entre la plomada de C7 y el borde posterosuperior de S1. Balance global; requiere calibración de escala.' },
-  { name: 'Global tilt (GT)', desc: 'Ángulo entre la línea del centro de T1 al centro de S1 y la línea del centro de S1 al eje bicoxofemoral. Medida de balance global.' },
-  { name: 'GAP score', desc: 'Global Alignment and Proportion (Yilgor 2017): combina alineación relativa y proporción espinopélvica en una escala que predice complicaciones mecánicas.' },
-  { name: 'Eje T4–L1–cadera', desc: 'Hills 2022: define la alineación sagital normal a partir del ángulo L1PA y la lordosis lumbar ideal. Incluye tilts vertebrales de C2, T1 y L1.' },
-  { name: 'Roussouly', desc: 'Clasificación de los morfotipos de alineación sagital normal según la incidencia pélvica y la forma lumbar. Sirve de plantilla objetivo.' },
-  { name: 'SRS–Schwab', desc: 'Modificadores sagitales estándar de la Scoliosis Research Society: PI−LL, PT y SVA, con grados de severidad.' },
-  { name: 'GAP-B', desc: 'Variante del GAP (Noh 2020) que incorpora IMC y densidad mineral ósea para mejorar la predicción de complicaciones.' },
-  { name: 'L1PA y T4PA', desc: 'Ángulos vertebropélvicos que relacionan la columna con la pelvis; L1PA es la base del eje T4–L1–cadera.' },
-];
+// Español en la raíz: estas URLs están impresas en el QR y citadas en el
+// borrador del artículo, así que no llevan prefijo de idioma.
+import Concepts from '../components/pages/Concepts.astro';
 ---
 
-<Base title="Conceptos">
-  <section class="section">
-    <div class="container">
-      <h1>Conceptos clave</h1>
-      <p class="lede">
-        Los parámetros que mide SpineCalc, explicados brevemente. Para la fuente y el
-        contexto original de cada uno, consulta <a href="/referencias">las referencias</a>.
-      </p>
-      <div class="grid grid--cards" style="margin-top: 32px">
-        {conceptos.map((c) => (
-          <div class="card">
-            <h2>{c.name}</h2>
-            <p>{c.desc}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-</Base>
+<Concepts />

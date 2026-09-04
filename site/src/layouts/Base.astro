@@ -6,32 +6,54 @@ import '@fontsource/source-serif-4/400-italic.css';
 import '@fontsource/source-serif-4/600.css';
 import '@fontsource/source-serif-4/700.css';
 import '../styles/global.css';
+import { getLangFromUrl, getPageKeyFromUrl, useTranslations, pathFor, LANGS, DEFAULT_LANG } from '../i18n/utils.js';
 
 const { title, description } = Astro.props;
+
+// El idioma se deduce de la URL, no se pasa de página en página: una ruta bajo
+// /en/ está en inglés por definición y no hay forma de que las dos discrepen.
+const lang = getLangFromUrl(Astro.url);
+const pageKey = getPageKeyFromUrl(Astro.url);
+const t = useTranslations(lang);
+
 const fullTitle = title ? `${title} · SpineCalc` : 'SpineCalc';
-const desc = description || 'SpineCalc — medición de alineación sagital espinopélvica. GAP score, Roussouly, SRS-Schwab y más.';
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://spinecalc.app').toString();
+const desc = description || t('site.description');
+const site = Astro.site ?? 'https://spinecalc.app';
+const canonical = new URL(Astro.url.pathname, site).toString();
+
+// Alternates solo para las páginas que existen en los tres idiomas. En una 404
+// no hay equivalente que anunciar.
+const alternates = pageKey
+  ? LANGS.map((l) => ({ code: l.code, href: new URL(pathFor(pageKey, l.code), site).toString() }))
+  : [];
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={desc} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={canonical} />
+    {alternates.map((a) => (
+      <link rel="alternate" hreflang={a.code} href={a.href} />
+    ))}
+    {pageKey && (
+      <link rel="alternate" hreflang="x-default" href={new URL(pathFor(pageKey, DEFAULT_LANG), site).toString()} />
+    )}
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={lang} />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={desc} />
     <title>{fullTitle}</title>
   </head>
   <body>
-    <a class="skip-link" href="#main">Saltar al contenido</a>
+    <a class="skip-link" href="#main">{t('site.skip')}</a>
     <Header />
     <main id="main">
       <slot />

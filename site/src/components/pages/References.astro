@@ -1,0 +1,53 @@
+---
+import Base from '../../layouts/Base.astro';
+import { referencias } from '../../data/referencias.js';
+import { getLangFromUrl, useTranslations } from '../../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+// Las citas no se traducen: son la referencia bibliográfica literal del
+// artículo original, y traducirlas la haría incitable.
+const ordenadas = [...referencias].sort((a, b) => b.year - a.year);
+---
+
+<Base title={t('refs.title')}>
+  <section class="section">
+    <div class="container">
+      <h1>{t('refs.h1')}</h1>
+      <p class="lede">{t('refs.lede')}</p>
+      <ul class="refs">
+        {ordenadas.map((r) => (
+          <li>
+            <span class="ref-year">{r.year}</span>
+            <span lang="en">
+              {r.cite}
+              {r.doi && (
+                <> <a href={`https://doi.org/${r.doi}`} target="_blank" rel="noopener">doi:{r.doi} ↗</a></>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .refs { list-style: none; padding: 0; margin: 32px 0 0; }
+  .refs li {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--c-line);
+    font-size: 0.9375rem;
+  }
+  .ref-year {
+    flex: 0 0 auto;
+    font-weight: 700;
+    color: var(--c-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+  }
+  .refs a { white-space: nowrap; }
+</style>

@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getLangFromUrl, useTranslations } from '../../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+const licenseLink = `<a href="https://github.com/raulgur10/spine-calc" target="_blank" rel="noopener">${t('disc.license.link')}</a>`;
+---
+
+<Base title={t('disc.title')}>
+  <section class="section">
+    <div class="container narrow">
+      <h1>{t('disc.h1')}</h1>
+
+      <h2>{t('disc.medical.h2')}</h2>
+      <p set:html={t('disc.medical.p1')} />
+      <p set:html={t('disc.medical.p2')} />
+
+      <h2>{t('disc.affil.h2')}</h2>
+      <p set:html={t('disc.affil.p1')} />
+      <p set:html={t('disc.affil.p2')} />
+
+      <h2>{t('disc.privacy.h2')}</h2>
+      <p>{t('disc.privacy.p')}</p>
+
+      <h2>{t('disc.license.h2')}</h2>
+      <p set:html={t('disc.license.p', { link: licenseLink })} />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 760px; }
+  h2 { margin-top: 2em; }
+</style>

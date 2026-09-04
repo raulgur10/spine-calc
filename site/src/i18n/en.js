@@ -1,0 +1,138 @@
+// English. Terminology follows the source publications (Legaye, Roussouly,
+// Schwab, Yilgor, Hills, Noh) and matches src/locales/en.js in the calculator.
+export default {
+  // ── Metadata ───────────────────────────────────────────────────────────
+  'site.description': 'SpineCalc — spinopelvic sagittal alignment measurement. GAP score, Roussouly, SRS-Schwab and more.',
+  'site.skip': 'Skip to content',
+
+  // ── Navigation ─────────────────────────────────────────────────────────
+  'nav.home': 'Home',
+  'nav.concepts': 'Concepts',
+  'nav.references': 'References',
+  'nav.team': 'Team',
+  'nav.disclaimer': 'Disclaimer',
+  'nav.brandAria': 'SpineCalc — home',
+  'nav.aria': 'Main',
+  'nav.openCalc': 'Open the calculator',
+  'nav.langAria': 'Language',
+
+  // ── Footer ─────────────────────────────────────────────────────────────
+  'foot.note': '<strong>SpineCalc</strong> is a calculation and educational support tool. <strong>It is not a medical device</strong>, nor a clinical decision support system. It holds no COFEPRIS marketing authorisation, no CE marking and no FDA clearance. Interpretation of the results and responsibility for clinical decisions rest exclusively with the treating physician.',
+  'foot.readDisclaimer': 'Read the full disclaimer',
+  'foot.source': 'Source code',
+  'foot.legal': '© 2026 Virtual Medical Learning (VML) · Distributed under the Apache 2.0 licence.',
+  'foot.eggAria': 'Spine',
+
+  // ── Home ───────────────────────────────────────────────────────────────
+  'home.hero.h1': 'Measure sagittal spinal alignment rigorously, without the friction.',
+  'home.hero.lede': 'SpineCalc automates the GAP score, the T4–L1–hip axis, the Roussouly classification, the SRS–Schwab modifiers and more, directly on digital lateral radiographs. Free, in the browser.',
+  'home.hero.cta1': 'Try the calculator',
+  'home.hero.cta2': 'Surgeon access',
+  'home.hero.note': 'A calculation and educational support tool. It is not a medical device.',
+  'home.hero.alt': 'Lateral radiograph with spinopelvic parameters measured in SpineCalc',
+  'home.hero.caption': 'Spinopelvic parameter measurement in SpineCalc.',
+
+  'home.why.h2': 'Why alignment matters',
+  'home.why.p1': 'A mismatch between pelvic morphology and spinal alignment is a known predictor of <strong>mechanical complications</strong> after adult spinal deformity surgery: screw loosening, proximal junctional kyphosis and nonunion, among others.',
+  'home.why.p2': 'The <strong>GAP score</strong> (Yilgor et al., 2017) was developed precisely to capture that global proportion and predict the risk. It has been externally validated (Kwan et al., 2021) and reanalysed in recent meta-analyses (Cho et al., 2024; Ferraz et al., 2025).',
+  'home.why.p3': 'Measuring well — and fast — makes it possible to plan surgery against an evidence-based alignment target, and to compare the preoperative and postoperative states by the same criterion.',
+
+  'home.what.h2': 'What SpineCalc computes',
+  'home.what.lede': 'A single radiograph upload and a single set of landmarks feed several published frameworks at once. No transcribing between calculators.',
+  'home.what.c1.h': 'GAP score',
+  'home.what.c1.p': 'Global alignment and proportion (Yilgor 2017), with its five subcomponents.',
+  'home.what.c2.h': 'T4–L1–hip axis',
+  'home.what.c2.p': 'Normal ideal sagittal alignment (Hills 2022), with vertebral tilts.',
+  'home.what.c3.h': 'Roussouly',
+  'home.what.c3.p': 'Current and target morphotype, and their agreement with pelvic incidence.',
+  'home.what.c4.h': 'SRS–Schwab',
+  'home.what.c4.p': 'Standard sagittal modifiers: PI−LL, PT and SVA.',
+  'home.what.c5.h': 'GAP-B',
+  'home.what.c5.p': 'GAP variant with BMI and bone mineral density (Noh 2020).',
+  'home.what.c6.h': 'Basic parameters',
+  'home.what.c6.p': 'PI, SS, PT, L1–S1 and L4–S1 lordosis, global tilt and SVA.',
+  'home.what.link': 'See all the concepts →',
+
+  'home.evidence.h2': 'Grounded in published evidence',
+  'home.evidence.lede': 'SpineCalc proposes no new parameters or thresholds: it automates the arithmetic of methods published by third parties, whose scientific merit belongs to their authors. The bibliography runs from Legaye 1998 to Haddad 2025.',
+  'home.evidence.cta': 'See the references',
+
+  'home.team.h2': 'Who builds it',
+  'home.team.lede': 'Spine surgeons at Centro Médico ABC in Mexico City, together with Virtual Medical Learning (VML).',
+  'home.team.cta': 'Meet the team',
+
+  'home.final.h2': 'Start measuring',
+  'home.final.lede': 'Upload a lateral radiograph and get the full analysis in minutes.',
+
+  // ── Concepts ───────────────────────────────────────────────────────────
+  'concepts.title': 'Concepts',
+  'concepts.h1': 'Key concepts',
+  'concepts.lede': 'The parameters SpineCalc measures, briefly explained. For the source and original context of each one, see {link}.',
+  'concepts.ledeLink': 'the references',
+
+  'concepts.pi.n': 'Pelvic incidence (PI)',
+  'concepts.pi.d': 'The fundamental pelvic parameter and a morphological constant: the angle between the perpendicular to the S1 endplate and the line joining its midpoint to the bicoxofemoral axis. It determines the target lumbar lordosis.',
+  'concepts.ss.n': 'Sacral slope (SS)',
+  'concepts.ss.d': 'Tilt of the S1 superior endplate relative to the horizontal. Together with pelvic tilt, it describes the orientation of the pelvis.',
+  'concepts.pt.n': 'Pelvic tilt (PT)',
+  'concepts.pt.d': 'Rotation of the pelvis about the bicoxofemoral axis; it compensates when the spine loses lordosis. The identity PI = PT + SS always holds.',
+  'concepts.ll.n': 'Lumbar lordosis (LL)',
+  'concepts.ll.d': 'Lumbar curvature, measured from L1 to S1. Its target value depends on the Roussouly morphotype and on pelvic incidence.',
+  'concepts.sva.n': 'Sagittal vertical axis (SVA)',
+  'concepts.sva.d': 'Horizontal distance between the C7 plumb line and the posterosuperior corner of S1. A global balance measure; it requires scale calibration.',
+  'concepts.gt.n': 'Global tilt (GT)',
+  'concepts.gt.d': 'Angle between the line from the centre of T1 to the centre of S1 and the line from the centre of S1 to the bicoxofemoral axis. A measure of global balance.',
+  'concepts.gap.n': 'GAP score',
+  'concepts.gap.d': 'Global Alignment and Proportion (Yilgor 2017): combines relative alignment and spinopelvic proportion into a scale that predicts mechanical complications.',
+  'concepts.t4l1.n': 'T4–L1–hip axis',
+  'concepts.t4l1.d': 'Hills 2022: defines normal sagittal alignment from the L1PA angle and the ideal lumbar lordosis. Includes the vertebral tilts of C2, T1 and L1.',
+  'concepts.rous.n': 'Roussouly',
+  'concepts.rous.d': 'Classification of normal sagittal alignment morphotypes by pelvic incidence and lumbar shape. It serves as the target template.',
+  'concepts.srs.n': 'SRS–Schwab',
+  'concepts.srs.d': 'The Scoliosis Research Society standard sagittal modifiers: PI−LL, PT and SVA, with severity grades.',
+  'concepts.gapb.n': 'GAP-B',
+  'concepts.gapb.d': 'GAP variant (Noh 2020) incorporating BMI and bone mineral density to improve the prediction of complications.',
+  'concepts.pa.n': 'L1PA and T4PA',
+  'concepts.pa.d': 'Vertebropelvic angles relating the spine to the pelvis; L1PA is the basis of the T4–L1–hip axis.',
+
+  // ── References ─────────────────────────────────────────────────────────
+  'refs.title': 'References',
+  'refs.h1': 'References',
+  'refs.lede': 'SpineCalc proposes no new parameters, thresholds or classification systems: it automates the calculation of methods published by third parties, whose conceptual and scientific merit belongs entirely to their authors. This bibliography was verified against the source articles.',
+
+  // ── Team ───────────────────────────────────────────────────────────────
+  'team.title': 'Team',
+  'team.h1': 'Who builds it',
+  'team.lede': 'SpineCalc is a joint project of spine surgeons at Centro Médico ABC in Mexico City, with the technical development contributed by Virtual Medical Learning.',
+  'team.role.corresponding': 'Spine surgeon · corresponding author',
+  'team.role.coordinator': 'Clinical and development coordinator',
+  'team.role.surgeon': 'Spine surgeon',
+  'team.org.abc': 'Centro Médico ABC, Mexico City',
+  'team.org.abcSantaFe': 'Centro Médico ABC, Santa Fe Campus',
+  'team.vml.h2': 'Virtual Medical Learning (VML)',
+  'team.vml.p': 'VML contributes the technical development of the application at no cost to the clinical authors or to the institution, and with no involvement from the medical device or implant industry.',
+  'team.vml.link': 'Visit vml.solutions →',
+  'team.attr.h2': 'Scientific attribution',
+  'team.attr.p': 'The methods SpineCalc computes are the work of their original authors and are cited in the interface, in the documentation and in the attribution notice distributed with the code. SpineCalc has no institutional, contractual or endorsement relationship with those authors, nor with the corresponding societies or publishers.',
+
+  // ── Disclaimer ─────────────────────────────────────────────────────────
+  'disc.title': 'Disclaimer',
+  'disc.h1': 'Disclaimer',
+  'disc.medical.h2': 'Medical notice',
+  'disc.medical.p1': 'SpineCalc is a calculation and educational support tool. <strong>It does not constitute a medical device</strong>, nor a clinical decision support system. It holds no COFEPRIS marketing authorisation, no CE marking and no FDA clearance.',
+  'disc.medical.p2': 'It must not be used as the sole basis for a surgical indication. Interpretation of the results and responsibility for clinical decisions rest <strong>exclusively with the treating physician</strong>.',
+  'disc.affil.h2': 'Absence of affiliation',
+  'disc.affil.p1': 'This software proposes no new parameters, thresholds or classification systems. It automates the calculation of methods published by third parties, whose conceptual and scientific merit belongs entirely to their original authors. Virtual Medical Learning and the authors of this implementation <strong>have no institutional, contractual or endorsement relationship</strong> with those authors, nor with the Scoliosis Research Society, the European Spine Study Group or the publishers of the cited works.',
+  'disc.affil.p2': 'No figure, table, nomogram or copyrighted graphic material from the source publications is reproduced in this software. All anatomical illustrations and geometric diagrams in the interface are original work.',
+  'disc.privacy.h2': 'Privacy and data',
+  'disc.privacy.p': 'Calculation runs in the browser; radiographic images are not transmitted to any server unless the user explicitly enables the optional case registry module, which requires electronic consent and restricts access to each case to its owner. An institutional clinical deployment must document encryption, access control, retention, deletion and compliance with NOM-024-SSA3.',
+  'disc.license.h2': 'Licence',
+  'disc.license.p': 'Distributed under the {link}, <strong>without warranty of any kind</strong>, pursuant to its sections 7 and 8.',
+  'disc.license.link': 'Apache 2.0 licence',
+
+  // ── 404 ────────────────────────────────────────────────────────────────
+  'nf.title': 'Page not found',
+  'nf.h1': 'Page not found',
+  'nf.lede': 'The route you are looking for does not exist. The calculator lives at {link}.',
+  'nf.back': 'Back to home',
+};

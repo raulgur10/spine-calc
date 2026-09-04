@@ -1,0 +1,126 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getLangFromUrl, useTranslations, pathFor, calcPath } from '../../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+const cards = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'].map((c) => ({
+  h: t(`home.what.${c}.h`),
+  p: t(`home.what.${c}.p`),
+}));
+---
+
+<Base>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <h1>{t('home.hero.h1')}</h1>
+        <p class="lede dropcap">{t('home.hero.lede')}</p>
+        <div class="cta-row">
+          <a class="btn btn--primary" href={calcPath(lang)}>{t('home.hero.cta1')}</a>
+          <a class="btn btn--ghost" href={calcPath(lang)}>{t('home.hero.cta2')}</a>
+        </div>
+        <p class="hero-note">{t('home.hero.note')}</p>
+      </div>
+      <figure class="hero-figure">
+        <img src="/images/xray-1.jpg" alt={t('home.hero.alt')} width="852" height="858" />
+        <figcaption>{t('home.hero.caption')}</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- Por qué importa -->
+  <section class="section section--soft">
+    <div class="container">
+      <h2>{t('home.why.h2')}</h2>
+      <div class="grid why">
+        <p set:html={t('home.why.p1')} />
+        <p set:html={t('home.why.p2')} />
+        <p set:html={t('home.why.p3')} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Qué calcula -->
+  <section class="section">
+    <div class="container">
+      <h2>{t('home.what.h2')}</h2>
+      <p class="lede">{t('home.what.lede')}</p>
+      <div class="grid grid--cards">
+        {cards.map((c) => (
+          <div class="card"><h3>{c.h}</h3><p>{c.p}</p></div>
+        ))}
+      </div>
+      <p style="margin-top: 24px"><a href={pathFor('concepts', lang)}>{t('home.what.link')}</a></p>
+    </div>
+  </section>
+
+  <!-- Referencias -->
+  <section class="section section--soft">
+    <div class="container">
+      <h2>{t('home.evidence.h2')}</h2>
+      <p class="lede">{t('home.evidence.lede')}</p>
+      <a class="btn btn--ghost" href={pathFor('references', lang)}>{t('home.evidence.cta')}</a>
+    </div>
+  </section>
+
+  <!-- Equipo -->
+  <section class="section">
+    <div class="container">
+      <h2>{t('home.team.h2')}</h2>
+      <p class="lede">{t('home.team.lede')}</p>
+      <a class="btn btn--ghost" href={pathFor('team', lang)}>{t('home.team.cta')}</a>
+    </div>
+  </section>
+
+  <!-- CTA final -->
+  <section class="section section--soft">
+    <div class="container center">
+      <h2>{t('home.final.h2')}</h2>
+      <p class="lede">{t('home.final.lede')}</p>
+      <div class="cta-row">
+        <a class="btn btn--primary" href={calcPath(lang)}>{t('home.hero.cta1')}</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero { padding: 88px 0 64px; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .hero h1 { max-width: 20ch; }
+  .hero .lede { max-width: 58ch; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 24px 0 0; }
+  .hero-note { margin-top: 16px; font-size: 0.85rem; color: var(--c-muted); }
+  .hero-figure {
+    margin: 0;
+    padding: 12px;
+    background: var(--c-card);
+    border: 1px solid var(--c-line);
+    border-radius: 6px;
+  }
+  .hero-figure img { width: 100%; height: auto; display: block; border-radius: 4px; }
+  .hero-figure figcaption {
+    font-size: 0.85rem;
+    color: var(--c-muted);
+    font-style: italic;
+    padding: 10px 4px 0;
+    line-height: 1.5;
+  }
+  .why { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .why p { color: var(--c-muted); }
+  .why :global(strong) { color: var(--c-ink); }
+  .center { text-align: center; }
+  .center .lede { margin-left: auto; margin-right: auto; }
+  .center .cta-row { justify-content: center; }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+  }
+</style>

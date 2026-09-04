@@ -1,0 +1,45 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getLangFromUrl, useTranslations } from '../../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+// Los nombres propios no se traducen; el cargo y la adscripción sí.
+const equipo = [
+  { nombre: 'Iván Ulises Sámano López', rol: t('team.role.corresponding'), org: t('team.org.abc') },
+  { nombre: 'Raúl Guillén Rojas', rol: t('team.role.coordinator'), org: t('team.org.abcSantaFe') },
+  { nombre: 'Ernesto Eduardo Galván Hernández', rol: t('team.role.surgeon'), org: t('team.org.abcSantaFe') },
+  { nombre: 'Rafael Avendaño Pradel', rol: t('team.role.surgeon'), org: t('team.org.abcSantaFe') },
+];
+---
+
+<Base title={t('team.title')}>
+  <section class="section">
+    <div class="container">
+      <h1>{t('team.h1')}</h1>
+      <p class="lede">{t('team.lede')}</p>
+
+      <div class="grid grid--cards" style="margin-top: 32px">
+        {equipo.map((m) => (
+          <div class="card">
+            <h2>{m.nombre}</h2>
+            <p><strong>{m.rol}</strong></p>
+            <p>{m.org}</p>
+          </div>
+        ))}
+      </div>
+
+      <section class="section" style="padding-bottom: 0">
+        <h2>{t('team.vml.h2')}</h2>
+        <p class="lede">{t('team.vml.p')}</p>
+        <p><a href="https://vml.solutions/" target="_blank" rel="noopener">{t('team.vml.link')}</a></p>
+      </section>
+
+      <section class="section" style="padding-bottom: 0">
+        <h2>{t('team.attr.h2')}</h2>
+        <p class="lede">{t('team.attr.p')}</p>
+      </section>
+    </div>
+  </section>
+</Base>
