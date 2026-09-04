@@ -16,6 +16,18 @@ export default {
   'nav.openCalc': 'Abrir la calculadora',
   'nav.langAria': 'Idioma',
 
+  // ── Recursos, acceso y avisos ──────────────────────────────────────────
+  'nav.resources': 'Recursos',
+  'nav.resources.doctors': 'Para médicos',
+  'nav.resources.patients': 'Para pacientes',
+  'nav.login': 'Entrar',
+  'nav.loginAria': 'Acceder al panel de casos',
+  'soon.badge': 'En construcción',
+  'soon.login': 'El acceso al panel de casos llegará en una fase posterior. Por ahora la calculadora funciona completa y sin necesidad de cuenta.',
+  'soon.doctors': 'Estamos preparando el material para médicos: guía de medición, criterios de cada marco y casos de ejemplo.',
+  'soon.patients': 'Estamos preparando el material para pacientes: qué significa la alineación de la columna y qué mide esta herramienta.',
+  'soon.close': 'Cerrar',
+
   // ── Pie ────────────────────────────────────────────────────────────────
   'foot.note': '<strong>SpineCalc</strong> es una herramienta de cálculo y apoyo educativo. <strong>No es un dispositivo médico</strong> ni un sistema de apoyo a la decisión clínica. No cuenta con registro sanitario ante COFEPRIS, marcado CE ni autorización de la FDA. La interpretación de los resultados y la responsabilidad de las decisiones clínicas corresponden exclusivamente al médico tratante.',
   'foot.readDisclaimer': 'Leer el descargo completo',

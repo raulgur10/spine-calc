@@ -1,6 +1,7 @@
 ---
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import ComingSoon from '../components/ComingSoon.astro';
 import '@fontsource/source-serif-4/400.css';
 import '@fontsource/source-serif-4/400-italic.css';
 import '@fontsource/source-serif-4/600.css';
@@ -59,6 +60,7 @@ const alternates = pageKey
       <slot />
     </main>
     <Footer />
+    <ComingSoon />
     <script src="/js/spine-game.js" defer></script>
   </body>
 </html>

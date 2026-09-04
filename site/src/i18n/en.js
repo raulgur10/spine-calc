@@ -16,6 +16,18 @@ export default {
   'nav.openCalc': 'Open the calculator',
   'nav.langAria': 'Language',
 
+  // ── Resources, access and notices ──────────────────────────────────────
+  'nav.resources': 'Resources',
+  'nav.resources.doctors': 'For clinicians',
+  'nav.resources.patients': 'For patients',
+  'nav.login': 'Sign in',
+  'nav.loginAria': 'Sign in to the case dashboard',
+  'soon.badge': 'Under construction',
+  'soon.login': 'Access to the case dashboard is coming in a later phase. For now the calculator works in full, with no account needed.',
+  'soon.doctors': 'We are preparing the material for clinicians: a measurement guide, the criteria behind each framework and worked examples.',
+  'soon.patients': 'We are preparing the material for patients: what spinal alignment means and what this tool measures.',
+  'soon.close': 'Close',
+
   // ── Footer ─────────────────────────────────────────────────────────────
   'foot.note': '<strong>SpineCalc</strong> is a calculation and educational support tool. <strong>It is not a medical device</strong>, nor a clinical decision support system. It holds no COFEPRIS marketing authorisation, no CE marking and no FDA clearance. Interpretation of the results and responsibility for clinical decisions rest exclusively with the treating physician.',
   'foot.readDisclaimer': 'Read the full disclaimer',

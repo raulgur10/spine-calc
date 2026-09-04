@@ -4,6 +4,7 @@ import { LANGS, pathFor, getLangFromUrl, getPageKeyFromUrl, useTranslations, DEF
 const lang = getLangFromUrl(Astro.url);
 const pageKey = getPageKeyFromUrl(Astro.url);
 const t = useTranslations(lang);
+const actual = LANGS.find((l) => l.code === lang) ?? LANGS[0];
 
 // Cambiar de idioma conserva la página. Si la ruta no tiene equivalente
 // traducida (una 404), el selector lleva a la portada del otro idioma.
@@ -14,27 +15,46 @@ const options = LANGS.map((l) => ({
 }));
 ---
 
-<nav class="lang" aria-label={t('nav.langAria')}>
-  {options.map((o) => (
-    <a
-      href={o.href}
-      hreflang={o.code}
-      lang={o.code}
-      title={o.label}
-      class:list={[{ active: o.active }]}
-      aria-current={o.active ? 'true' : undefined}
-      data-lang={o.code}
-    >
-      {o.short}
-    </a>
-  ))}
-</nav>
+<div class="menu lang-menu">
+  <button
+    type="button"
+    class="menu-btn lang-btn"
+    aria-expanded="false"
+    aria-haspopup="true"
+    aria-label={t('nav.langAria')}
+  >
+    <svg class="globe" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.4" />
+      <ellipse cx="8" cy="8" rx="2.9" ry="6.4" />
+      <path d="M1.9 5.9h12.2M1.9 10.1h12.2" />
+    </svg>
+    <span class="lang-code">{actual.short}</span>
+    <svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <path d="M2 4l3 3 3-3" />
+    </svg>
+  </button>
+  <div class="menu-pop" hidden>
+    {options.map((o) => (
+      <a
+        href={o.href}
+        hreflang={o.code}
+        lang={o.code}
+        class:list={['menu-item', { active: o.active }]}
+        aria-current={o.active ? 'true' : undefined}
+        data-lang={o.code}
+      >
+        <span class="menu-item-code">{o.short}</span>
+        <span>{o.label}</span>
+      </a>
+    ))}
+  </div>
+</div>
 
 <script is:inline define:vars={{ DEFAULT_LANG }}>
   // La calculadora (/calc) tiene su propio i18n en React y lee esta clave de
   // localStorage. Escribirla aquí es lo que hace que un lector que venía en
   // /fr/ abra la app en francés sin pedírselo dos veces.
-  document.querySelectorAll('.lang a[data-lang]').forEach(function (a) {
+  document.querySelectorAll('.lang-menu a[data-lang]').forEach(function (a) {
     a.addEventListener('click', function () {
       try { localStorage.setItem('spinecalc_lang', a.dataset.lang); } catch (e) { /* modo privado */ }
     });
@@ -45,25 +65,16 @@ const options = LANGS.map((l) => ({
 </script>
 
 <style>
-  .lang {
-    display: inline-flex;
-    gap: 2px;
-    padding: 3px;
-    border: 1px solid var(--c-line);
-    border-radius: 999px;
-  }
-  .lang a {
-    padding: 4px 9px;
-    border-radius: 999px;
-    font-size: 0.75rem;
+  .lang-btn { font-variant-numeric: tabular-nums; }
+  .globe { flex: 0 0 auto; opacity: 0.75; }
+  .lang-code { letter-spacing: 0.04em; }
+  .menu-item-code {
+    flex: 0 0 auto;
+    width: 2.1em;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--c-muted);
-    line-height: 1.4;
   }
-  .lang a:hover { color: var(--c-primary); text-decoration: none; }
-  .lang a.active {
-    background: var(--c-primary);
-    color: #fff;
-  }
+  .menu-item.active .menu-item-code { color: #fff; }
 </style>

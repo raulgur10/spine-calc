@@ -134,6 +134,85 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 
+/* ── Botones pequeños de la barra ───────────────────────────────────────── */
+.btn--sm {
+  padding: 9px 15px;
+  font-size: 0.85rem;
+}
+
+/* ── Desplegables de la barra (idioma y recursos) ───────────────────────────
+   Viven aquí y no en Header.astro porque los comparten dos componentes y el
+   scoping de estilos de Astro no cruza esa frontera. */
+.menu { position: relative; }
+
+.menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-ink);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.menu-btn:hover,
+.menu-btn[aria-expanded='true'] {
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+.menu-btn .chev { flex: 0 0 auto; opacity: 0.7; transition: transform 0.15s ease; }
+.menu-btn[aria-expanded='true'] .chev { transform: rotate(180deg); }
+
+.menu-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  padding: 6px;
+  background: var(--c-card);
+  border: 1px solid var(--c-line);
+  border-radius: 6px;
+  box-shadow: 0 14px 34px rgba(38, 34, 25, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 30;
+}
+/* display:flex gana a [hidden] si no se dice lo contrario. */
+.menu-pop[hidden] { display: none; }
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--c-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.menu-item:hover {
+  background: var(--c-bg-soft);
+  text-decoration: none;
+  color: var(--c-primary-strong);
+}
+.menu-item.active {
+  background: var(--c-primary);
+  color: #fff;
+}
+
 .grid { display: grid; gap: 24px; }
 .grid--cards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 

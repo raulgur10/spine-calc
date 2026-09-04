@@ -16,6 +16,18 @@ export default {
   'nav.openCalc': 'Ouvrir le calculateur',
   'nav.langAria': 'Langue',
 
+  // ── Ressources, accès et avis ──────────────────────────────────────────
+  'nav.resources': 'Ressources',
+  'nav.resources.doctors': 'Pour les médecins',
+  'nav.resources.patients': 'Pour les patients',
+  'nav.login': 'Se connecter',
+  'nav.loginAria': 'Accéder au tableau de bord des cas',
+  'soon.badge': 'En construction',
+  'soon.login': 'L’accès au tableau de bord des cas arrivera dans une phase ultérieure. Pour l’instant, le calculateur fonctionne intégralement, sans compte.',
+  'soon.doctors': 'Nous préparons le matériel destiné aux médecins : guide de mesure, critères de chaque cadre et cas d’exemple.',
+  'soon.patients': 'Nous préparons le matériel destiné aux patients : ce que signifie l’alignement du rachis et ce que mesure cet outil.',
+  'soon.close': 'Fermer',
+
   // ── Pied de page ───────────────────────────────────────────────────────
   'foot.note': '<strong>SpineCalc</strong> est un outil de calcul et de soutien pédagogique. <strong>Ce n’est pas un dispositif médical</strong>, ni un système d’aide à la décision clinique. Il ne dispose ni d’une autorisation COFEPRIS, ni du marquage CE, ni d’une autorisation de la FDA. L’interprétation des résultats et la responsabilité des décisions cliniques incombent exclusivement au médecin traitant.',
   'foot.readDisclaimer': 'Lire l’avertissement complet',

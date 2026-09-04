@@ -13,6 +13,13 @@ const links = [
   { key: 'team', label: t('nav.team') },
   { key: 'disclaimer', label: t('nav.disclaimer') },
 ].map((l) => ({ ...l, href: pathFor(l.key, lang) }));
+
+// Recursos aún no tiene páginas: cada entrada abre el aviso de «en
+// construcción» con su propio mensaje.
+const recursos = [
+  { label: t('nav.resources.doctors'), msg: t('soon.doctors') },
+  { label: t('nav.resources.patients'), msg: t('soon.patients') },
+];
 ---
 
 <header class="site-head">
@@ -21,6 +28,7 @@ const links = [
       <span class="brand-mark" aria-hidden="true">S</span>
       <span>SpineCalc</span>
     </a>
+
     <nav class="nav" aria-label={t('nav.aria')}>
       {links.map((l) => {
         const active = l.exact ? pathname === l.href : pathname.startsWith(l.href);
@@ -30,11 +38,77 @@ const links = [
           </a>
         );
       })}
+
+      <div class="menu">
+        <button type="button" class="menu-btn nav-menu-btn" aria-expanded="false" aria-haspopup="true">
+          <span>{t('nav.resources')}</span>
+          <svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M2 4l3 3 3-3" />
+          </svg>
+        </button>
+        <div class="menu-pop" hidden>
+          {recursos.map((r) => (
+            <button type="button" class="menu-item" data-soon-msg={r.msg} data-soon-title={r.label}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </nav>
-    <LanguageSwitcher />
-    <a class="btn btn--primary" href={calcPath(lang)}>{t('nav.openCalc')}</a>
+
+    <div class="head-actions">
+      <LanguageSwitcher />
+      <button
+        type="button"
+        class="btn btn--ghost btn--sm"
+        data-soon-msg={t('soon.login')}
+        data-soon-title={t('nav.login')}
+        aria-label={t('nav.loginAria')}
+      >
+        {t('nav.login')}
+      </button>
+      <a class="btn btn--primary btn--sm" href={calcPath(lang)}>{t('nav.openCalc')}</a>
+    </div>
   </div>
 </header>
+
+<script is:inline>
+  // Un solo controlador para todos los desplegables de la barra (idioma y
+  // recursos): abrir uno cierra el otro, Esc cierra el abierto y un clic fuera
+  // los cierra todos.
+  (function () {
+    var menus = Array.prototype.slice.call(document.querySelectorAll('.site-head .menu'));
+    if (!menus.length) return;
+
+    function close(menu) {
+      menu.querySelector('.menu-btn').setAttribute('aria-expanded', 'false');
+      menu.querySelector('.menu-pop').hidden = true;
+    }
+    function closeAll(except) {
+      menus.forEach(function (m) { if (m !== except) close(m); });
+    }
+
+    menus.forEach(function (menu) {
+      var btn = menu.querySelector('.menu-btn');
+      var pop = menu.querySelector('.menu-pop');
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var abierto = btn.getAttribute('aria-expanded') === 'true';
+        closeAll(menu);
+        btn.setAttribute('aria-expanded', String(!abierto));
+        pop.hidden = abierto;
+      });
+      // Un clic dentro del panel no debe cerrarlo antes de que el enlace o el
+      // botón hagan lo suyo; el aviso de «en construcción» se encarga del resto.
+      pop.addEventListener('click', function (ev) { ev.stopPropagation(); });
+    });
+
+    document.addEventListener('click', function () { closeAll(null); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') closeAll(null);
+    });
+  })();
+</script>
 
 <style>
   .site-head {
@@ -42,12 +116,12 @@ const links = [
     top: 0;
     background: var(--c-bg);
     border-bottom: 1px solid var(--c-line);
-    z-index: 10;
+    z-index: 20;
   }
   .head-row {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 16px;
     padding-top: 12px;
     padding-bottom: 12px;
     flex-wrap: wrap;
@@ -72,28 +146,76 @@ const links = [
     color: #fff;
     font-size: 1.05rem;
   }
+
+  /* La barra no cabe en una línea dentro del ancho de lectura (1080 px):
+     marca, seis destinos, idioma, acceso y llamada a la acción. En vez de
+     dejar que se parta sola —y que las acciones caigan desalineadas a la
+     izquierda—, se reparte a propósito en dos filas: arriba la marca y lo
+     accionable, abajo la navegación, alineada con la marca. */
   .nav {
+    order: 3;
+    width: 100%;
     display: flex;
-    gap: 8px;
-    margin-left: auto;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin: 0 -9px;   /* el padding del primer enlace no descuadra la alineación */
   }
-  .nav a {
+  .nav > a {
     color: var(--c-muted);
     font-weight: 500;
     font-size: 0.95rem;
-    padding: 10px 10px; /* target táctil ≥44px */
+    padding: 8px 9px; /* target táctil ≥44px con el interlineado del body */
   }
-  .nav a:hover { color: var(--c-primary); text-decoration: none; }
-  .nav a.active {
+  .nav > a:hover { color: var(--c-primary); text-decoration: none; }
+  .nav > a.active {
     color: var(--c-primary);
     font-weight: 600;
   }
-  @media (max-width: 980px) {
-    .nav { gap: 2px; }
-    .nav a { padding: 10px 7px; font-size: 0.9rem; }
+
+  .head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;   /* pegado a la derecha, frente a la marca */
   }
-  @media (max-width: 720px) {
-    .nav { order: 3; width: 100%; flex-wrap: wrap; gap: 2px; margin-left: 0; }
+
+  /* En la nav el disparador va sin cápsula, para que no compita con los
+     enlaces que tiene al lado. */
+  .nav-menu-btn {
+    background: none;
+    border-color: transparent;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--c-muted);
+    padding: 10px 9px;
+  }
+  .nav-menu-btn:hover,
+  .nav-menu-btn[aria-expanded='true'] { border-color: transparent; }
+
+  /* Los desplegables del lado derecho se alinean por su borde derecho; el de
+     la nav cuelga de su disparador, que está a la izquierda. */
+  .nav .menu-pop { left: 0; right: auto; }
+
+  /* En móvil la marca se queda sola arriba y las acciones toman su propia
+     línea: la llamada a la acción se estira con el hueco que sobre, que es lo
+     que evita que se salga por el borde en pantallas de 360-390 px. */
+  @media (max-width: 620px) {
     .head-row { gap: 10px; }
+    .brand { font-size: 1.1rem; }
+    .head-actions {
+      width: 100%;
+      margin-left: 0;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .head-actions .btn--primary {
+      flex: 1 1 auto;
+      text-align: center;
+    }
+    .nav { gap: 0; margin: 0 -7px; }
+    .nav > a, .nav-menu-btn { font-size: 0.875rem; padding: 8px 7px; }
+    .btn--sm { padding: 9px 12px; }
   }
 </style>

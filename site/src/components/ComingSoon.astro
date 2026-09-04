@@ -1,0 +1,82 @@
+---
+// Aviso de «en construcción» para lo que todavía no existe: el acceso al panel
+// de casos y las dos secciones de recursos. Un <dialog> nativo — cierra con
+// Esc, atrapa el foco y no necesita ninguna librería.
+//
+// El texto lo pone quien dispara el aviso: cada botón lleva su propio mensaje
+// en data-soon-msg, ya traducido en el servidor. Así este componente no
+// duplica el diccionario ni tiene que conocer el idioma.
+import { getLangFromUrl, useTranslations } from '../i18n/utils.js';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+---
+
+<dialog id="soon-dialog" aria-labelledby="soon-title">
+  <div class="soon">
+    <p class="soon-badge">{t('soon.badge')}</p>
+    <h2 id="soon-title" class="soon-title"></h2>
+    <p class="soon-body"></p>
+    <button type="button" class="btn btn--primary soon-close" autofocus>{t('soon.close')}</button>
+  </div>
+</dialog>
+
+<script is:inline>
+  (function () {
+    var dlg = document.getElementById('soon-dialog');
+    if (!dlg) return;
+    var titleEl = dlg.querySelector('.soon-title');
+    var bodyEl = dlg.querySelector('.soon-body');
+
+    document.querySelectorAll('[data-soon-msg]').forEach(function (el) {
+      el.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        titleEl.textContent = el.dataset.soonTitle || el.textContent.trim();
+        bodyEl.textContent = el.dataset.soonMsg;
+        // showModal() puede lanzar si el diálogo ya está abierto.
+        if (!dlg.open) dlg.showModal();
+      });
+    });
+
+    dlg.querySelector('.soon-close').addEventListener('click', function () { dlg.close(); });
+    // Clic en el fondo: el <dialog> recibe el evento sólo si se pulsa fuera de
+    // la caja, así que basta comparar el objetivo.
+    dlg.addEventListener('click', function (ev) { if (ev.target === dlg) dlg.close(); });
+  })();
+</script>
+
+<style>
+  #soon-dialog {
+    padding: 0;
+    border: 1px solid var(--c-line);
+    border-radius: 6px;
+    background: var(--c-card);
+    color: var(--c-ink);
+    max-width: min(440px, calc(100vw - 32px));
+    box-shadow: 0 24px 60px rgba(38, 34, 25, 0.22);
+  }
+  #soon-dialog::backdrop {
+    background: rgba(31, 28, 22, 0.45);
+  }
+  .soon { padding: 32px; }
+  .soon-badge {
+    margin: 0 0 10px;
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+  }
+  .soon-title {
+    font-size: 1.35rem;
+    margin: 0 0 12px;
+  }
+  .soon-body {
+    margin: 0 0 24px;
+    color: var(--c-muted);
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+  .soon-close { width: 100%; }
+</style>
