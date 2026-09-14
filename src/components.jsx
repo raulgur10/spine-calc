@@ -4,7 +4,7 @@
 // Componentes puros: todo entra por props, ninguno toca estado global ni datos.
 import { useState, useEffect, useRef } from "react";
 import { COLORS, FONT_SANS, FONT_SERIF, MOMENTOS } from "./theme";
-import { TIPOS_CIRUGIA, SEGMENTOS, CONSENT_TEXT_KEY, PUBLIC_CONSENT_TEXT_KEY, CONSENT_CONTACT } from "./constants";
+import { TIPOS_CIRUGIA, SEGMENTOS } from "./constants";
 import { useI18n } from "./i18n";
 import { diffMensaje } from "./utils";
 
@@ -212,115 +212,6 @@ export function Card({ children, style = {} }) {
       onMouseLeave={() => setHover(false)}
       style={{ background: COLORS.card, borderRadius: 14, border: `1px solid ${COLORS.cardBorder}`, padding: "22px 22px 20px", marginBottom: 20, boxShadow: hover ? COLORS.cardShadowHover : COLORS.cardShadow, transform: hover ? "translateY(-1px)" : "translateY(0)", transition: "box-shadow 240ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1)", ...style }}>
       {children}
-    </div>
-  );
-}
-
-export function PdfSaveModal({ onSaveAndDownload, onDownloadOnly, onCancel, busy }) {
-  const { t } = useI18n();
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15, 27, 26, 0.55)", backdropFilter: "blur(4px)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: COLORS.card, borderRadius: 14, maxWidth: 460, width: "100%", boxShadow: "0 20px 60px rgba(15, 27, 26, 0.35)", overflow: "hidden", border: `1px solid ${COLORS.cardBorder}` }}>
-        <div aria-hidden="true" style={{ height: 4, background: COLORS.accent }} />
-        <div style={{ padding: "22px 26px 18px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span aria-hidden="true" style={{ width: 18, height: 1, background: COLORS.accent, opacity: 0.7 }} />
-            <span style={{ fontSize: 9, fontWeight: 600, color: COLORS.accent, textTransform: "uppercase", letterSpacing: 3, fontFamily: FONT_SANS }}>{t("pdfmodal.eyebrow")}</span>
-          </div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 10px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.015em", lineHeight: 1.15 }}>
-            {t("pdfmodal.titulo")}
-          </h2>
-          <p style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, margin: "0 0 8px" }}>
-            {t("pdfmodal.desc.1")}<strong style={{ color: COLORS.text }}>{t("pdfmodal.desc.strong")}</strong>{t("pdfmodal.desc.2")}
-          </p>
-          <div style={{ marginTop: 14, padding: "10px 12px", background: COLORS.inputHover, borderRadius: 8, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11.5, color: COLORS.textDim, lineHeight: 1.5, fontStyle: "italic", fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 18, 'SOFT' 100" }}>
-            {t("pdfmodal.nota")}
-          </div>
-        </div>
-        <div style={{ padding: "0 18px 18px", display: "flex", gap: 10, flexDirection: "column" }}>
-          <button onClick={onSaveAndDownload} disabled={busy} style={{ width: "100%", padding: "12px 16px", borderRadius: 10, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 14, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1, fontFamily: FONT_SANS }}>
-            {busy ? t("common.guardando") : t("pdfmodal.guardar_descargar")}
-          </button>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={onCancel} disabled={busy} style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12.5, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>{t("common.cancelar")}</button>
-            <button onClick={onDownloadOnly} disabled={busy} style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12.5, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>{t("pdfmodal.solo_descargar")}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function EmailLoginModal({ email, password, onEmailChange, onPasswordChange, onSubmit, onCancel, error, busy }) {
-  const { t } = useI18n();
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <form onSubmit={onSubmit} style={{ background: COLORS.card, borderRadius: 16, maxWidth: 420, width: "100%", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}` }}>
-          <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 4px", color: COLORS.accentDark }}>🔐 {t("login.titulo")}</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>{t("login.sub")}</p>
-        </div>
-        <div style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>{t("login.correo")}</label>
-            <input type="email" value={email} onChange={e => onEmailChange(e.target.value)} autoComplete="username" autoFocus disabled={busy} style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'DM Sans', sans-serif" }} />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, display: "block", marginBottom: 6 }}>{t("login.password")}</label>
-            <input type="password" value={password} onChange={e => onPasswordChange(e.target.value)} autoComplete="current-password" disabled={busy} style={{ width: "100%", padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.text, fontSize: 14, outline: "none", fontFamily: "'JetBrains Mono', monospace" }} />
-          </div>
-          {error && <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.redBg, border: `1px solid ${COLORS.red}44`, color: COLORS.red, fontSize: 12, fontWeight: 600 }}>{error}</div>}
-          <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5, fontStyle: "italic" }}>
-            {t("login.nota")}
-          </div>
-        </div>
-        <div style={{ padding: 16, borderTop: `1px solid ${COLORS.cardBorder}`, display: "flex", gap: 10 }}>
-          <button type="button" onClick={onCancel} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>{t("common.cancelar")}</button>
-          <button type="submit" disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? t("login.verificando") : t("login.entrar")}</button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-export function PublicConsentModal({ onAccept, onCancel, busy }) {
-  const { t } = useI18n();
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: COLORS.card, borderRadius: 16, maxWidth: 540, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}`, position: "sticky", top: 0, background: COLORS.card, zIndex: 1 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 4px", color: COLORS.accentDark }}>{t("pubconsent.titulo")}</h2>
-          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>{t("pubconsent.sub")}</p>
-        </div>
-        <div style={{ padding: "18px 24px", fontSize: 13, lineHeight: 1.6, color: COLORS.text, whiteSpace: "pre-wrap" }}>
-          {t(PUBLIC_CONSENT_TEXT_KEY)}
-        </div>
-        <div style={{ padding: 16, borderTop: `1px solid ${COLORS.cardBorder}`, display: "flex", gap: 10, position: "sticky", bottom: 0, background: COLORS.card }}>
-          <button onClick={onCancel} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>{t("common.cancelar")}</button>
-          <button onClick={onAccept} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{t("pubconsent.aceptar")}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function ConsentModal({ onAccept, onReject, userEmail, busy }) {
-  const { t } = useI18n();
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(30, 41, 59, 0.6)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ background: COLORS.card, borderRadius: 16, maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 10px 40px rgba(0,0,0,0.25)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: `1px solid ${COLORS.cardBorder}`, position: "sticky", top: 0, background: COLORS.card, zIndex: 1 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 6px", color: COLORS.accentDark }}>{t("consent.titulo")}</h2>
-          <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0 }}>SpineCalc · {userEmail}</p>
-        </div>
-        <div style={{ padding: "20px 24px", fontSize: 13, lineHeight: 1.65, color: COLORS.text, whiteSpace: "pre-wrap" }}>
-          {t(CONSENT_TEXT_KEY, { contacto: CONSENT_CONTACT })}
-        </div>
-        <div style={{ padding: 20, borderTop: `1px solid ${COLORS.cardBorder}`, display: "flex", gap: 10, position: "sticky", bottom: 0, background: COLORS.card }}>
-          <button onClick={onReject} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}>{t("consent.rechazar")}</button>
-          <button onClick={onAccept} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>{t("consent.aceptar")}</button>
-        </div>
-      </div>
     </div>
   );
 }

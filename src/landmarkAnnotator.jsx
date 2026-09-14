@@ -46,7 +46,7 @@ const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onSaveAnnotated }) {
+export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated }) {
   const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
@@ -1561,8 +1561,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
             )}
           </div>
 
-          {/* Guardar imagen anotada (solo modo clínico) */}
-          {canEdit && (
+          {/* Descargar imagen anotada: se rasteriza en el navegador y se baja al dispositivo */}
+          {onSaveAnnotated && (
             <div style={{ paddingTop: 10, borderTop: `1px solid ${COLORS.panelLight}` }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.imagen_anotada")}</div>
               <button onClick={handleSaveAnnotated} disabled={!imageSrc || savingAnnotated}
@@ -1570,7 +1570,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, canEdit, onS
                 {savingAnnotated ? t("anot.generando") : `💾 ${t("anot.guardar_anotada")}`}
               </button>
               <div style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic", marginTop: 6, lineHeight: 1.5 }}>
-                {t("anot.guardar_anotada.nota", { categoria: t("foto.anotada") })}
+                {t("anot.guardar_anotada.nota")}
               </div>
             </div>
           )}

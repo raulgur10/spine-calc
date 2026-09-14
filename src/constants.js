@@ -1,34 +1,12 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════════════════════
-export const CIRUJANOS = [
-  "Dr. Eduardo Galván Hernández",
-  "Dr. Iván Sámano López",
-  "Dr. Rafael Avendaño Pradel",
-];
-export const MEDIDORES = [
-  "Avendaño Pradel Rafael",
-  "Galván Hernández Eduardo",
-  "Guillén Rojas Raúl",
-  "Sámano López Iván",
-];
-// Los valores persisten tal cual en la base de datos; la etiqueta visible sale
-// del diccionario por su clave i18n.
+// El valor es estable; la etiqueta visible sale del diccionario por su clave i18n.
 export const TIPOS_CIRUGIA = [
   { value: "Instrumentación lumbar anterior", key: "cirugia.anterior" },
   { value: "Instrumentación lumbar posterior", key: "cirugia.posterior" },
 ];
 export const SEGMENTOS = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"];
-export const CATEGORIAS_FOTO = [
-  { value: "Radiografía lateral", key: "foto.lateral" },
-  { value: "Radiografía AP", key: "foto.ap" },
-  { value: "Radiografía anotada", key: "foto.anotada" },
-  { value: "Planificación", key: "foto.planificacion" },
-  { value: "Otra", key: "foto.otra" },
-];
-// Categoría que se asigna a la imagen que produce el anotador de landmarks.
-export const CATEGORIA_FOTO_ANOTADA = "Radiografía anotada";
-export const STORAGE_KEY = "spinecalc_casos";
 
 export const REFERENCIAS = [
   { year: 1998, cite: "Legaye J, Duval-Beaupère G, Hecquet J, Marty C. Pelvic incidence: a fundamental pelvic parameter for three-dimensional regulation of spinal sagittal curves. Eur Spine J. 1998;7:99-103." },
@@ -53,16 +31,6 @@ export const REFERENCIAS = [
 // Se imprime en el pie de cada reporte PDF y junto al aviso de la interfaz.
 export const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
 
-export const CONSENT_VERSION = "2.0";
-export const CONSENT_CONTACT = "raulguillen@cardioanestesia.com.mx";
-export const PUBLIC_CONSENT_VERSION = "1.0";
-export const PUBLIC_CONSENT_LS_KEY = "spinecalc_public_consent";
-export const PUBLIC_CASES_LS_KEY = "spinecalc_my_public_cases";
 // Feature flag: en modo simplificado solo se muestra C2 tilt directo en la sección de tilts.
 // Cambia a true para reactivar CPA, T1 tilt directo, T1PA, L1 tilt directo (Hills 2022 completo).
 export const TILTS_FULL_MODE = true;
-// El texto íntegro de ambos consentimientos vive en los diccionarios de idioma
-// (claves `consent.publico.texto` y `consent.texto`). Aquí sólo queda la clave,
-// para que el modal lo resuelva con el idioma activo.
-export const PUBLIC_CONSENT_TEXT_KEY = "consent.publico.texto";
-export const CONSENT_TEXT_KEY = "consent.texto";

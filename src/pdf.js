@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import jsPDF from "jspdf";
 import { COLORS, MOMENTOS } from "./theme";
-import { APP_VERSION, CATEGORIAS_FOTO } from "./constants";
+import { APP_VERSION } from "./constants";
 import { diffMensaje } from "./utils";
 
 // Helper: formatea un número con grado, o "-"
@@ -16,7 +16,7 @@ export function fmtDeg(v) {
 // este módulo vive fuera de React. `lang` fija el locale de las fechas.
 export function buildPDF(inputs, result, t, lang = "es") {
   const DATE_LOCALE = { es: "es-MX", en: "en-GB", fr: "fr-FR" }[lang] || "es-MX";
-  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult } = inputs;
+  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult } = inputs;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210, M = 18, CW = W - M * 2;
   let y = 18;
@@ -341,22 +341,6 @@ export function buildPDF(inputs, result, t, lang = "es") {
     doc.setFont("helvetica", "italic"); doc.setFontSize(6.5); doc.setTextColor(100, 116, 139);
     doc.text(t("pdf.gapb.nota"), M + 2, y + 3);
     y += 5;
-  }
-
-  if (fotos && fotos.length > 0) {
-    doc.addPage(); y = 18; doc.setFillColor(13, 148, 136); doc.rect(0, 0, W, 16, "F");
-    doc.setTextColor(255, 255, 255); doc.setFontSize(13); doc.setFont("helvetica", "bold");
-    doc.text(`${t("pdf.imagenes")} - ${t(tipoInfo.key).toUpperCase()}`, M, 9.5); y = 24;
-    const thumbW = 80, thumbH = 60, gap = 6; let col = 0;
-    fotos.forEach((f) => {
-      if (y + thumbH > 270) { doc.addPage(); y = 20; col = 0; }
-      const x = M + col * (thumbW + gap);
-      try { doc.addImage(f.dataUrl, "JPEG", x, y, thumbW, thumbH); } catch (e) {}
-      doc.setTextColor(100, 116, 139); doc.setFontSize(8); doc.setFont("helvetica", "normal");
-      const catDef = CATEGORIAS_FOTO.find(c => c.value === f.categoria);
-      doc.text(catDef ? t(catDef.key) : (f.categoria || t("foto.sin_categoria")), x, y + thumbH + 4);
-      col++; if (col >= 2) { col = 0; y += thumbH + 12; }
-    });
   }
 
   const totalPages = doc.internal.getNumberOfPages();

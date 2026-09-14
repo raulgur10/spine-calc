@@ -5,6 +5,7 @@ directamente sobre radiografías laterales digitales y su análisis mediante mú
 publicados, en un flujo de trabajo único.
 
 **Aplicación:** https://spinecalc.app/calc
+**Plataformas:** web (navegador de escritorio y móvil); versiones para iOS y Android en preparación.
 **Repositorio:** https://github.com/raulgur10/spine-calc
 **Licencia:** Apache 2.0 · © 2026 Virtual Medical Learning (VML)
 **Estado:** versión beta — no validada. Véase [Limitaciones conocidas](#limitaciones-conocidas-de-la-implementación).
@@ -32,12 +33,12 @@ conforme a las secciones 7 y 8 de la Licencia Apache 2.0.
 - **Cálculo integrado.** Reutiliza las mismas entradas para alimentar simultáneamente varios
   marcos de análisis, evitando la transcripción entre calculadoras separadas.
 - **Comparación temporal.** Distingue evaluaciones preoperatorias de postoperatorias.
-- **Exportación.** Reporte en PDF, exportación estructurada y recuperación de casos por
-  identificador.
+- **Exportación.** Reporte en PDF e imagen anotada, generados y descargados en el propio
+  dispositivo.
 
-Todo el cálculo se ejecuta **en el navegador**. Las imágenes radiográficas **no se transmiten a
-ningún servidor** salvo que el usuario active explícitamente el módulo opcional de registro de
-casos.
+Es **solo una herramienta de medición**: gratuita, sin registro y **sin almacenamiento**. Todo el
+cálculo se ejecuta en el navegador; ni las imágenes ni las mediciones se transmiten a ningún
+servidor, y se pierden al cerrar la página. Véase [Privacidad y datos](#privacidad-y-datos).
 
 ### Parámetros calculados
 
@@ -113,9 +114,10 @@ corregida ni validada en la versión actual.**
    multivariable. Su origen debe documentarse o la salida debe retirarse. *(Pendiente de
    resolución.)*
 
-5. **Sin pruebas unitarias.** El módulo de geometría está deliberadamente aislado y es puro para
-   permitir su verificación, pero **la batería automatizada aún no existe**. Es la primera fase de
-   la ruta de validación propuesta.
+5. **Verificación no independiente.** Existe una batería de pruebas unitarias (`npm test`) sobre la
+   geometría, la puntuación y el contrato de los landmarks, pero la escribió el propio equipo de
+   desarrollo. La verificación frente a casos calculados de forma independiente, primera fase de
+   la ruta de validación propuesta, sigue pendiente.
 
 6. **Roussouly incompleto sin ápice.** La clasificación basada únicamente en la pendiente sacra
    debe considerarse incompleta cuando no se dispone de la posición del ápice lumbar ni del
@@ -129,17 +131,17 @@ corregida ni validada en la versión actual.**
 
 ## Privacidad y datos
 
-- Las **imágenes radiográficas se procesan exclusivamente en el navegador** y no se transmiten a
-  ningún servidor.
-- El **módulo de registro de casos es opcional** y requiere aceptar un consentimiento electrónico
-  versionado. Las reglas de seguridad restringen la lectura y escritura de cada caso a su
-  propietario, mediante lista de autorización y verificación de consentimiento
-  (véase `supabase/schema.sql`).
-- El uso de iniciales **no garantiza la anonimización** si otros metadatos permiten la
-  reidentificación.
-- Una implementación clínica institucional deberá documentar cifrado, control de acceso,
-  localización del almacenamiento, retención, eliminación, auditoría y cumplimiento de la
-  **NOM-024-SSA3**.
+- **No se guarda nada.** No hay cuentas de usuario, registro de casos, consentimientos, historial
+  ni base de datos de mediciones. La aplicación no pide nombre, iniciales ni expediente del
+  paciente.
+- **Todo ocurre en el navegador.** La radiografía, los puntos marcados, las mediciones y el
+  reporte PDF se procesan y generan en el dispositivo; nada de ello se transmite a ningún
+  servidor, y se pierde al cerrar o recargar la página.
+- **Sin telemetría.** No hay contador de uso, identificador de dispositivo ni analítica.
+- **Única transmisión: la encuesta de opinión, opcional y anónima.** Envía solo la calificación
+  (1–5) y un comentario libre, sin identificadores. La tabla solo admite inserciones y no puede
+  leerse desde el navegador (véase `supabase/schema.sql`).
+- El navegador recuerda localmente el idioma elegido y si ya se respondió la encuesta.
 
 ---
 
@@ -153,12 +155,12 @@ npm run dev      # servidor de desarrollo
 npm run build    # compilación de producción
 npm run preview  # previsualización de la compilación
 npm run lint     # ESLint
+npm test         # pruebas unitarias (Vitest)
 ```
 
-Para la persistencia opcional se requiere configurar las credenciales de Supabase mediante
-variables de entorno (`.env.local`: `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`;
-plantilla en `.env.example`). **La aplicación funciona sin ellas**: todos los
-cálculos, la anotación y la exportación operan sin backend.
+La aplicación no tiene backend. Las variables `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_PUBLISHABLE_KEY` (`.env.local`, plantilla en `.env.example`) son opcionales y solo
+habilitan la encuesta anónima; sin ellas la calculadora funciona completa.
 
 ### Estructura
 
@@ -168,14 +170,15 @@ src/
                          Aislada deliberadamente para permitir pruebas unitarias.
   landmarkAnnotator.jsx  Anotador radiográfico: marcado de puntos, calibración,
                          horizontal de referencia, mediciones libres.
-  App.jsx                Formulario, cálculo clínico, clasificaciones,
-                         persistencia y generación de reportes.
-  data/                  Capa de persistencia tras una superficie única (adaptador de Supabase).
+  App.jsx                Formulario, cálculo clínico, clasificaciones y reportes.
+  scoring.js · pdf.js    Reglas de puntuación y generación del PDF en el cliente.
+  data/landmarks.js      Contrato de los 12 landmarks del anotador.
+  feedback.js            Encuesta anónima: la única llamada de red.
   i18n.jsx               Idioma de la app (es/en/fr), con locales/ como diccionarios.
 site/                    Sitio público (Astro). Se compila con la app montada en /calc.
   src/i18n/              Diccionarios del sitio y resolución de rutas por idioma.
   src/components/pages/  Cada página, una sola vez, servida en los tres idiomas.
-supabase/schema.sql      Esquema, RLS y funciones de seguridad.
+supabase/schema.sql      Tabla de la encuesta anónima (solo inserción).
 public/landmarks/        Ilustraciones anatómicas de elaboración propia.
 ```
 

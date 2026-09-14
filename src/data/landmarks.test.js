@@ -3,7 +3,6 @@ import {
   LANDMARK_KEYS, OPTIONAL_LANDMARK_KEYS, ANNOTATOR_VERSION, MEASUREMENT_KEYS,
   pointsFromArray, pointsToArray, makeGeometry, detectManualEdits,
 } from "./landmarks";
-import { formToCaso, casoToForm, emptyForm } from "./form";
 
 // Mismo caso sintético que geometry.test.js.
 const PUNTOS = [
@@ -110,7 +109,7 @@ describe("makeGeometry", () => {
   });
 
   it("no anida arrays dentro de arrays", () => {
-    // Firestore rechaza un array que contenga arrays directamente.
+    // Estructura plana: fácil de serializar sin transformar (JSON, CSV).
     const anidado = (v) => Array.isArray(v) && v.some(Array.isArray);
     for (const val of Object.values(g)) expect(anidado(val)).toBe(false);
   });
@@ -139,39 +138,6 @@ describe("detectManualEdits", () => {
 
   it("sin trazo aplicado no hay nada que comparar", () => {
     expect(detectManualEdits(null, { pi: "99" })).toBe(false);
-  });
-});
-
-describe("el trazo viaja con el caso", () => {
-  const geometry = { ...makeGeometry(ESTADO_ANOTADOR), applied: { pi: 50.4, ss: 35 }, appliedAt: "2026-08-04T12:00:00.000Z" };
-
-  it("formToCaso lo guarda en `landmarks`", () => {
-    const caso = formToCaso({ ...emptyForm(), pi: "50.4", ss: "35", geometry }, {});
-    expect(caso.landmarks.points).toHaveLength(9);
-    expect(caso.landmarks.appliedAt).toBe("2026-08-04T12:00:00.000Z");
-    expect(caso.landmarks.editedAfterApply).toBe(false);
-  });
-
-  it("marca editedAfterApply si después se tocó una medición", () => {
-    const caso = formToCaso({ ...emptyForm(), pi: "55", ss: "35", geometry }, {});
-    expect(caso.landmarks.editedAfterApply).toBe(true);
-  });
-
-  it("sin trazo, `landmarks` queda en null", () => {
-    expect(formToCaso(emptyForm(), {}).landmarks).toBeNull();
-  });
-
-  it("sobrevive el ida y vuelta por el DTO", () => {
-    const caso = formToCaso({ ...emptyForm(), pi: "50.4", ss: "35", geometry }, {});
-    const back = casoToForm(caso);
-    expect(back.geometry.points).toEqual(geometry.points);
-    expect(back.geometry.mmPerPx).toBeCloseTo(0.2841, 6);
-    expect(pointsToArray(back.geometry.points).slice(0, 9)).toEqual(PUNTOS.slice(0, 9));
-  });
-
-  it("emptyForm lo declara, así que Limpiar lo borra", () => {
-    expect("geometry" in emptyForm()).toBe(true);
-    expect(emptyForm().geometry).toBeNull();
   });
 });
 

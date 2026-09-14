@@ -1,14 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import LandmarkAnnotator from "./landmarkAnnotator";
-import {
-  CIRUJANOS, MEDIDORES, SEGMENTOS, CATEGORIAS_FOTO, CATEGORIA_FOTO_ANOTADA, STORAGE_KEY,
-  REFERENCIAS, APP_VERSION, CONSENT_VERSION, CONSENT_CONTACT,
-  PUBLIC_CONSENT_VERSION, PUBLIC_CONSENT_LS_KEY, PUBLIC_CASES_LS_KEY, TILTS_FULL_MODE,
-} from "./constants";
+import { REFERENCIAS, APP_VERSION } from "./constants";
 import { COLORS, FONT_SERIF, FONT_SANS, FONT_MONO, MOMENTOS } from "./theme";
 import {
-  normalizeName, resizeImage, uid, hoy, generarCasoId,
-  normalizeIniciales, nombreCompleto, calcularIMC, calcularDiferencia, diffMensaje,
+  normalizeName, uid, hoy, calcularIMC, calcularDiferencia, diffMensaje,
 } from "./utils";
 import {
   classify, gapIdeals, rpvCalc, rllCalc, ldiCalc, rsaCalc, afCalc,
@@ -16,28 +11,14 @@ import {
   roussoulyCurrentType, roussoulyIdealType,
 } from "./scoring";
 import { buildPDF } from "./pdf";
-import { casosToCSV } from "./csv";
-import {
-  dataAvailable, messageForError,
-  onSessionChange, signInWithGoogle, signInWithPassword, signOutSession,
-  getAccess, acceptConsent as acceptConsentRemote,
-  listCasos, saveCaso as saveCasoRemote, deleteCaso as deleteCasoRemote,
-  savePublicCaso as savePublicCasoRemote, getPublicCaso,
-  getUsageCount, incrementUsage, registerDeviceSession, incrementDeviceCalc,
-  subscribeToUpdates, sendFeedback,
-  emptyForm, formToCaso, casoToForm, toPublicCaso, normalizeCaso,
-} from "./data";
+import { feedbackAvailable, sendFeedback } from "./feedback";
 import { MEASUREMENT_KEYS } from "./data/landmarks";
 import {
-  InfoTooltip, InputField, SelectField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
-  Chip, CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
-  PdfSaveModal, EmailLoginModal, PublicConsentModal, ConsentModal,
+  InputField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
+  CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
 } from "./components";
 import { useI18n } from "./i18n";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-// Valor centinela de la opción "otro" en los selectores de cirujano y medidor.
-// Se persiste tal cual: sólo su etiqueta visible depende del idioma.
-const OTRO = "Otro (especificar)";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // APP
@@ -49,21 +30,12 @@ export default function GAPCalculator() {
   const [tipoEvaluacion, setTipoEvaluacion] = useState("preoperatorio");
   const [fechaEstudio, setFechaEstudio] = useState(hoy());
   const [fechaCirugia, setFechaCirugia] = useState(hoy());
-  const [apellidos, setApellidos] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [iniciales, setIniciales] = useState("");
-  const [casoId, setCasoId] = useState(() => generarCasoId());
   const [age, setAge] = useState("");
   const [peso, setPeso] = useState("");
   const [talla, setTalla] = useState("");
-  const [cirujanoSel, setCirujanoSel] = useState("");
-  const [cirujanoCustom, setCirujanoCustom] = useState("");
-  const [medicoPublic, setMedicoPublic] = useState(""); // input opcional en modo público (solo PDF, no se guarda)
-  const medicoBase = cirujanoSel === OTRO ? normalizeName(cirujanoCustom) : cirujanoSel;
-  const medico = medicoBase || (medicoPublic ? normalizeName(medicoPublic) : "");
-  const [medidorSel, setMedidorSel] = useState("");
-  const [medidorCustom, setMedidorCustom] = useState("");
-  const medidor = medidorSel === OTRO ? normalizeName(medidorCustom) : medidorSel;
+  // Nombre del médico: opcional, solo se imprime en el PDF.
+  const [medicoPublic, setMedicoPublic] = useState("");
+  const medico = medicoPublic ? normalizeName(medicoPublic) : "";
   const [cirugias, setCirugias] = useState([]);
   const [pi, setPI] = useState("");
   const [ss, setSS] = useState("");
@@ -84,8 +56,6 @@ export default function GAPCalculator() {
   const [l1tiltDirect, setL1TiltDirect] = useState("");
   // SRS-Schwab — SVA en cm (medido en radiografía), card colapsable
   const [sva, setSVA] = useState("");
-  // Trazo del anotador: landmarks, calibración y horizontal de referencia.
-  const [geometry, setGeometry] = useState(null);
   const [schwabOpen, setSchwabOpen] = useState(false);
   // Roussouly — card colapsable + NVL (nº de vértebras lordóticas, tipo 1 vs 2)
   const [roussoulyOpen, setRoussoulyOpen] = useState(false);
@@ -93,27 +63,9 @@ export default function GAPCalculator() {
   // GAP-B (Noh 2020) — añade BMI y BMD T-score al GAP
   const [bmdTscore, setBmdTscore] = useState("");
   const [gapbOpen, setGapbOpen] = useState(false);
-  const [fotos, setFotos] = useState([]);
   const [toast, setToast] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [casosGuardados, setCasosGuardados] = useState([]);
-  const [showCasos, setShowCasos] = useState(false);
-  const [filtroTipo, setFiltroTipo] = useState("todos");
   const [showBiblio, setShowBiblio] = useState(false);
 
-  // Auth
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [allowlisted, setAllowlisted] = useState(false);
-  const [consentAccepted, setConsentAccepted] = useState(false);
-  const [showConsentModal, setShowConsentModal] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
-  // Login email/password (alterno al de Google)
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPwd, setLoginPwd] = useState("");
-  const [loginError, setLoginError] = useState("");
   // Anotador de landmarks
   const [showAnnotator, setShowAnnotator] = useState(false);
 
@@ -124,53 +76,24 @@ export default function GAPCalculator() {
     return () => { clearTimeout(t1); };
   }, []);
 
-  // Tracking anónimo (modo público)
-  const [deviceId, setDeviceId] = useState(null);
-  const [usageCount, setUsageCount] = useState(null);
-  const [hasCountedSession, setHasCountedSession] = useState(false);
-  // Suscripción
-  const [subEmail, setSubEmail] = useState("");
-  const [subName, setSubName] = useState("");
-  const [subBusy, setSubBusy] = useState(false);
-  const [subDone, setSubDone] = useState(false);
-  // Guardado público (consent + lookup + historial local)
-  const [publicConsentAccepted, setPublicConsentAccepted] = useState(false);
-  const [showPublicConsentModal, setShowPublicConsentModal] = useState(false);
-  const [loadCaseIdInput, setLoadCaseIdInput] = useState("");
-  const [loadingCase, setLoadingCase] = useState(false);
-  const [myPublicCases, setMyPublicCases] = useState([]);
-  const [savedPublicCaseId, setSavedPublicCaseId] = useState(null);
-
-  // Modal "guardar antes de descargar PDF" (modo público, una vez por caso)
-  const [showPdfSaveModal, setShowPdfSaveModal] = useState(false);
-  const [pendingDownloadAfterSave, setPendingDownloadAfterSave] = useState(false);
-
-  // Encuesta de satisfacción one-time
-  const [feedbackDone, setFeedbackDone] = useState(false);
+  // Encuesta de satisfacción one-time, anónima (src/feedback.js)
+  // Solo se recuerda en este navegador que la encuesta ya se respondió.
+  const [feedbackDone, setFeedbackDone] = useState(() => {
+    try { return localStorage.getItem("gap_feedback_done") === "1"; } catch { return false; }
+  });
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackHover, setFeedbackHover] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
 
-  // Carga inicial: consent público + historial local de casos guardados + flag de encuesta
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(PUBLIC_CONSENT_LS_KEY) === PUBLIC_CONSENT_VERSION) setPublicConsentAccepted(true);
-      const arr = JSON.parse(localStorage.getItem(PUBLIC_CASES_LS_KEY) || "[]");
-      if (Array.isArray(arr)) setMyPublicCases(arr);
-      if (localStorage.getItem("gap_feedback_done") === "1") setFeedbackDone(true);
-    } catch (e) {}
-  }, []);
-
   const submitFeedback = async () => {
     if (!feedbackRating) { showToast(t("toast.feedback.sin_estrellas"), false); return; }
-    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
+    if (!feedbackAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
     setFeedbackBusy(true);
     try {
       await sendFeedback({
         rating: feedbackRating,
         comment: feedbackComment.trim() || null,
-        deviceId: deviceId || null,
       });
       try { localStorage.setItem("gap_feedback_done", "1"); } catch (e) {}
       setFeedbackDone(true);
@@ -180,155 +103,6 @@ export default function GAPCalculator() {
       showToast(t("toast.feedback.error"), false);
     }
     setFeedbackBusy(false);
-  };
-
-  // Device ID + contador inicial (una vez)
-  useEffect(() => {
-    let id = null;
-    try {
-      id = localStorage.getItem("gap_device_id");
-      if (!id) {
-        id = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-        localStorage.setItem("gap_device_id", id);
-      }
-    } catch (e) {}
-    setDeviceId(id);
-    if (dataAvailable) {
-      getUsageCount().then(c => setUsageCount(c ?? 0));
-      registerDeviceSession(id);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!dataAvailable) {
-      setAuthReady(true);
-      loadLocalCasos();
-      return;
-    }
-    const unsub = onSessionChange(async (s) => {
-      setUser(s);
-      if (s) {
-        try {
-          const { activo, consentVersion } = await getAccess(s);
-          // La versión vigente del consentimiento la conoce la interfaz, no la
-          // capa de datos: comparar aquí evita que el adaptador tenga que saber
-          // de CONSENT_VERSION.
-          const hasConsent = consentVersion === CONSENT_VERSION;
-          setAllowlisted(activo);
-          setConsentAccepted(hasConsent);
-          if (activo && !hasConsent) setShowConsentModal(true);
-          if (activo && hasConsent) loadCasos(s);
-          else setCasosGuardados([]);
-        } catch (e) {
-          console.error("Auth check error:", e);
-          setAllowlisted(false);
-          setConsentAccepted(false);
-          setCasosGuardados([]);
-        }
-      } else {
-        setAllowlisted(false);
-        setConsentAccepted(false);
-        setCasosGuardados([]);
-      }
-      setAuthReady(true);
-    });
-    return () => unsub();
-  }, []);
-
-  const loadCasos = async (u) => {
-    const usr = u || user;
-    if (dataAvailable && usr) {
-      try {
-        setCasosGuardados(await listCasos(usr.uid));
-      } catch (e) { console.error("Error cargando casos:", e); setCasosGuardados([]); }
-    } else {
-      setCasosGuardados([]);
-    }
-  };
-  const loadLocalCasos = () => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      // Lo guardado son DTOs; normalizeCaso rellena los huecos de versiones previas.
-      if (saved) setCasosGuardados(JSON.parse(saved).map(c => normalizeCaso(c)));
-    } catch (e) {}
-  };
-
-  const canEdit = !dataAvailable || (!!user && allowlisted && consentAccepted);
-  const paciente = canEdit
-    ? nombreCompleto(apellidos, nombre)
-    : (iniciales ? `${iniciales} (${casoId})` : casoId);
-
-  const handleLogin = async () => {
-    if (!dataAvailable) return;
-    setAuthBusy(true);
-    try {
-      await signInWithGoogle();
-    } catch (e) {
-      console.error("Login error:", e);
-      if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
-        showToast(t("toast.login.error"), false);
-      }
-    }
-    setAuthBusy(false);
-  };
-
-  const handleLogout = async () => {
-    if (!dataAvailable) return;
-    setAuthBusy(true);
-    try {
-      await signOutSession();
-      showToast(t("toast.sesion_cerrada"));
-    } catch (e) { console.error(e); }
-    setAuthBusy(false);
-  };
-
-  // ─── Login con correo y contraseña ──────────────────────────────────────
-  const handleEmailLogin = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    setLoginError("");
-    const email = loginEmail.trim().toLowerCase();
-    if (!email || !loginPwd) {
-      setLoginError(t("login.error.faltan_campos"));
-      return;
-    }
-    if (!dataAvailable) {
-      setLoginError(t("toast.servicio_no_disponible"));
-      return;
-    }
-    setAuthBusy(true);
-    try {
-      await signInWithPassword(email, loginPwd);
-      // onAuthStateChanged dispara el flujo de allowlist + consentimiento.
-      setShowLoginModal(false);
-      setLoginEmail(""); setLoginPwd(""); setLoginError("");
-      showToast(t("toast.sesion_iniciada"));
-    } catch (err) {
-      // El mensaje sale del código estable de la capa de datos, no del código
-      // del proveedor: así los textos sobreviven al cambio de motor.
-      setLoginError(messageForError(err, t("login.error.generico")));
-    }
-    setAuthBusy(false);
-  };
-
-  const acceptConsent = async () => {
-    if (!user) return;
-    setAuthBusy(true);
-    try {
-      await acceptConsentRemote(user, CONSENT_VERSION);
-      setConsentAccepted(true);
-      setShowConsentModal(false);
-      showToast(t("toast.consent.ok"));
-      loadCasos(user);
-    } catch (e) {
-      console.error(e);
-      showToast(t("toast.consent.error"), false);
-    }
-    setAuthBusy(false);
-  };
-
-  const rejectConsent = async () => {
-    setShowConsentModal(false);
-    await handleLogout();
   };
 
   const imc = useMemo(() => calcularIMC(peso, talla), [peso, talla]);
@@ -388,14 +162,6 @@ export default function GAPCalculator() {
     }
     return { idealL1PA, l1paDiff, idealLL_Hills, idealLL_Hills_L4S1, ejeDiff, ejeStatus, ejeLabelKey };
   }, [spinopelvic, l1pa, t4pa]);
-
-  // Contador atómico de mediciones (una vez por sesión, al primer GAP completo)
-  useEffect(() => {
-    if (!result || hasCountedSession || !dataAvailable) return;
-    setHasCountedSession(true);
-    incrementUsage().then(() => setUsageCount(c => (c ?? 0) + 1));
-    incrementDeviceCalc(deviceId);
-  }, [result, hasCountedSession, deviceId]);
 
   // Tilts vertebrales C2/T1/L1 (Hills 2022) — opcionales
   // PT efectivo (de spinopelvic): PI − SS, o ingresado directo, o derivado de los otros dos.
@@ -514,78 +280,16 @@ export default function GAPCalculator() {
 
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500); };
 
-  const submitSubscribe = async () => {
-    const email = subEmail.trim().toLowerCase();
-    const name = subName.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast(t("toast.correo_invalido"), false); return; }
-    if (name.length < 2) { showToast(t("toast.falta_nombre"), false); return; }
-    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
-    setSubBusy(true);
-    try {
-      await subscribeToUpdates({ email, name, deviceId: deviceId || null });
-      setSubDone(true);
-      setSubEmail(""); setSubName("");
-      showToast(t("toast.suscripcion.ok"));
-    } catch (e) {
-      showToast(t("toast.suscripcion.error"), false);
-    }
-    setSubBusy(false);
-  };
-  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, paciente, medico, cirugias, fotos, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult };
-
-  // ── El formulario como un solo objeto ──────────────────────────────────────
-  // Los campos siguen viviendo en useState sueltos (el JSX los lee directo),
-  // pero aquí se reúnen en una tabla de setters. Cargar y limpiar pasan a ser
-  // una sola operación sobre el bag en vez de treinta asignaciones a mano, que
-  // es donde se colaban los olvidos. El sentido inverso (leer el bag para
-  // guardar) llega con la capa de datos, junto a su consumidor.
-  const formValues = {
-    tipoEvaluacion, fechaEstudio, fechaCirugia,
-    apellidos, nombre, iniciales, casoId,
-    age, peso, talla,
-    cirujanoSel, cirujanoCustom, medicoPublic, medidorSel, medidorCustom,
-    cirugias,
-    pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa,
-    c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect,
-    sva, nvl, bmdTscore,
-    fotos, geometry,
-  };
-  const formSetters = {
-    tipoEvaluacion: setTipoEvaluacion, fechaEstudio: setFechaEstudio, fechaCirugia: setFechaCirugia,
-    apellidos: setApellidos, nombre: setNombre, iniciales: setIniciales, casoId: setCasoId,
-    age: setAge, peso: setPeso, talla: setTalla,
-    cirujanoSel: setCirujanoSel, cirujanoCustom: setCirujanoCustom, medicoPublic: setMedicoPublic,
-    medidorSel: setMedidorSel, medidorCustom: setMedidorCustom,
-    cirugias: setCirugias,
-    pi: setPI, ss: setSS, pt: setPT, l1s1: setL1S1, l4s1: setL4S1, gt: setGT,
-    l1pa: setL1PA, t4pa: setT4PA,
-    c2tiltDirect: setC2TiltDirect, cpa: setCPA, t1tiltDirect: setT1TiltDirect,
-    t1pa: setT1PA, l1tiltDirect: setL1TiltDirect,
-    sva: setSVA, nvl: setNvl, bmdTscore: setBmdTscore,
-    fotos: setFotos, geometry: setGeometry,
-  };
-  const applyForm = (partial) => {
-    for (const k of Object.keys(partial)) formSetters[k]?.(partial[k]);
-  };
+  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult };
 
   const addCirugia = () => setCirugias([...cirugias, { id: uid(), tipo: "", tipoCustom: "", segmentos: [] }]);
   const updateCirugia = (id, n) => setCirugias(cirugias.map(c => c.id === id ? n : c));
   const removeCirugia = (id) => setCirugias(cirugias.filter(c => c.id !== id));
 
-  const handleFotos = async (e) => {
-    const files = Array.from(e.target.files);
-    const nuevas = [];
-    for (const f of files) { try { const dataUrl = await resizeImage(f); nuevas.push({ id: uid(), name: f.name, dataUrl, categoria: CATEGORIAS_FOTO[0].value }); } catch (err) {} }
-    setFotos([...fotos, ...nuevas]); e.target.value = "";
-    if (nuevas.length > 0) showToast(t(nuevas.length === 1 ? "toast.foto_agregada" : "toast.fotos_agregadas", { n: nuevas.length }));
-  };
-  const removeFoto = (id) => setFotos(fotos.filter(f => f.id !== id));
-  const updateFotoCat = (id, categoria) => setFotos(fotos.map(f => f.id === id ? { ...f, categoria } : f));
-
   const buildPdfFile = () => {
     const docP = buildPDF(inputs, result, t, lang);
     const tipoTag = tipoEvaluacion === "preoperatorio" ? "PRE" : "POST";
-    const filename = `GAP_${tipoTag}${paciente ? "_" + paciente.replace(/\s+/g, "_") : (iniciales ? "_" + iniciales : "")}_${fechaEstudio}.pdf`;
+    const filename = `GAP_${tipoTag}_${fechaEstudio}.pdf`;
     const blob = docP.output("blob");
     return { file: new File([blob], filename, { type: "application/pdf" }), filename, blob };
   };
@@ -600,32 +304,16 @@ export default function GAPCalculator() {
 
   const handleDownload = () => {
     if (!hasAnyMeasurement) { showToast(t("toast.sin_mediciones"), false); return; }
-    // Modo público + caso no guardado todavía → ofrecer guardar primero
-    // (solo cuando el GAP está completo; guardar requiere result)
-    if (result && !canEdit && dataAvailable && savedPublicCaseId !== casoId) {
-      setShowPdfSaveModal(true);
-      return;
-    }
     triggerDownload();
   };
-
-  // Cuando el guardado del caso completa con éxito y el usuario eligió "Guardar y descargar",
-  // dispara la descarga al siguiente tick.
-  useEffect(() => {
-    if (saved && pendingDownloadAfterSave) {
-      setPendingDownloadAfterSave(false);
-      triggerDownload();
-    }
-  }, [saved, pendingDownloadAfterSave]);
 
   // Texto resumido para el cuerpo del correo cuando hay que adjuntar manualmente
   const buildEmailBody = () => {
     const fTxt = new Date(fechaEstudio + "T00:00:00").toLocaleDateString(dateLocale);
     const tLabel = t(MOMENTOS[tipoEvaluacion].key);
     const cTxt = fechaCirugia ? new Date(fechaCirugia + "T00:00:00").toLocaleDateString(dateLocale) : null;
-    const ref = paciente || iniciales || casoId;
     return [
-      `GAP Score · ${tLabel}${ref ? " · " + ref : ""}`,
+      `GAP Score · ${tLabel}`,
       t("pdf.fecha_estudio", { fecha: fTxt }),
       ...(cTxt ? [t("pdf.fecha_cirugia", { fecha: cTxt })] : []),
       ...(diffInfo ? [diffMensaje(t, diffInfo)] : []),
@@ -659,145 +347,25 @@ export default function GAPCalculator() {
     const url = URL.createObjectURL(file);
     const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
-    const subject = `GAP Score · ${t(MOMENTOS[tipoEvaluacion].key)}${paciente ? " · " + paciente : ""}`;
+    const subject = `GAP Score · ${t(MOMENTOS[tipoEvaluacion].key)}`;
     const body = buildEmailBody() + "\n\n📎 " + t("mail.adjunta_pdf");
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     showToast(t("toast.pdf_adjuntar"), true);
   };
 
-  // Arma el DTO del caso a partir del formulario y de los derivados ya
-  // calculados. Es el único punto donde se construye un caso para guardar.
-  const buildCaso = (visibility) => formToCaso(formValues, {
-    paciente, medico, medidor, imc, diffInfo, spinopelvic,
-    result, hillsResult, tiltsResult, schwabResult, roussoulyResult, gapbResult,
-    session: user, deviceId, visibility,
-    consentVersion: visibility === "public" ? PUBLIC_CONSENT_VERSION : CONSENT_VERSION,
-    createdAt: new Date().toISOString(),
-  });
-
-  const saveCaso = async () => {
-    if (!result) { showToast(t("toast.completa_mediciones"), false); return; }
-    if (dataAvailable) {
-      if (!user) { setShowLoginModal(true); return; }
-      if (!allowlisted) { showToast(t("toast.cuenta_no_autorizada"), false); return; }
-      if (!consentAccepted) { setShowConsentModal(true); return; }
-    }
-    setSaving(true);
-    const caso = buildCaso("private");
-
-    if (dataAvailable) {
-      try {
-        await saveCasoRemote(caso);
-        await loadCasos(user);
-        showToast(t("toast.caso_guardado"));
-      } catch (e) { console.error(e); showToast(messageForError(e, t("toast.error_guardando")), false); }
-    } else {
-      try {
-        const updated = [{ ...caso, id: uid() }, ...casosGuardados];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        setCasosGuardados(updated);
-        showToast(t("toast.caso_guardado_local", { n: updated.length }));
-      } catch (e) { showToast(t("toast.storage_lleno"), false); }
-    }
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 4000);
-  };
-
-  const savePublicCase = async (skipConsentCheck = false) => {
-    if (!result) { showToast(t("toast.completa_mediciones"), false); return; }
-    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
-    if (!skipConsentCheck && !publicConsentAccepted) { setShowPublicConsentModal(true); return; }
-    setSaving(true);
-    try {
-      // toPublicCaso borra nombre, apellidos, cirujano, medidor, propietario y
-      // fotos. La despersonalización vive en el DTO, no repartida aquí.
-      const caso = toPublicCaso(buildCaso("public"));
-      await savePublicCasoRemote(caso);
-      try {
-        const arr = JSON.parse(localStorage.getItem(PUBLIC_CASES_LS_KEY) || "[]");
-        const entry = { id: casoId, fechaCaso: caso.createdAt, tipoEvaluacion, gapTotal: result.total, gapCategoria: result.cat.label, gapCategoriaKey: result.cat.key };
-        const updated = [entry, ...arr.filter(x => x.id !== casoId)].slice(0, 50);
-        localStorage.setItem(PUBLIC_CASES_LS_KEY, JSON.stringify(updated));
-        setMyPublicCases(updated);
-      } catch (e) {}
-      setSavedPublicCaseId(casoId);
-      setSaved(true);
-      showToast(t("toast.caso_id_guardado", { id: casoId }));
-      setTimeout(() => setSaved(false), 5000);
-    } catch (e) {
-      console.error(e);
-      showToast(messageForError(e, t("toast.error_guardando")), false);
-    }
-    setSaving(false);
-  };
-
-  const acceptPublicConsent = async () => {
-    try { localStorage.setItem(PUBLIC_CONSENT_LS_KEY, PUBLIC_CONSENT_VERSION); } catch (e) {}
-    setPublicConsentAccepted(true);
-    setShowPublicConsentModal(false);
-    await savePublicCase(true);
-  };
-
-  const loadPublicCase = async (overrideId) => {
-    const id = (overrideId || loadCaseIdInput).trim().toUpperCase();
-    if (!/^GAP-\d{4}-[A-Z0-9]{4}$/i.test(id)) { showToast(t("toast.id_invalido"), false); return; }
-    if (!dataAvailable) { showToast(t("toast.servicio_no_disponible"), false); return; }
-    setLoadingCase(true);
-    try {
-      const caso = await getPublicCaso(id);
-      if (!caso) { showToast(t("toast.caso_no_encontrado"), false); setLoadingCase(false); return; }
-      applyForm(casoToForm(caso));
-      setCasoId(id);
-      if (!caso.studyDate) setFechaEstudio(hoy());
-      setLoadCaseIdInput("");
-      setSavedPublicCaseId(id);
-      showToast(t("toast.caso_cargado", { id }));
-    } catch (e) {
-      console.error(e);
-      showToast(messageForError(e, t("toast.error_cargando")), false);
-    }
-    setLoadingCase(false);
-  };
-
-  const deleteCaso = async (id) => {
-    if (!confirm(t("confirm.eliminar_caso"))) return;
-    if (dataAvailable) {
-      try { await deleteCasoRemote(id); await loadCasos(user); showToast(t("toast.caso_eliminado")); }
-      catch (e) { console.error(e); showToast(messageForError(e, t("toast.error_eliminando")), false); }
-    } else {
-      const updated = casosGuardados.filter(c => c.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setCasosGuardados(updated);
-      showToast(t("toast.caso_eliminado"));
-    }
-  };
-
-  const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(casosGuardados, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `GAP_dataset_${hoy()}.json`; a.click();
-    URL.revokeObjectURL(url); showToast(t("toast.json_exportado", { n: casosGuardados.length }));
-  };
-
-  const exportCSV = () => {
-    const csv = casosToCSV(casosGuardados, t);
-    // BOM for Excel UTF-8
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `GAP_dataset_${hoy()}.csv`; a.click();
-    URL.revokeObjectURL(url); showToast(t("toast.csv_exportado", { n: casosGuardados.length }));
-  };
-
-  // Limpiar es aplicar el formulario vacío. La versión anterior enumeraba los
-  // campos a mano y se le habían quedado fuera sva, nvl y bmdTscore, que se
+  // Limpiar devuelve el formulario a su estado inicial. Cualquier campo nuevo
+  // debe añadirse aquí: una versión anterior olvidó sva, nvl y bmdTscore, que se
   // arrastraban al siguiente paciente.
   const clearAll = () => {
-    applyForm(emptyForm({ hoy: hoy(), casoId: generarCasoId() }));
-    setSaved(false);
-    setSavedPublicCaseId(null);
+    [setAge, setPeso, setTalla, setMedicoPublic,
+      setPI, setSS, setPT, setL1S1, setL4S1, setGT, setL1PA, setT4PA,
+      setC2TiltDirect, setCPA, setT1TiltDirect, setT1PA, setL1TiltDirect,
+      setSVA, setNvl, setBmdTscore].forEach(set => set(""));
+    setTipoEvaluacion("preoperatorio");
+    setFechaEstudio(hoy());
+    setFechaCirugia("");
+    setCirugias([]);
   };
-
-  const conteos = { todos: casosGuardados.length, preoperatorio: casosGuardados.filter(c => c.evaluationType === "preoperatorio").length, postoperatorio: casosGuardados.filter(c => c.evaluationType === "postoperatorio").length };
-  const casosFiltrados = filtroTipo === "todos" ? casosGuardados : casosGuardados.filter(c => c.evaluationType === filtroTipo);
 
   const idealL4S1 = result ? result.idealLL * 0.65 : 0;
 
@@ -838,35 +406,9 @@ export default function GAPCalculator() {
         </div>
       )}
 
-      {/* Barra superior: idioma + autenticación */}
+      {/* Barra superior: idioma */}
       <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <LanguageSwitcher />
-        {dataAvailable && authReady && (
-          <>
-          {user ? (
-            <>
-              <div style={{ fontSize: 11, color: COLORS.textMuted, textAlign: "right", lineHeight: 1.3 }}>
-                <div style={{ fontWeight: 600, color: COLORS.text, fontSize: 12 }}>{user.displayName || user.email}</div>
-                <div style={{ fontSize: 10 }}>
-                  {canEdit ? <span style={{ color: COLORS.green, fontWeight: 600 }}>✓ {t("auth.modo_clinico")}</span>
-                   : allowlisted && !consentAccepted ? <span style={{ color: COLORS.yellow, fontWeight: 600 }}>⏳ {t("auth.falta_consentimiento")}</span>
-                   : <span style={{ color: COLORS.textMuted }}>{t("auth.pendiente")}</span>}
-                </div>
-              </div>
-              <button onClick={handleLogout} disabled={authBusy} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600 }}>{t("auth.salir")}</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setShowLoginModal(true)} style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: COLORS.accent, color: "#fff", fontSize: 12, cursor: "pointer", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 14 }}>🔐</span> {t("login.titulo")}
-              </button>
-              <button onClick={handleLogin} disabled={authBusy} title={t("auth.google.title")} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 11, cursor: authBusy ? "wait" : "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13 }}>🅖</span> Google
-              </button>
-            </>
-          )}
-          </>
-        )}
       </div>
 
       {/* Encabezado — composición editorial */}
@@ -882,17 +424,10 @@ export default function GAPCalculator() {
         <p style={{ fontSize: 13.5, color: COLORS.textDim, lineHeight: 1.55, maxWidth: 440, margin: "0 auto", fontFamily: FONT_SANS }}>
           {t("app.subtitulo")}
         </p>
-        {dataAvailable && !user && (
-          <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 999, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}33`, fontSize: 11, color: COLORS.accentDark, fontWeight: 500 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.accent }} />
-            {t("app.calculadora_abierta")}
-            {usageCount !== null && usageCount > 0 && (
-              <span style={{ paddingLeft: 8, marginLeft: 4, borderLeft: `1px solid ${COLORS.accent}33`, fontFamily: FONT_MONO, fontWeight: 700 }}>
-                {usageCount.toLocaleString(dateLocale)} <span style={{ fontFamily: FONT_SANS, fontWeight: 500, opacity: 0.75 }}>{t("app.mediciones")}</span>
-              </span>
-            )}
-          </div>
-        )}
+        <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 12px", borderRadius: 999, background: COLORS.accentDim, border: `1px solid ${COLORS.accent}33`, fontSize: 11, color: COLORS.accentDark, fontWeight: 500 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: COLORS.accent }} />
+          {t("app.calculadora_abierta")}
+        </div>
       </div>
 
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
@@ -909,59 +444,7 @@ export default function GAPCalculator() {
             <InputField label={t("campo.fecha_cirugia")} value={fechaCirugia} onChange={setFechaCirugia} type="date" unit="" />
           </div>
           <DiffInfoBox diffInfo={diffInfo} />
-          {canEdit && (
-            <>
-              <SelectField label={t("campo.cirujano")} value={cirujanoSel} onChange={setCirujanoSel} options={[...CIRUJANOS, { value: OTRO, label: t("cirugia.otro") }]} />
-              {cirujanoSel === OTRO && <InputField label={t("campo.nombre_cirujano")} value={cirujanoCustom} onChange={setCirujanoCustom} type="text" unit="" placeholder={t("placeholder.dr_apellido")} transform={normalizeName} maxLength={60} />}
-              <SelectField label={t("campo.medidor")} value={medidorSel} onChange={setMedidorSel}
-                options={[...MEDIDORES, { value: OTRO, label: t("cirugia.otro") }]} />
-              {medidorSel === OTRO && (
-                <InputField label={t("campo.nombre_medidor")} value={medidorCustom} onChange={setMedidorCustom}
-                  type="text" unit="" placeholder={t("placeholder.apellido_nombre")} transform={normalizeName} maxLength={60} />
-              )}
-            </>
-          )}
-          {canEdit ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <InputField label={t("campo.apellidos")} value={apellidos} onChange={setApellidos} type="text" unit="" placeholder={t("placeholder.apellidos")} transform={normalizeName} maxLength={50} />
-              <InputField label={t("campo.nombre")} value={nombre} onChange={setNombre} type="text" unit="" placeholder={t("placeholder.nombre")} transform={normalizeName} maxLength={50} />
-            </div>
-          ) : (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, alignItems: "start" }}>
-                <InputField label={t("campo.iniciales")} value={iniciales} onChange={setIniciales} type="text" unit="" placeholder={t("placeholder.iniciales")} transform={normalizeIniciales} maxLength={5} />
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>{t("campo.id_caso")}</label>
-                    <InfoTooltip text={t("tooltip.id_caso")} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${COLORS.inputBorder}`, overflow: "hidden" }}>
-                    <span style={{ flex: 1, padding: "10px 12px", color: COLORS.accentDark, fontSize: 14, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: 0.5, userSelect: "all" }}>{casoId}</span>
-                    <button type="button" onClick={() => setCasoId(generarCasoId())} title={t("caso.generar_id")} style={{ padding: "10px 12px", background: COLORS.inputHover, border: "none", borderLeft: `1px solid ${COLORS.inputBorder}`, color: COLORS.textDim, cursor: "pointer", fontSize: 14 }}>↻</button>
-                  </div>
-                </div>
-              </div>
-              <InputField label={t("campo.medico_publico")} value={medicoPublic} onChange={setMedicoPublic} type="text" unit="" placeholder={t("placeholder.dr_apellido")} transform={normalizeName} maxLength={60} />
-              {/* Cargar caso anterior */}
-              <div style={{ marginTop: 4, padding: 12, borderRadius: 10, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}` }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textDim, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  🔎 {t("caso.cargar.pregunta")}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    type="text"
-                    value={loadCaseIdInput}
-                    onChange={e => setLoadCaseIdInput(e.target.value.toUpperCase())}
-                    placeholder="GAP-2026-XXXX"
-                    maxLength={13}
-                    style={{ flex: 1, padding: "10px 12px", background: COLORS.inputBg, border: `1.5px solid ${COLORS.inputBorder}`, borderRadius: 8, color: COLORS.accentDark, fontSize: 14, fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, letterSpacing: 0.5, outline: "none" }} />
-                  <button onClick={loadPublicCase} disabled={loadingCase || !loadCaseIdInput} style={{ padding: "10px 18px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: loadingCase || !loadCaseIdInput ? COLORS.inputBg : COLORS.accent, color: loadingCase || !loadCaseIdInput ? COLORS.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: loadingCase ? "wait" : !loadCaseIdInput ? "not-allowed" : "pointer" }}>
-                    {loadingCase ? "..." : t("common.cargar")}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+          <InputField label={t("campo.medico_publico")} value={medicoPublic} onChange={setMedicoPublic} type="text" unit="" placeholder={t("placeholder.dr_apellido")} transform={normalizeName} maxLength={60} />
           <InputField label={t("campo.edad_paciente")} value={age} onChange={setAge} unit={t("unidad.anos")} min={15} max={90} list="ages-list" placeholder="15-90" />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <InputField label={t("campo.peso")} value={peso} onChange={setPeso} unit="kg" min={20} max={300} step="0.1" placeholder={t("placeholder.peso")} />
@@ -1472,87 +955,6 @@ export default function GAPCalculator() {
           )}
         </Card>
 
-        {/* Fotos — solo en modo clínico (los datos se asocian a un paciente identificado) */}
-        {canEdit && (
-          <Card>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📸 {t("fotos.titulo")} ({fotos.length})</h2>
-              <label style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${COLORS.purple}66`, background: COLORS.purpleBg, color: COLORS.purple, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>
-                {t("fotos.agregar")}
-                <input type="file" accept="image/*" multiple capture="environment" onChange={handleFotos} style={{ display: "none" }} />
-              </label>
-            </div>
-            {fotos.length === 0 ? (
-              <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 13, background: COLORS.inputHover, borderRadius: 10, border: `1px dashed ${COLORS.inputBorder}` }}>{t("fotos.vacio")}</div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-                {fotos.map(f => (
-                  <div key={f.id} style={{ position: "relative", background: COLORS.inputHover, borderRadius: 10, overflow: "hidden", border: `1px solid ${COLORS.inputBorder}` }}>
-                    <img src={f.dataUrl} alt={f.name} style={{ width: "100%", height: 110, objectFit: "cover", display: "block" }} />
-                    <button onClick={() => removeFoto(f.id)} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", border: "none", background: "rgba(185,28,28,0.9)", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 700 }}>×</button>
-                    <select value={f.categoria} onChange={e => updateFotoCat(f.id, e.target.value)} style={{ width: "100%", padding: "6px 8px", background: COLORS.card, border: "none", borderTop: `1px solid ${COLORS.inputBorder}`, color: COLORS.text, fontSize: 11, outline: "none", cursor: "pointer" }}>
-                      {CATEGORIAS_FOTO.map(cat => <option key={cat.value} value={cat.value}>{t(cat.key)}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Mis casos guardados (modo público, desde localStorage) */}
-        {!canEdit && myPublicCases.length > 0 && (
-          <Card>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: COLORS.text }}>📂 {t("miscasos.titulo")} ({myPublicCases.length})</h2>
-              <span style={{ fontSize: 10, color: COLORS.textMuted, fontStyle: "italic" }}>{t("miscasos.solo_dispositivo")}</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 240, overflowY: "auto" }}>
-              {myPublicCases.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: COLORS.inputHover, borderRadius: 8, border: `1px solid ${COLORS.inputBorder}` }}>
-                  <span style={{ flex: 1, fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 700, color: COLORS.accentDark }}>{c.id}</span>
-                  <span style={{ fontSize: 10, color: COLORS.textMuted }}>{c.fechaCaso ? new Date(c.fechaCaso).toLocaleDateString(dateLocale, { day: "2-digit", month: "short" }) : ""}</span>
-                  {c.tipoEvaluacion && <MomentoBadge tipo={c.tipoEvaluacion} />}
-                  {typeof c.gapTotal === "number" && <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.text }}>{c.gapTotal}/13</span>}
-                  <button onClick={() => loadPublicCase(c.id)} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 11, cursor: "pointer", fontWeight: 700 }}>{t("common.cargar")}</button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {/* Suscripción a actualizaciones — solo modo público */}
-        {!canEdit && dataAvailable && (
-          <Card>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: subDone ? 0 : 14 }}>
-              <div style={{ fontSize: 22, lineHeight: 1 }}>📬</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text, marginBottom: 4 }}>
-                  {t("sub.titulo")}
-                </div>
-                <p style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.5, margin: 0 }}>
-                  {t("sub.nota")}
-                </p>
-              </div>
-            </div>
-            {subDone ? (
-              <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 8, background: COLORS.greenBg, border: `1px solid ${COLORS.green}44`, fontSize: 12, color: COLORS.green, fontWeight: 600, textAlign: "center" }}>
-                ✓ {t("sub.gracias")}
-              </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "end" }}>
-                <InputField label={t("campo.nombre")} value={subName} onChange={setSubName} type="text" placeholder={t("placeholder.dr_apellido_corto")} unit="" />
-                <InputField label={t("campo.correo")} value={subEmail} onChange={setSubEmail} type="text" placeholder={t("placeholder.correo")} unit="" />
-                <button
-                  onClick={submitSubscribe}
-                  disabled={subBusy}
-                  style={{ gridColumn: "1 / -1", padding: "10px 16px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}`, background: subBusy ? COLORS.inputHover : COLORS.accent, color: subBusy ? COLORS.textMuted : "#fff", fontSize: 13, fontWeight: 700, cursor: subBusy ? "wait" : "pointer", marginTop: 4 }}>
-                  {subBusy ? t("sub.registrando") : t("sub.boton")}
-                </button>
-              </div>
-            )}
-          </Card>
-        )}
 
         {/* Resultado — bloque editorial */}
         {result && (
@@ -1583,63 +985,11 @@ export default function GAPCalculator() {
             <ShareButton icon="📄" label="PDF" color={COLORS.accent} bg={COLORS.accentDim} onClick={handleDownload} disabled={!hasAnyMeasurement} />
             <ShareButton icon="✉️" label={t("exportar.correo")} color={COLORS.purple} bg={COLORS.purpleBg} onClick={handleEmail} disabled={!hasAnyMeasurement} />
           </div>
-          {(() => {
-            const isPublic = !canEdit;
-            const needsLogin = dataAvailable && !user;
-            const pendingAuth = dataAvailable && user && !allowlisted;
-            const pendingConsent = dataAvailable && user && allowlisted && !consentAccepted;
-            const hardDisabled = !result || saving || (saved && !isPublic) || pendingAuth;
-            const onClick = isPublic ? () => savePublicCase() : saveCaso;
-            const label = saving ? `⏳ ${t("common.guardando")}`
-              : (saved && isPublic && savedPublicCaseId) ? `✅ ${t("guardar.guardado_id", { id: savedPublicCaseId })}`
-              : saved ? `✅ ${t("guardar.caso_guardado")}`
-              : !dataAvailable ? `💾 ${t("guardar.localmente")}`
-              : isPublic ? `💾 ${t("guardar.publico")}`
-              : pendingAuth ? `⏳ ${t("guardar.pendiente_autorizacion")}`
-              : pendingConsent ? `📝 ${t("guardar.aceptar_consentimiento")}`
-              : `💾 ${t("guardar.caso")}`;
-            const bgColor = saved ? COLORS.greenBg
-              : hardDisabled ? COLORS.inputHover
-              : isPublic ? COLORS.accentDim
-              : needsLogin ? COLORS.accentDim
-              : pendingConsent ? COLORS.yellowBg
-              : COLORS.yellowBg;
-            const fgColor = saved ? COLORS.green
-              : hardDisabled ? COLORS.textMuted
-              : isPublic ? COLORS.accentDark
-              : needsLogin ? COLORS.accentDark
-              : pendingConsent ? COLORS.yellow
-              : COLORS.yellow;
-            const borderColor = saved ? COLORS.green + "66"
-              : hardDisabled ? COLORS.inputBorder
-              : isPublic ? COLORS.accent + "66"
-              : needsLogin ? COLORS.accent + "66"
-              : COLORS.yellow + "66";
-            return (
-              <>
-                <button onClick={onClick} disabled={hardDisabled} style={{
-                  width: "100%", padding: "12px", borderRadius: 10,
-                  border: `1.5px solid ${borderColor}`,
-                  background: bgColor, color: fgColor,
-                  fontSize: 14, fontWeight: 700,
-                  cursor: hardDisabled ? "not-allowed" : "pointer",
-                  opacity: hardDisabled ? 0.55 : 1
-                }}>
-                  {label}
-                </button>
-                {isPublic && saved && savedPublicCaseId && (
-                  <div style={{ marginTop: 10, padding: "10px 14px", borderRadius: 8, background: COLORS.greenBg, border: `1px solid ${COLORS.green}44`, fontSize: 12, color: COLORS.green, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <span>{t("guardar.guarda_id")}</span>
-                    <button onClick={() => { try { navigator.clipboard.writeText(savedPublicCaseId); showToast(t("toast.id_copiado")); } catch (e) {} }} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${COLORS.green}66`, background: COLORS.card, color: COLORS.green, fontSize: 12, cursor: "pointer", fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>📋 {savedPublicCaseId}</button>
-                  </div>
-                )}
-              </>
-            );
-          })()}
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0, lineHeight: 1.5 }}>🔒 {t("exportar.nota_local")}</p>
         </Card>
 
-        {/* Encuesta de satisfacción + sugerencias (one-time, requiere haber calculado al menos una vez) */}
-        {result && !feedbackDone && dataAvailable && (
+        {/* Encuesta de satisfacción anónima (one-time, requiere haber calculado al menos una vez) */}
+        {result && !feedbackDone && feedbackAvailable && (
           <Card>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
               <div style={{ fontSize: 22, lineHeight: 1 }}>💬</div>
@@ -1709,64 +1059,6 @@ export default function GAPCalculator() {
           </>
         )}
 
-        {/* Casos guardados (solo modo clínico) */}
-        {canEdit && (
-        <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h2 style={{ fontSize: 19, fontWeight: 600, margin: 0, color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🗄️ {t("casos.titulo")}</h2>
-            <button onClick={() => setShowCasos(!showCasos)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${COLORS.inputBorder}`, background: "transparent", color: COLORS.textDim, fontSize: 12, cursor: "pointer" }}>{showCasos ? t("common.ocultar") : t("casos.ver_todos")}</button>
-          </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {[{ v: "todos", l: t("casos.filtro.todos"), c: conteos.todos }, { v: "preoperatorio", l: `🔵 ${t("momento.pre.short")}`, c: conteos.preoperatorio }, { v: "postoperatorio", l: `🟢 ${t("momento.post.short")}`, c: conteos.postoperatorio }].map(f => (
-              <button key={f.v} onClick={() => setFiltroTipo(f.v)} style={{ flex: 1, padding: "6px 8px", borderRadius: 6, border: `1px solid ${filtroTipo === f.v ? COLORS.accent : COLORS.inputBorder}`, background: filtroTipo === f.v ? COLORS.accentDim : "transparent", color: filtroTipo === f.v ? COLORS.accentDark : COLORS.textDim, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
-                {f.l} ({f.c})
-              </button>
-            ))}
-          </div>
-          {showCasos && casosFiltrados.length > 0 && (
-            <div style={{ maxHeight: 350, overflowY: "auto", marginBottom: 12 }}>
-              {casosFiltrados.map(c => {
-                const pacDisplay = c.patientFullName || t("casos.sin_nombre");
-                const fechaDisplay = c.studyDate
-                  ? new Date(c.studyDate + "T00:00:00").toLocaleDateString(dateLocale)
-                  : (c.createdAt ? new Date(c.createdAt).toLocaleDateString(dateLocale) : "");
-                return (
-                  <div key={c.id} style={{ padding: 10, background: COLORS.inputHover, borderRadius: 8, marginBottom: 6, border: `1px solid ${COLORS.inputBorder}` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ fontSize: 12, color: COLORS.text, flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "wrap" }}>
-                          <strong>{pacDisplay}</strong>
-                          <span style={{ color: COLORS.textMuted }}>· {t("pdf.anos", { n: c.age })}</span>
-                          {c.bmi != null && <span style={{ color: COLORS.textMuted, fontSize: 11 }}>· {t("imc.sigla")} {c.bmi.toFixed(1)}</span>}
-                          {c.evaluationType && <MomentoBadge tipo={c.evaluationType} />}
-                        </div>
-                        <div style={{ color: COLORS.textMuted, fontSize: 11 }}>
-                          📅 {fechaDisplay}
-                          {c.timeLabel && <> · ⏱️ {c.timeLabel}</>}
-                          {c.gap && <> · GAP: <strong style={{ color: COLORS.accentDark }}>{c.gap.total}/13</strong> · {t(classify(c.gap.total).key)}</>}
-                        </div>
-                        {((c.photos?.length || 0) > 0) && <div style={{ fontSize: 11, color: COLORS.purple, marginTop: 2 }}>📸 {c.photos.length}</div>}
-                      </div>
-                      <button onClick={() => deleteCaso(c.id)} style={{ padding: "2px 8px", borderRadius: 4, border: `1px solid ${COLORS.red}44`, background: "transparent", color: COLORS.red, fontSize: 10, cursor: "pointer" }}>🗑</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {showCasos && casosFiltrados.length === 0 && <div style={{ padding: 20, textAlign: "center", color: COLORS.textMuted, fontSize: 12, background: COLORS.inputHover, borderRadius: 8 }}>{t("casos.sin_resultados")}</div>}
-          {casosGuardados.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-              <button onClick={exportCSV} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.green}66`, background: COLORS.greenBg, color: COLORS.green, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📊 {t("casos.exportar_csv")}</button>
-              <button onClick={exportJSON} style={{ padding: "10px", borderRadius: 8, border: `1.5px solid ${COLORS.accent}66`, background: COLORS.accentDim, color: COLORS.accentDark, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>📥 {t("casos.exportar_json")}</button>
-            </div>
-          )}
-          <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 10, lineHeight: 1.5 }}>
-            🔒 {t("casos.privacidad")}
-            <br />{t("casos.formatos")}
-          </div>
-        </Card>
-        )}
 
         {/* Disclaimer — nota editorial */}
         <div style={{ padding: "16px 20px", marginBottom: 16, fontSize: 12, color: COLORS.textDim, lineHeight: 1.6, textAlign: "center", borderTop: `1px solid ${COLORS.rule}`, borderBottom: `1px solid ${COLORS.rule}` }}>
@@ -1827,57 +1119,13 @@ export default function GAPCalculator() {
         </a>
       </div>
 
-      {showConsentModal && user && (
-        <ConsentModal
-          onAccept={acceptConsent}
-          onReject={rejectConsent}
-          userEmail={user.email}
-          busy={authBusy}
-        />
-      )}
-
-      {showPublicConsentModal && (
-        <PublicConsentModal
-          onAccept={acceptPublicConsent}
-          onCancel={() => setShowPublicConsentModal(false)}
-          busy={saving}
-        />
-      )}
-
-      {showPdfSaveModal && (
-        <PdfSaveModal
-          busy={saving}
-          onSaveAndDownload={() => {
-            setShowPdfSaveModal(false);
-            setPendingDownloadAfterSave(true);
-            savePublicCase();
-          }}
-          onDownloadOnly={() => { setShowPdfSaveModal(false); triggerDownload(); }}
-          onCancel={() => setShowPdfSaveModal(false)}
-        />
-      )}
-
-      {showLoginModal && (
-        <EmailLoginModal
-          email={loginEmail}
-          password={loginPwd}
-          onEmailChange={setLoginEmail}
-          onPasswordChange={setLoginPwd}
-          onSubmit={handleEmailLogin}
-          onCancel={() => { setShowLoginModal(false); setLoginError(""); setLoginEmail(""); setLoginPwd(""); }}
-          error={loginError}
-          busy={authBusy}
-        />
-      )}
-
       <LandmarkAnnotator
         open={showAnnotator}
         onClose={() => setShowAnnotator(false)}
-        canEdit={canEdit}
         onSaveAnnotated={(dataUrl) => {
+          // La imagen anotada se descarga al dispositivo; no se sube a ningún lado.
           const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-          const foto = { id: uid(), name: `anotada_${stamp}.jpg`, dataUrl, categoria: CATEGORIA_FOTO_ANOTADA };
-          setFotos(prev => [...prev, foto]);
+          const a = document.createElement("a"); a.href = dataUrl; a.download = `SpineCalc_anotada_${stamp}.jpg`; a.click();
           showToast(t("toast.imagen_anotada"));
         }}
         onApply={(v) => {
@@ -1894,9 +1142,6 @@ export default function GAPCalculator() {
           if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
           if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
           if (v.sva !== undefined) setSVA(v.sva);
-          // El trazo se guarda con el caso: es lo que alimenta el dataset y el
-          // futuro modelo de keypoints.
-          if (v.geometry) setGeometry({ ...v.geometry, appliedAt: new Date().toISOString() });
           // Contar por lista explícita: `geometry` no es una medición y con
           // Object.keys se colaría en el número que ve el usuario.
           const count = MEASUREMENT_KEYS.filter(k => v[k] !== undefined).length;
