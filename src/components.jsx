@@ -53,21 +53,32 @@ export function InfoTooltip({ text, figureSrc }) {
 }
 
 export function InputField({ label, tooltip, tooltipFigure, value, onChange, unit = "°", min, max, type = "number", placeholder, step, list, transform, maxLength }) {
+  const { t } = useI18n();
   const [focused, setFocused] = useState(false);
   const isTextLike = type === "text" || type === "date";
+  // min/max del <input> no impiden capturar fuera de rango: se avisa, no se bloquea,
+  // porque hay pacientes reales fuera del rango habitual y el cálculo debe seguir.
+  const num = type === "number" && value !== "" && value !== null && value !== undefined ? Number(value) : null;
+  const fueraDeRango = num !== null && !Number.isNaN(num) && ((min !== undefined && num < min) || (max !== undefined && num > max));
+  const bordeColor = fueraDeRango ? COLORS.yellow : focused ? COLORS.inputFocus : COLORS.inputBorder;
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, minWidth: 0 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</label>
         {tooltip && <InfoTooltip text={tooltip} figureSrc={tooltipFigure} />}
       </div>
-      <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${focused ? COLORS.inputFocus : COLORS.inputBorder}`, overflow: "hidden", transition: "border-color 0.15s" }}>
+      <div style={{ display: "flex", alignItems: "center", background: COLORS.inputBg, borderRadius: 8, border: `1.5px solid ${bordeColor}`, overflow: "hidden", transition: "border-color 0.15s" }}>
         <input type={type} value={value} placeholder={placeholder} min={min} max={max} step={step} list={list} maxLength={maxLength}
           onChange={e => { const raw = e.target.value; if (type === "number") onChange(raw === "" ? "" : Number(raw)); else onChange(transform ? transform(raw) : raw); }}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{ flex: 1, padding: "10px 12px", background: "transparent", border: "none", color: COLORS.text, fontSize: isTextLike ? 14 : 15, fontFamily: isTextLike ? "'DM Sans', sans-serif" : "'JetBrains Mono', monospace", outline: "none", width: "100%" }} />
         {unit && <span style={{ padding: "0 12px", color: COLORS.textMuted, fontSize: 13, fontWeight: 500 }}>{unit}</span>}
       </div>
+      {fueraDeRango && (
+        <div role="status" style={{ marginTop: 6, padding: "6px 10px", borderRadius: 6, background: COLORS.yellowBg, border: `1px solid ${COLORS.yellow}66`, fontSize: 11.5, color: COLORS.yellow, fontWeight: 600 }}>
+          ⚠ {t("campo.fuera_rango", { min, max, unit: unit === "°" ? "°" : unit ? ` ${unit}` : "" })}
+        </div>
+      )}
     </div>
   );
 }

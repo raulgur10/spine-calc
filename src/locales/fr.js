@@ -122,6 +122,7 @@ export default {
   "campo.nvl": "Vertèbres lordotiques (NVL)",
   "campo.dmo": "DMO (pire T-score rachis/fémur)",
   "campo.dmo_opcional": "Densitométrie : T-score (facultatif, pour GAP-B)",
+  "campo.fuera_rango": "Hors de la plage habituelle ({min} à {max}{unit}). Vérifiez la valeur.",
   "unidad.anos": "ans",
   "unidad.vert": "vert.",
 

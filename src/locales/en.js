@@ -122,6 +122,7 @@ export default {
   "campo.nvl": "Lordotic vertebrae (NLV)",
   "campo.dmo": "BMD (worst T-score of spine/femur)",
   "campo.dmo_opcional": "Densitometry: T-score (optional, for GAP-B)",
+  "campo.fuera_rango": "Outside the usual range ({min} to {max}{unit}). Please check the value.",
   "unidad.anos": "years",
   "unidad.vert": "vert.",
 

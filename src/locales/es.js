@@ -123,6 +123,7 @@ export default {
   "campo.nvl": "Vértebras lordóticas (NVL)",
   "campo.dmo": "DMO (T-score peor de columna/fémur)",
   "campo.dmo_opcional": "Densitometría: T-score (opcional, para GAP-B)",
+  "campo.fuera_rango": "Fuera del rango habitual ({min} a {max}{unit}). Verifica el valor.",
   "unidad.anos": "años",
   "unidad.vert": "vért.",
 
