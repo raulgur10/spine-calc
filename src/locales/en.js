@@ -94,11 +94,14 @@ export default {
   // Tipos de cirugía
   "cirugia.anterior": "Anterior lumbar instrumentation",
   "cirugia.posterior": "Posterior lumbar instrumentation",
+  "cirugia.toracica": "Thoracic instrumentation",
   "cirugia.card.titulo": "SURGERY #{n}",
   "cirugia.tipo.placeholder": "— Type of surgery —",
   "cirugia.otro": "Other (specify)",
   "cirugia.otro.placeholder": "Specify type of surgery",
   "cirugia.segmentos": "SEGMENTS",
+  "cirugia.segmentos.toracicos": "Thoracic",
+  "cirugia.segmentos.lumbares": "Lumbar",
   "cirugias.planificadas": "Planned surgeries",
   "cirugias.realizadas": "Performed surgeries",
   "cirugias.vacio.1": "Tap ",
@@ -118,6 +121,7 @@ export default {
   "campo.tilt_directo": "Direct tilt",
   "campo.nvl": "Lordotic vertebrae (NLV)",
   "campo.dmo": "BMD (worst T-score of spine/femur)",
+  "campo.dmo_opcional": "Densitometry: T-score (optional, for GAP-B)",
   "unidad.anos": "years",
   "unidad.vert": "vert.",
 
@@ -280,7 +284,7 @@ export default {
   "gapb.falta.gap": "complete GAP",
   "gapb.falta.tscore": "BMD T-score",
   "gapb.explicacion": "Estimated probability of a postoperative mechanical complication (PJK/PJF, rod fracture or implant failure) at 2 years, based on the Noh 2020 logistic regression.",
-  "gapb.faltan": "Fill in weight, height, the GAP parameters and the BMD T-score to obtain the GAP-B prediction.",
+  "gapb.faltan": "The T-score is entered in Case data, below weight and height.",
   "gapb.nota": "Logistic approximation derived from the published multivariable HRs (BMI 1.284 · BMD 0.277 · GAP 1.457). The original Noh 2020 nomogram (Fig. 2) is the formal clinical reference. It does not replace clinical judgement.",
 
   // Imágenes y casos

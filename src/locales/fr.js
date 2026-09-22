@@ -94,11 +94,14 @@ export default {
   // Tipos de cirugía
   "cirugia.anterior": "Instrumentation lombaire antérieure",
   "cirugia.posterior": "Instrumentation lombaire postérieure",
+  "cirugia.toracica": "Instrumentation thoracique",
   "cirugia.card.titulo": "CHIRURGIE #{n}",
   "cirugia.tipo.placeholder": "— Type de chirurgie —",
   "cirugia.otro": "Autre (préciser)",
   "cirugia.otro.placeholder": "Préciser le type de chirurgie",
   "cirugia.segmentos": "SEGMENTS",
+  "cirugia.segmentos.toracicos": "Thoraciques",
+  "cirugia.segmentos.lumbares": "Lombaires",
   "cirugias.planificadas": "Chirurgies planifiées",
   "cirugias.realizadas": "Chirurgies réalisées",
   "cirugias.vacio.1": "Appuyez sur ",
@@ -118,6 +121,7 @@ export default {
   "campo.tilt_directo": "Tilt direct",
   "campo.nvl": "Vertèbres lordotiques (NVL)",
   "campo.dmo": "DMO (pire T-score rachis/fémur)",
+  "campo.dmo_opcional": "Densitométrie : T-score (facultatif, pour GAP-B)",
   "unidad.anos": "ans",
   "unidad.vert": "vert.",
 
@@ -280,7 +284,7 @@ export default {
   "gapb.falta.gap": "GAP complet",
   "gapb.falta.tscore": "T-score DMO",
   "gapb.explicacion": "Probabilité estimée de complication mécanique postopératoire (PJK/PJF, fracture de tige ou défaillance d'implant) à 2 ans, d'après la régression logistique de Noh 2020.",
-  "gapb.faltan": "Renseignez le poids, la taille, les paramètres du GAP et le T-score de DMO pour obtenir la prédiction GAP-B.",
+  "gapb.faltan": "Le T-score se saisit dans Données du cas, sous le poids et la taille.",
   "gapb.nota": "Approximation logistique dérivée des HR multivariés publiés (IMC 1,284 · DMO 0,277 · GAP 1,457). Le nomogramme original de Noh 2020 (Fig. 2) reste la référence clinique formelle. Il ne remplace pas le jugement clinique.",
 
   // Imágenes y casos

@@ -5,8 +5,13 @@
 export const TIPOS_CIRUGIA = [
   { value: "Instrumentación lumbar anterior", key: "cirugia.anterior" },
   { value: "Instrumentación lumbar posterior", key: "cirugia.posterior" },
+  { value: "Instrumentación torácica", key: "cirugia.toracica" },
 ];
+// Ambos grupos se ofrecen en toda cirugía: las construcciones largas cruzan la
+// unión toracolumbar. T12-L1 va con los torácicos.
+export const SEGMENTOS_TORACICOS = ["T1-T2", "T2-T3", "T3-T4", "T4-T5", "T5-T6", "T6-T7", "T7-T8", "T8-T9", "T9-T10", "T10-T11", "T11-T12", "T12-L1"];
 export const SEGMENTOS = ["L1-L2", "L2-L3", "L3-L4", "L4-L5", "L5-S1"];
+export const SEGMENTOS_TODOS = [...SEGMENTOS_TORACICOS, ...SEGMENTOS];
 
 export const REFERENCIAS = [
   { year: 1998, cite: "Legaye J, Duval-Beaupère G, Hecquet J, Marty C. Pelvic incidence: a fundamental pelvic parameter for three-dimensional regulation of spinal sagittal curves. Eur Spine J. 1998;7:99-103." },

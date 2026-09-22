@@ -95,11 +95,14 @@ export default {
   // Tipos de cirugía
   "cirugia.anterior": "Instrumentación lumbar anterior",
   "cirugia.posterior": "Instrumentación lumbar posterior",
+  "cirugia.toracica": "Instrumentación torácica",
   "cirugia.card.titulo": "CIRUGÍA #{n}",
   "cirugia.tipo.placeholder": "— Tipo de cirugía —",
   "cirugia.otro": "Otro (especificar)",
   "cirugia.otro.placeholder": "Especificar tipo de cirugía",
   "cirugia.segmentos": "SEGMENTOS",
+  "cirugia.segmentos.toracicos": "Torácicos",
+  "cirugia.segmentos.lumbares": "Lumbares",
   "cirugias.planificadas": "Cirugías planificadas",
   "cirugias.realizadas": "Cirugías realizadas",
   "cirugias.vacio.1": "Toca ",
@@ -119,6 +122,7 @@ export default {
   "campo.tilt_directo": "Tilt directo",
   "campo.nvl": "Vértebras lordóticas (NVL)",
   "campo.dmo": "DMO (T-score peor de columna/fémur)",
+  "campo.dmo_opcional": "Densitometría: T-score (opcional, para GAP-B)",
   "unidad.anos": "años",
   "unidad.vert": "vért.",
 
@@ -281,7 +285,7 @@ export default {
   "gapb.falta.gap": "GAP completo",
   "gapb.falta.tscore": "T-score DMO",
   "gapb.explicacion": "Probabilidad estimada de complicación mecánica postoperatoria (PJK/PJF, fractura de varilla o falla de implante) a 2 años, basada en la regresión logística de Noh 2020.",
-  "gapb.faltan": "Llena peso, talla, los parámetros del GAP y el T-score de DMO para obtener la predicción GAP-B.",
+  "gapb.faltan": "El T-score se captura en Datos del caso, abajo de peso y talla.",
   "gapb.nota": "Aproximación logística derivada de los HR multivariables publicados (BMI 1.284 · BMD 0.277 · GAP 1.457). El nomograma original de Noh 2020 (Fig. 2) es la referencia clínica formal. No sustituye juicio clínico.",
 
   // Imágenes y casos

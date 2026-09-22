@@ -62,7 +62,6 @@ export default function GAPCalculator() {
   const [nvl, setNvl] = useState("");
   // GAP-B (Noh 2020) — añade BMI y BMD T-score al GAP
   const [bmdTscore, setBmdTscore] = useState("");
-  const [gapbOpen, setGapbOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [showBiblio, setShowBiblio] = useState(false);
 
@@ -451,6 +450,15 @@ export default function GAPCalculator() {
             <InputField label={t("campo.talla")} value={talla} onChange={setTalla} unit="cm" min={100} max={230} placeholder={t("placeholder.talla")} />
           </div>
           <IMCBadge imc={imc} />
+          <InputField
+            label={t("campo.dmo_opcional")}
+            value={bmdTscore}
+            onChange={setBmdTscore}
+            unit=""
+            min={-5} max={5} step={0.1}
+            placeholder={t("placeholder.tscore")}
+            tooltip={t("tooltip.dmo")}
+          />
         </Card>
 
         {/* Cirugías */}
@@ -883,76 +891,31 @@ export default function GAPCalculator() {
           )}
         </Card>
 
-        {/* GAP-B (Noh 2020) — colapsable, opcional */}
-        <Card>
-          <button
-            type="button"
-            onClick={() => setGapbOpen(o => !o)}
-            aria-expanded={gapbOpen}
-            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 GAP-B</h2>
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
-                Noh 2020 · GAP + {t("imc.sigla")} + {t("dmo.sigla")} · <em>{t("gapb.sub")}</em>
-              </p>
+        {/* GAP-B (Noh 2020) — solo el resultado; el T-score se captura en Datos del caso */}
+        <Card style={{ textAlign: "left" }}>
+          <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>🦴 GAP-B</h2>
+          <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>
+            Noh 2020 · GAP + {t("imc.sigla")} + {t("dmo.sigla")} · <em>{t("gapb.sub")}</em>
+          </p>
+          {gapbResult ? (
+            <div style={{ padding: 14, borderRadius: 10, background: gapbResult.cat.bg, border: `1.5px solid ${gapbResult.cat.color}66` }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: 28, fontWeight: 800, color: gapbResult.cat.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{(gapbResult.prob * 100).toFixed(0)}%</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: gapbResult.cat.color }}>{t(gapbResult.cat.key)}</span>
+              </div>
+              <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
+                {t("gapb.explicacion")}
+              </div>
             </div>
-            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: gapbOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
-          </button>
-          {gapbOpen && (
-            <div style={{ marginTop: 14 }}>
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>
-                {t("gapb.intro.1")}<strong>{t("imc.sigla")}</strong>{t("gapb.intro.2")}<strong>{t("dmo.sigla")}</strong>{t("gapb.intro.3")}
-              </p>
-              <InputField
-                label={t("campo.dmo")}
-                value={bmdTscore}
-                onChange={setBmdTscore}
-                unit=""
-                min={-5} max={5} step={0.1}
-                placeholder={t("placeholder.tscore")}
-                tooltip={t("tooltip.dmo")}
-              />
-              <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, fontSize: 12, color: COLORS.text }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, fontFamily: "'JetBrains Mono', monospace" }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>{t("imc.sigla")}</div>
-                    <div style={{ fontWeight: 700, color: imc && imc.valor ? COLORS.text : COLORS.textMuted }}>{imc && imc.valor ? `${Number(imc.valor).toFixed(1)} kg/m²` : "—"}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>GAP</div>
-                    <div style={{ fontWeight: 700, color: result ? COLORS.text : COLORS.textMuted }}>{result ? `${result.total} ${t("comun.pts")}` : "—"}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 2 }}>T-score</div>
-                    <div style={{ fontWeight: 700, color: bmdTscore !== "" ? COLORS.text : COLORS.textMuted }}>{bmdTscore !== "" ? Number(bmdTscore).toFixed(1) : "—"}</div>
-                  </div>
-                </div>
-                {(!imc || !imc.valor || !result || bmdTscore === "") && (
-                  <div style={{ fontSize: 10, color: COLORS.textMuted, marginTop: 6, fontStyle: "italic" }}>
-                    {t("comun.faltan")}: {[!imc || !imc.valor ? t("gapb.falta.antropometria") : null, !result ? t("gapb.falta.gap") : null, bmdTscore === "" ? t("gapb.falta.tscore") : null].filter(Boolean).join(" · ")}
-                  </div>
-                )}
-              </div>
-              {gapbResult ? (
-                <div style={{ padding: 14, borderRadius: 10, background: gapbResult.cat.bg, border: `1.5px solid ${gapbResult.cat.color}66` }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-                    <span style={{ fontSize: 28, fontWeight: 800, color: gapbResult.cat.color, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.02em" }}>{(gapbResult.prob * 100).toFixed(0)}%</span>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: gapbResult.cat.color }}>{t(gapbResult.cat.key)}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5 }}>
-                    {t("gapb.explicacion")}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", marginTop: 4, textAlign: "center" }}>
-                  {t("gapb.faltan")}
-                </div>
-              )}
-              <div style={{ marginTop: 10, fontSize: 10, color: COLORS.textMuted, lineHeight: 1.45, fontStyle: "italic" }}>
-⚠ {t("gapb.nota")}
-              </div>
+          ) : (
+            <div style={{ fontSize: 11, color: COLORS.textMuted, fontStyle: "italic", textAlign: "center" }}>
+              {t("comun.faltan")}: {[!imc || !imc.valor ? t("gapb.falta.antropometria") : null, !result ? t("gapb.falta.gap") : null, bmdTscore === "" ? t("gapb.falta.tscore") : null].filter(Boolean).join(" · ")}
+              <div style={{ marginTop: 4 }}>{t("gapb.faltan")}</div>
             </div>
           )}
+          <div style={{ marginTop: 10, fontSize: 10, color: COLORS.textMuted, lineHeight: 1.45, fontStyle: "italic" }}>
+⚠ {t("gapb.nota")}
+          </div>
         </Card>
 
 

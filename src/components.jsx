@@ -4,7 +4,7 @@
 // Componentes puros: todo entra por props, ninguno toca estado global ni datos.
 import { useState, useEffect, useRef } from "react";
 import { COLORS, FONT_SANS, FONT_SERIF, MOMENTOS } from "./theme";
-import { TIPOS_CIRUGIA, SEGMENTOS } from "./constants";
+import { TIPOS_CIRUGIA, SEGMENTOS, SEGMENTOS_TORACICOS, SEGMENTOS_TODOS } from "./constants";
 import { useI18n } from "./i18n";
 import { diffMensaje } from "./utils";
 
@@ -145,7 +145,14 @@ export function Chip({ label, active, onClick }) {
 
 export function CirugiaCard({ cirugia, onUpdate, onRemove, index }) {
   const { t } = useI18n();
-  const toggleSeg = (seg) => { const n = cirugia.segmentos.includes(seg) ? cirugia.segmentos.filter(s => s !== seg) : [...cirugia.segmentos, seg]; onUpdate({ ...cirugia, segmentos: n }); };
+  // Orden anatómico, no el de los clics: así se imprimen en el PDF.
+  const toggleSeg = (seg) => { const n = cirugia.segmentos.includes(seg) ? cirugia.segmentos.filter(s => s !== seg) : [...cirugia.segmentos, seg]; onUpdate({ ...cirugia, segmentos: SEGMENTOS_TODOS.filter(s => n.includes(s)) }); };
+  const grupo = (labelKey, segs) => (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4, fontWeight: 600, letterSpacing: "0.04em" }}>{t(labelKey)}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{segs.map(s => <Chip key={s} label={s} active={cirugia.segmentos.includes(s)} onClick={() => toggleSeg(s)} />)}</div>
+    </div>
+  );
   return (
     <div style={{ padding: 14, borderRadius: 10, background: COLORS.inputHover, border: `1px solid ${COLORS.inputBorder}`, marginBottom: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -161,7 +168,8 @@ export function CirugiaCard({ cirugia, onUpdate, onRemove, index }) {
       {cirugia.tipo === "otro" && <input type="text" value={cirugia.tipoCustom || ""} placeholder={t("cirugia.otro.placeholder")} onChange={e => onUpdate({ ...cirugia, tipoCustom: e.target.value })} style={{ width: "100%", padding: "8px 10px", background: COLORS.card, borderRadius: 6, border: `1.5px solid ${COLORS.inputBorder}`, color: COLORS.text, fontSize: 13, outline: "none", marginBottom: 10 }} />}
       <div>
         <div style={{ fontSize: 11, color: COLORS.textDim, marginBottom: 6, fontWeight: 600 }}>{t("cirugia.segmentos")} {cirugia.segmentos.length > 0 && `(${cirugia.segmentos.length})`}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SEGMENTOS.map(s => <Chip key={s} label={s} active={cirugia.segmentos.includes(s)} onClick={() => toggleSeg(s)} />)}</div>
+        {grupo("cirugia.segmentos.toracicos", SEGMENTOS_TORACICOS)}
+        {grupo("cirugia.segmentos.lumbares", SEGMENTOS)}
       </div>
     </div>
   );
