@@ -35,8 +35,8 @@ keywords:
   - medición radiográfica
   - planeación quirúrgica
 license: Apache-2.0
-version: 1.0.0-beta.2
-date-released: '2026-09-14'
+version: 1.0.0-beta.3
+date-released: '2026-09-25'
 
 # Actualizar cuando el artículo esté publicado (revista, volumen, páginas y DOI pendientes).
 preferred-citation:

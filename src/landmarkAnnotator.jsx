@@ -821,7 +821,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
   let ptOverlay = null;
   if (partial.femMid && partial.s1Mid) ptOverlay = { p1: partial.femMid, p2: partial.s1Mid };
   let gtOverlay = null;
-  if (landmarks[8] && partial.femMid) gtOverlay = { p1: landmarks[8], p2: partial.femMid };
+  if (landmarks[8] && partial.s1Mid) gtOverlay = { p1: landmarks[8], p2: partial.s1Mid };
 
   const currentDef = step < LANDMARK_DEFS.length ? LANDMARK_DEFS[step] : null;
 

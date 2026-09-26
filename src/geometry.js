@@ -82,10 +82,15 @@ export function computeL4S1(p5, p6, p3, p4) {
   return angleBetweenLines(p5, p6, p3, p4);
 }
 
-// Global Tilt: angle at femMid between (femMid→C7) and (femMid→s1Mid).
-// 0° when C7, S1, and bicoxofemoral axis are collinear (Yilgor 2017).
+// Global Tilt (Obeid 2016; usado por el GAP de Yilgor 2017): ángulo con vértice
+// en el punto medio del platillo de S1, entre la recta C7→S1 y la recta
+// S1→centro bicoxofemoral. 0° cuando C7, S1 mid y el eje bicoxofemoral son
+// colineales. Es el ángulo exterior en S1 del triángulo C7–S1–fémur, así que
+// equivale a la suma de los ángulos interiores en el fémur y en C7.
+// Versiones ≤ 1.0.0-beta.2 lo medían con vértice en el fémur, lo que omitía el
+// ángulo en C7 y subestimaba el GT en unos grados.
 export function computeGT(p9, s1Mid, femMid) {
-  return angleAtVertex(femMid, p9, s1Mid);
+  return 180 - angleAtVertex(s1Mid, p9, femMid);
 }
 
 // Pelvic Angle (Hills 2022): ángulo subtendido en femMid entre las rectas

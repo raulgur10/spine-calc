@@ -22,7 +22,7 @@ const CASO = [
 ];
 
 const GOLDEN = {
-  pi: 50.4, ss: 35, pt: 15.4, l1s1: 46.3, l4s1: 18.3, gt: 14.8,
+  pi: 50.4, ss: 35, pt: 15.4, l1s1: 46.3, l4s1: 18.3, gt: 17.7,
   l1pa: 9.4, l1tilt: -6, t4pa: 14, t1tilt: -0.8, c2tilt: -0.3,
   consistencyDelta: 0,
 };
@@ -112,6 +112,26 @@ describe("parámetros espinopélvicos sobre el caso de referencia", () => {
     expect(computeL4S1(p5, p6, p3, p4)).toBeCloseTo(GOLDEN.l4s1, 1);
     expect(computeGT(p9, s1Mid, femMid)).toBeCloseTo(GOLDEN.gt, 1);
   });
+
+describe("inclinación global (definición de Obeid 2016)", () => {
+  const femMid = { x: 440, y: 1200 }, s1Mid = { x: 400, y: 1055 }, c7 = { x: 430, y: 300 };
+  it("vale 0 cuando C7, S1 y el eje bicoxofemoral son colineales", () => {
+    expect(computeGT({ x: 360, y: 910 }, s1Mid, femMid)).toBeCloseTo(0, 6);
+  });
+  it("es el ángulo exterior en S1: suma de los ángulos interiores en el fémur y en C7", () => {
+    const enFemur = angleAtVertex(femMid, c7, s1Mid);
+    const enC7 = angleAtVertex(c7, s1Mid, femMid);
+    expect(computeGT(c7, s1Mid, femMid)).toBeCloseTo(enFemur + enC7, 6);
+    expect(computeGT(c7, s1Mid, femMid)).toBeGreaterThan(enFemur);
+  });
+  it("coincide con el cálculo a mano del caso de referencia (17,7°)", () => {
+    const u = { x: s1Mid.x - c7.x, y: s1Mid.y - c7.y };      // C7 → S1
+    const v = { x: femMid.x - s1Mid.x, y: femMid.y - s1Mid.y }; // S1 → fémur
+    const a = Math.acos((u.x * v.x + u.y * v.y) / (Math.hypot(u.x, u.y) * Math.hypot(v.x, v.y))) * 180 / Math.PI;
+    expect(computeGT(c7, s1Mid, femMid)).toBeCloseTo(a, 6);
+    expect(computeGT(c7, s1Mid, femMid)).toBeCloseTo(17.7, 1);
+  });
+});
 
   it("ángulos vertebropélvicos y tilts con signo (Hills 2022)", () => {
     expect(computePA(l1Mid, s1Mid, femMid, p3, p4)).toBeCloseTo(GOLDEN.l1pa, 1);
