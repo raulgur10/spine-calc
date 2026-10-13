@@ -4,6 +4,7 @@ import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, com
 import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
 import { useI18n } from "./i18n";
+import PremarcadoIA from "./PremarcadoIA";
 
 const COLORS = {
   bg: "#1a1a1a",
@@ -46,7 +47,7 @@ const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated }) {
+export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin }) {
   const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
@@ -100,6 +101,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
 
   // Aviso de alineación que aparece al cargar la imagen
   const [showAlignPrompt, setShowAlignPrompt] = useState(false);
+  // Premarcado con IA. Un punto sugerido lleva `ia: true` en el propio objeto:
+  // arrastrarlo o volver a marcarlo crea un objeto nuevo sin la marca, así que
+  // queda confirmado solo, y deshacer/rehacer lo arrastra sin código extra.
+  const [showIA, setShowIA] = useState(false);
+  const [iaInfo, setIaInfo] = useState(null); // { modelo, notas, uso }
   const [horizontalTouched, setHorizontalTouched] = useState(false);
 
   // Detección click-vs-drag (umbral de movimiento en pantalla, en pixeles)
@@ -137,6 +143,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
       setHorizontalPending(null);
       setHorizontalTouched(false);
       setShowAlignPrompt(false);
+      setShowIA(false);
+      setIaInfo(null);
       setZoomScale(1);
       pastRef.current = [];
       futureRef.current = [];
@@ -401,6 +409,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
         setHorizontalPending(null);
         setHorizontalTouched(false);
         setShowAlignPrompt(true);
+        setShowIA(false);
+        setIaInfo(null);
         setZoomScale(1);
         pastRef.current = [];
         futureRef.current = [];
@@ -726,6 +736,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     setSelectedSegId(null);
   };
   const handleClearImage = () => {
+    setIaInfo(null);
     setImageSrc(null);
     setImageDims({ w: 0, h: 0 });
     setLandmarks(Array(LANDMARK_DEFS.length).fill(null));
@@ -738,6 +749,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
   };
 
   const handleApply = () => {
+    if (pendientesIA > 0) return;
     const out = {};
     if (partial.pi !== undefined) out.pi = round1(partial.pi);
     if (partial.ss !== undefined) out.ss = round1(partial.ss);
@@ -825,6 +837,29 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
 
   const currentDef = step < LANDMARK_DEFS.length ? LANDMARK_DEFS[step] : null;
 
+  // ─── Premarcado con IA ──────────────────────────────────────────────────
+  const pendientesIA = landmarks.filter(p => p?.ia).length;
+  const puedeAplicar = anyAngle && pendientesIA === 0;
+  const abrirIA = () => {
+    if (!session) { onLogin?.(); return; }
+    setShowAlignPrompt(false);
+    setShowIA(true);
+  };
+  // Las sugerencias solo llenan huecos: lo que el usuario ya marcó no se toca.
+  const recibirIA = ({ puntos, notas, modelo, uso }) => {
+    const newLm = landmarks.map((p, i) => p ?? (puntos[i] ? { x: puntos[i].x, y: puntos[i].y, ia: true, confianza: puntos[i].confianza } : null));
+    setLandmarks(newLm);
+    const firstEmpty = newLm.findIndex(p => p === null);
+    setStep(firstEmpty === -1 ? LANDMARK_DEFS.length : firstEmpty);
+    setIaInfo({ modelo, notas, uso, n: puntos.filter(Boolean).length });
+    setShowIA(false);
+    setTool("gap");
+  };
+  const confirmarIA = (idx) => {
+    const newLm = landmarks.map((p, i) => (p?.ia && (idx === undefined || i === idx)) ? { x: p.x, y: p.y } : p);
+    setLandmarks(newLm);
+  };
+
   const cursor = tool === "pan" ? "grab" : (tool === "gap" && gapMode === "free") ? "default" : "crosshair";
 
   return (
@@ -837,6 +872,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {calibration && <span style={{ fontSize: 11, color: COLORS.green, fontFamily: "'JetBrains Mono', monospace" }}>· {(1 / calibration.mmPerPx).toFixed(2)} px/mm</span>}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {imageSrc && (
+            <button onClick={abrirIA} title={session ? t("ia.boton.title") : t("ia.boton.requiere_sesion")}
+              style={{ ...btnSecondary(false), borderColor: "#a78bfa", color: "#a78bfa", fontWeight: 700 }}>
+              ✨ {t("ia.boton")}{!session && " 🔒"}
+            </button>
+          )}
           {imageSrc && (
             <>
               <button onClick={handleUndo} title={t("anot.deshacer.title")} style={btnSecondary(false)}>↶ {t("anot.deshacer")}</button>
@@ -1223,13 +1264,18 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
                       {selectedLandmarkIdx === i && (
                         <circle cx={p.x} cy={p.y} r={radius * 1.7} fill="none" stroke={COLORS.yellow} strokeWidth={strokeWidth * 1.2} pointerEvents="none" />
                       )}
-                      <circle cx={p.x} cy={p.y} r={radius} fill={LANDMARK_DEFS[i].color} stroke="#fff" strokeWidth={strokeWidth}
+                      {p.ia && (
+                        <circle cx={p.x} cy={p.y} r={radius * 2.1} fill="none" stroke="#a78bfa" strokeWidth={strokeWidth * 0.9}
+                          strokeDasharray={`${strokeWidth * 2},${strokeWidth * 1.5}`} pointerEvents="none" />
+                      )}
+                      <circle cx={p.x} cy={p.y} r={radius} fill={LANDMARK_DEFS[i].color} fillOpacity={p.ia ? 0.45 : 1}
+                        stroke={p.ia ? "#a78bfa" : "#fff"} strokeWidth={strokeWidth}
                         data-landmark={i} onPointerDown={handleLandmarkPointerDown(i)}
                         style={{ cursor: tool === "pan" ? "grab" : "move" }} />
                       <text x={p.x} y={p.y} dx={radius + 4} dy={radius / 2}
                         fill="#fff" fontSize={radius * 1.6} fontWeight="700" fontFamily="monospace"
                         stroke="#000" strokeWidth={strokeWidth * 0.4} paintOrder="stroke" pointerEvents="none">
-                        {i + 1}
+                        {i + 1}{p.ia ? " IA" : ""}
                       </text>
                     </g>
                   ) : null)}
@@ -1251,6 +1297,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {/* Aviso de alineación al cargar la placa. La horizontal vive abajo y
               atenuada; este mensaje explica para qué sirve, de modo que nadie
               la interprete como parte de la medición. */}
+          {imageSrc && showIA && (
+            <PremarcadoIA imageSrc={imageSrc} imageDims={imageDims} onClose={() => setShowIA(false)} onResult={recibirIA} />
+          )}
+
           {imageSrc && showAlignPrompt && (
             <div style={{ position: "absolute", inset: 0, zIndex: 30, background: "rgba(0,0,0,0.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
               <div style={{ maxWidth: 420, background: COLORS.panel, border: `1.5px solid #fbbf2466`, borderRadius: 12, padding: "22px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.6)", textAlign: "center" }}>
@@ -1286,6 +1336,16 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {/* GAP landmarks (clickeables para saltar) */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.puntos_gap")}</div>
+            {pendientesIA > 0 && (
+              <div style={{ border: "1.5px solid #a78bfa88", background: "#a78bfa1a", borderRadius: 8, padding: "9px 10px", marginBottom: 10, fontSize: 11.5, lineHeight: 1.5, color: COLORS.text }}>
+                <div style={{ fontWeight: 800, color: "#a78bfa", marginBottom: 4 }}>✨ {t("ia.pendientes", { n: pendientesIA })}</div>
+                <div style={{ color: COLORS.textDim, marginBottom: 6 }}>{t("ia.pendientes.ayuda")}</div>
+                {iaInfo?.notas && <div style={{ color: COLORS.textDim, fontStyle: "italic", marginBottom: 6 }}>«{iaInfo.notas}» — {iaInfo.modelo}</div>}
+                <button onClick={() => confirmarIA()} style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1.5px solid #a78bfa", background: "transparent", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                  {t("ia.aceptar_todas")}
+                </button>
+              </div>
+            )}
             {LANDMARK_DEFS.map(d => {
               const placed = landmarks[d.idx] !== null;
               const isCurrent = step === d.idx && tool === "gap" && gapMode === "wizard";
@@ -1295,6 +1355,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
                     {placed ? "✓" : d.idx + 1}
                   </span>
                   <span style={{ color: placed ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{t(d.shortKey)}</span>
+                  {landmarks[d.idx]?.ia && (
+                    <span onClick={(e) => { e.stopPropagation(); confirmarIA(d.idx); }} title={t("ia.confirmar_punto")}
+                      style={{ color: "#a78bfa", fontSize: 10, fontWeight: 800, padding: "1px 6px", border: "1px solid #a78bfa", borderRadius: 4, cursor: "pointer" }}>
+                      IA ✓
+                    </span>
+                  )}
                   {placed && (
                     <span onClick={(e) => { e.stopPropagation(); const newLm = [...landmarks]; newLm[d.idx] = null; setLandmarks(newLm); if (step > d.idx) setStep(d.idx); }}
                       style={{ color: COLORS.textDim, fontSize: 14, padding: "0 4px", lineHeight: 1, cursor: "pointer" }} title={t("anot.borrar_punto")}>×</span>
@@ -1448,10 +1514,11 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
               );
             })()}
 
-            <button onClick={handleApply} disabled={!anyAngle} style={{ marginTop: 12, width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${anyAngle ? COLORS.green : COLORS.panelLight}`, background: anyAngle ? COLORS.green : "transparent", color: anyAngle ? "#fff" : COLORS.textDim, fontSize: 13, fontWeight: 700, cursor: anyAngle ? "pointer" : "not-allowed", opacity: anyAngle ? 1 : 0.5 }}>
+            <button onClick={handleApply} disabled={!puedeAplicar} style={{ marginTop: 12, width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${puedeAplicar ? COLORS.green : COLORS.panelLight}`, background: puedeAplicar ? COLORS.green : "transparent", color: puedeAplicar ? "#fff" : COLORS.textDim, fontSize: 13, fontWeight: 700, cursor: puedeAplicar ? "pointer" : "not-allowed", opacity: puedeAplicar ? 1 : 0.5 }}>
               {t("anot.aplicar")}
             </button>
             {!anyAngle && <div style={{ fontSize: 10, color: COLORS.textDim, fontStyle: "italic", marginTop: 6, textAlign: "center" }}>{t("anot.aplicar.faltan")}</div>}
+            {anyAngle && pendientesIA > 0 && <div style={{ fontSize: 10.5, color: "#a78bfa", fontWeight: 700, marginTop: 6, textAlign: "center" }}>{t("ia.aplicar.bloqueado", { n: pendientesIA })}</div>}
           </div>
 
           {/* Mediciones libres */}

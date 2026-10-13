@@ -2,7 +2,9 @@ name: Deploy a Cloudflare Pages
 
 on:
   push:
-    branches: [main]
+    # main publica en producción; ia sale como vista previa en
+    # https://ia.spine-calc.pages.dev sin tocar www.spinecalc.app.
+    branches: [main, ia]
   workflow_dispatch:
 
 jobs:
@@ -21,7 +23,7 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Deploy a Cloudflare Pages
-        run: npx wrangler@latest pages deploy site/dist --project-name spine-calc --branch main
+        run: npx wrangler@latest pages deploy site/dist --project-name spine-calc --branch ${{ github.ref_name }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -19,6 +19,8 @@ import {
 } from "./components";
 import { useI18n } from "./i18n";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { AuthModal, AuthButton } from "./AuthControls";
+import { useSession } from "./useSession";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // APP
@@ -28,6 +30,9 @@ export default function GAPCalculator() {
   // Locale para toLocaleDateString / toLocaleString en la interfaz.
   const dateLocale = { es: "es-MX", en: "en-GB", fr: "fr-FR" }[lang] || "es-MX";
   const [tipoEvaluacion, setTipoEvaluacion] = useState("preoperatorio");
+  // Sesión: solo habilita las funciones de IA; la calculadora no la necesita.
+  const { session, needsPassword, setNeedsPassword, refresh: refreshSession } = useSession();
+  const [showLogin, setShowLogin] = useState(false);
   const [fechaEstudio, setFechaEstudio] = useState(hoy());
   const [fechaCirugia, setFechaCirugia] = useState(hoy());
   const [age, setAge] = useState("");
@@ -407,8 +412,15 @@ export default function GAPCalculator() {
 
       {/* Barra superior: idioma */}
       <div style={{ maxWidth: 560, margin: "0 auto 16px", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <AuthButton session={session} onLogin={() => setShowLogin(true)} />
         <LanguageSwitcher />
       </div>
+      {(showLogin || needsPassword) && (
+        <AuthModal
+          mode={needsPassword ? "password" : "login"}
+          onClose={() => { setShowLogin(false); setNeedsPassword(false); }}
+          onDone={() => { setShowLogin(false); setNeedsPassword(false); refreshSession(); }} />
+      )}
 
       {/* Encabezado — composición editorial */}
       <div style={{ maxWidth: 560, margin: "0 auto 36px", textAlign: "center", padding: "0 8px" }}>
@@ -1084,6 +1096,8 @@ export default function GAPCalculator() {
 
       <LandmarkAnnotator
         open={showAnnotator}
+        session={session}
+        onLogin={() => setShowLogin(true)}
         onClose={() => setShowAnnotator(false)}
         onSaveAnnotated={(dataUrl) => {
           // La imagen anotada se descarga al dispositivo; no se sube a ningún lado.
