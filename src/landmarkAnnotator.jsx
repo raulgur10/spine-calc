@@ -106,6 +106,14 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
   // queda confirmado solo, y deshacer/rehacer lo arrastra sin código extra.
   const [showIA, setShowIA] = useState(false);
   const [iaInfo, setIaInfo] = useState(null); // { modelo, notas, uso }
+  // Para el estudio de validación: una placa en la que se usó el premarcado ya
+  // no cuenta como medición manual, aunque después se hayan movido los puntos.
+  const [iaUsada, setIaUsada] = useState(false);
+  // Huella SHA-256 del archivo: empareja mediciones de la misma placa sin
+  // guardar la imagen ni su nombre. Y la hora de carga, para medir cuánto se
+  // tarda en marcar.
+  const [imageHash, setImageHash] = useState(null);
+  const cargadaEnRef = useRef(null);
   const [horizontalTouched, setHorizontalTouched] = useState(false);
 
   // Detección click-vs-drag (umbral de movimiento en pantalla, en pixeles)
@@ -382,6 +390,12 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
 
   const loadFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
+    setImageHash(null);
+    setIaUsada(false);
+    file.arrayBuffer()
+      .then(buf => crypto.subtle.digest("SHA-256", buf))
+      .then(d => setImageHash([...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("")))
+      .catch(() => setImageHash(null));
     const reader = new FileReader();
     reader.onload = e => {
       const url = e.target.result;
@@ -411,6 +425,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
         setShowAlignPrompt(true);
         setShowIA(false);
         setIaInfo(null);
+        cargadaEnRef.current = Date.now();
         setZoomScale(1);
         pastRef.current = [];
         futureRef.current = [];
@@ -776,6 +791,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     if (medidas === 0 && !geometry) return;
     if (geometry) {
       geometry.applied = { ...out };
+      geometry.imageSha256 = imageHash;
+      geometry.iaAsistida = iaUsada;
+      geometry.duracionS = cargadaEnRef.current ? Math.round((Date.now() - cargadaEnRef.current) / 1000) : null;
       out.geometry = geometry;
     }
     onApply(out);
@@ -852,6 +870,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     const firstEmpty = newLm.findIndex(p => p === null);
     setStep(firstEmpty === -1 ? LANDMARK_DEFS.length : firstEmpty);
     setIaInfo({ modelo, notas, uso, n: puntos.filter(Boolean).length });
+    setIaUsada(true);
     setShowIA(false);
     setTool("gap");
   };

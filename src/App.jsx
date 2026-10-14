@@ -12,7 +12,8 @@ import {
 } from "./scoring";
 import { buildPDF } from "./pdf";
 import { feedbackAvailable, sendFeedback } from "./feedback";
-import { MEASUREMENT_KEYS } from "./data/landmarks";
+import { MEASUREMENT_KEYS, detectManualEdits } from "./data/landmarks";
+import { esValidador as consultarValidador, guardarMedicion } from "./validacion";
 import {
   InputField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -33,6 +34,19 @@ export default function GAPCalculator() {
   // Sesión: solo habilita las funciones de IA; la calculadora no la necesita.
   const { session, needsPassword, setNeedsPassword, refresh: refreshSession } = useSession();
   const [showLogin, setShowLogin] = useState(false);
+  // Estudio de validación: último trazo aplicado desde el anotador y si la
+  // cuenta está dada de alta como validador.
+  const [geomAplicada, setGeomAplicada] = useState(null);
+  const [esValidador, setEsValidador] = useState(false);
+  const [folio, setFolio] = useState("");
+  const [guardandoVal, setGuardandoVal] = useState(false);
+  const [guardadoVal, setGuardadoVal] = useState(null); // geometría ya guardada
+  useEffect(() => {
+    let vivo = true;
+    if (!session) { setEsValidador(false); return; }
+    consultarValidador(session.user?.id).then(v => { if (vivo) setEsValidador(v); });
+    return () => { vivo = false; };
+  }, [session]);
   const [fechaEstudio, setFechaEstudio] = useState(hoy());
   const [fechaCirugia, setFechaCirugia] = useState(hoy());
   const [age, setAge] = useState("");
@@ -963,6 +977,48 @@ export default function GAPCalculator() {
           <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0, lineHeight: 1.5 }}>🔒 {t("exportar.nota_local")}</p>
         </Card>
 
+        {/* Estudio de validación — solo con sesión */}
+        {session && (() => {
+          const g = geomAplicada;
+          const motivo = !esValidador ? t("val.no_validador")
+            : !g ? t("val.sin_trazo")
+            : g.iaAsistida ? t("val.ia")
+            : !g.imageSha256 ? t("val.sin_huella")
+            : guardadoVal === g ? t("val.ya_guardado")
+            : null;
+          const editado = g ? detectManualEdits(g.applied, {
+            pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, t1tiltDirect, l1tiltDirect, sva,
+          }) : false;
+          const guardar = async () => {
+            setGuardandoVal(true);
+            try {
+              await guardarMedicion({ geometry: g, folio: folio.trim(), editadoEnFormulario: editado });
+              setGuardadoVal(g);
+              setFolio("");
+              showToast(t("val.guardado"));
+            } catch (err) {
+              showToast(t("val.error", { msg: err.message }), false);
+            } finally {
+              setGuardandoVal(false);
+            }
+          };
+          const listo = !motivo && !guardandoVal;
+          return (
+            <Card style={{ padding: 20 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>🧪 {t("val.titulo")}</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>{t("val.ayuda")}</p>
+              <input value={folio} onChange={e => setFolio(e.target.value.slice(0, 40))} placeholder={t("val.folio")} disabled={!listo}
+                style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${COLORS.inputBorder}`, background: COLORS.inputBg, color: COLORS.text, fontSize: 13, fontFamily: FONT_SANS, marginBottom: 10, outline: "none" }} />
+              <button onClick={guardar} disabled={!listo}
+                style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: listo ? COLORS.accent : COLORS.inputHover, color: listo ? "#fff" : COLORS.textMuted, fontSize: 14, fontWeight: 700, cursor: listo ? "pointer" : "not-allowed", fontFamily: FONT_SANS }}>
+                {guardandoVal ? t("common.guardando") : `💾 ${t("val.boton")}`}
+              </button>
+              {motivo && <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "8px 0 0", textAlign: "center" }}>{motivo}</p>}
+              {!motivo && editado && <p style={{ fontSize: 11, color: COLORS.yellow, margin: "8px 0 0", textAlign: "center" }}>{t("val.editado")}</p>}
+            </Card>
+          );
+        })()}
+
         {/* Encuesta de satisfacción anónima (one-time, requiere haber calculado al menos una vez) */}
         {result && !feedbackDone && feedbackAvailable && (
           <Card>
@@ -1119,6 +1175,7 @@ export default function GAPCalculator() {
           if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
           if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
           if (v.sva !== undefined) setSVA(v.sva);
+          setGeomAplicada(v.geometry ? { ...v.geometry, appliedAt: new Date().toISOString() } : null);
           // Contar por lista explícita: `geometry` no es una medición y con
           // Object.keys se colaría en el número que ve el usuario.
           const count = MEASUREMENT_KEYS.filter(k => v[k] !== undefined).length;

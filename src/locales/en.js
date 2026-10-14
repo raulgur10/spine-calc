@@ -657,4 +657,18 @@ export default {
   "ia.aceptar_todas": "I reviewed them: accept all",
   "ia.confirmar_punto": "Confirm this point as is",
   "ia.aplicar.bloqueado": "Review the {n} AI-suggested points before applying",
+
+  // Estudio de validación
+  "val.titulo": "Save measurements for validation",
+  "val.ayuda": "Saves the points and angles you marked by hand in the annotator for the validation study. The image, its file name and patient data are not stored: the radiograph is identified by a file fingerprint.",
+  "val.folio": "Case ID (optional, no name or record number)",
+  "val.boton": "Save measurements for validation",
+  "val.no_validador": "Your account is not registered as a validator.",
+  "val.sin_trazo": "Mark the radiograph in the annotator and press «Apply» to save.",
+  "val.ia": "This radiograph used AI pre-marking: it is not saved for validation. Reload it and mark it by hand.",
+  "val.sin_huella": "Could not fingerprint the image. Reload it.",
+  "val.ya_guardado": "This measurement is already saved. For another one, apply again from the annotator.",
+  "val.editado": "You edited values in the form after applying: the annotator output will be saved, flagged as edited.",
+  "val.guardado": "Measurement saved for validation",
+  "val.error": "Could not save: {msg}",
 };

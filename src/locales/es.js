@@ -658,4 +658,18 @@ export default {
   "ia.aceptar_todas": "Ya los revisé: aceptar todos",
   "ia.confirmar_punto": "Confirmar este punto tal como está",
   "ia.aplicar.bloqueado": "Revisa los {n} puntos sugeridos por IA antes de aplicar",
+
+  // Estudio de validación
+  "val.titulo": "Guardar mediciones para validación",
+  "val.ayuda": "Guarda los puntos y ángulos que marcaste a mano en el anotador para el estudio de validación. No se guarda la imagen, su nombre ni datos del paciente: la placa se identifica por una huella digital del archivo.",
+  "val.folio": "Folio del caso (opcional, sin nombre ni expediente)",
+  "val.boton": "Guardar mediciones para validación",
+  "val.no_validador": "Tu cuenta no está dada de alta como validador.",
+  "val.sin_trazo": "Marca la placa en el anotador y pulsa «Aplicar» para poder guardar.",
+  "val.ia": "Esta placa se marcó con premarcado de IA: no se guarda en la validación. Vuelve a cargarla y márcala a mano.",
+  "val.sin_huella": "No se pudo calcular la huella de la imagen. Vuelve a cargarla.",
+  "val.ya_guardado": "Esta medición ya se guardó. Para otra, vuelve a aplicar desde el anotador.",
+  "val.editado": "Corregiste valores en el formulario después de aplicar: se guardará lo que marcó el anotador, con esa marca.",
+  "val.guardado": "Medición guardada para validación",
+  "val.error": "No se pudo guardar: {msg}",
 };

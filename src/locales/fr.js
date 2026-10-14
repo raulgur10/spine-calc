@@ -657,4 +657,18 @@ export default {
   "ia.aceptar_todas": "Je les ai vérifiés : tout accepter",
   "ia.confirmar_punto": "Confirmer ce point tel quel",
   "ia.aplicar.bloqueado": "Vérifiez les {n} points suggérés par l'IA avant d'appliquer",
+
+  // Estudio de validación
+  "val.titulo": "Enregistrer les mesures pour la validation",
+  "val.ayuda": "Enregistre les points et angles marqués à la main dans l'annotateur pour l'étude de validation. Ni l'image, ni son nom de fichier, ni les données du patient ne sont conservés : la radiographie est identifiée par une empreinte du fichier.",
+  "val.folio": "Identifiant du cas (facultatif, sans nom ni dossier)",
+  "val.boton": "Enregistrer les mesures pour la validation",
+  "val.no_validador": "Votre compte n'est pas enregistré comme validateur.",
+  "val.sin_trazo": "Marquez la radiographie dans l'annotateur et appuyez sur « Appliquer » pour enregistrer.",
+  "val.ia": "Cette radiographie a utilisé le pré-marquage IA : elle n'est pas enregistrée pour la validation. Rechargez-la et marquez-la à la main.",
+  "val.sin_huella": "Impossible de calculer l'empreinte de l'image. Rechargez-la.",
+  "val.ya_guardado": "Cette mesure est déjà enregistrée. Pour une autre, appliquez de nouveau depuis l'annotateur.",
+  "val.editado": "Vous avez modifié des valeurs après avoir appliqué : la sortie de l'annotateur sera enregistrée avec cette mention.",
+  "val.guardado": "Mesure enregistrée pour la validation",
+  "val.error": "Échec de l'enregistrement : {msg}",
 };
