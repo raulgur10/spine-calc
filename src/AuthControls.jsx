@@ -64,7 +64,8 @@ export function AuthModal({ mode: modeInicial = "login", onClose, onDone }) {
         </div>
 
         {mode !== "password" && (
-          <input type="email" required autoComplete="email" placeholder={t("auth.correo")} value={email}
+          <input type={mode === "reset" ? "email" : "text"} required autoComplete="username" autoCapitalize="none" spellCheck={false}
+            placeholder={mode === "reset" ? t("auth.correo") : t("auth.usuario")} value={email}
             onChange={(e) => setEmail(e.target.value)} style={inputStyle} autoFocus />
         )}
         {mode !== "reset" && (

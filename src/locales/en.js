@@ -609,8 +609,9 @@ export default {
 
   // Sesión y funciones de IA
   "auth.titulo": "Sign in",
-  "auth.ayuda": "Authorized users only. The calculator works without an account; signing in enables the AI features.",
+  "auth.ayuda": "Authorized users only. The calculator works without an account; signing in lets you save measurements for the validation study.",
   "auth.correo": "Email",
+  "auth.usuario": "Email or username",
   "auth.contrasena": "Password",
   "auth.entrar": "Sign in",
   "auth.salir": "Sign out",

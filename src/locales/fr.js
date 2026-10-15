@@ -609,8 +609,9 @@ export default {
 
   // Sesión y funciones de IA
   "auth.titulo": "Se connecter",
-  "auth.ayuda": "Réservé aux utilisateurs autorisés. Le calculateur fonctionne sans compte ; la connexion active les fonctions d'IA.",
+  "auth.ayuda": "Réservé aux utilisateurs autorisés. Le calculateur fonctionne sans compte ; la connexion permet d'enregistrer les mesures de l'étude de validation.",
   "auth.correo": "E-mail",
+  "auth.usuario": "E-mail ou identifiant",
   "auth.contrasena": "Mot de passe",
   "auth.entrar": "Se connecter",
   "auth.salir": "Se déconnecter",

@@ -12,6 +12,8 @@
 // El cliente de Supabase se carga bajo demanda para no engordar la calculadora
 // de quien nunca inicia sesión.
 
+import { usuarioACorreo } from "./features";
+
 const URL_BASE = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -39,7 +41,7 @@ export function urlTraeEnlaceDeAcceso() {
 
 export async function signIn(email, password) {
   const sb = await getClient();
-  const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+  const { data, error } = await sb.auth.signInWithPassword({ email: usuarioACorreo(email), password });
   if (error) throw error;
   return data.session;
 }

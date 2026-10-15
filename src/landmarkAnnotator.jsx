@@ -5,6 +5,7 @@ import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
 import { useI18n } from "./i18n";
 import PremarcadoIA from "./PremarcadoIA";
+import { IA_HABILITADA } from "./features";
 
 const COLORS = {
   bg: "#1a1a1a",
@@ -891,7 +892,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {calibration && <span style={{ fontSize: 11, color: COLORS.green, fontFamily: "'JetBrains Mono', monospace" }}>· {(1 / calibration.mmPerPx).toFixed(2)} px/mm</span>}
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {imageSrc && (
+          {imageSrc && IA_HABILITADA && (
             <button onClick={abrirIA} title={session ? t("ia.boton.title") : t("ia.boton.requiere_sesion")}
               style={{ ...btnSecondary(false), borderColor: "#a78bfa", color: "#a78bfa", fontWeight: 700 }}>
               ✨ {t("ia.boton")}{!session && " 🔒"}
@@ -1316,7 +1317,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {/* Aviso de alineación al cargar la placa. La horizontal vive abajo y
               atenuada; este mensaje explica para qué sirve, de modo que nadie
               la interprete como parte de la medición. */}
-          {imageSrc && showIA && (
+          {imageSrc && showIA && IA_HABILITADA && (
             <PremarcadoIA imageSrc={imageSrc} imageDims={imageDims} onClose={() => setShowIA(false)} onResult={recibirIA} />
           )}
 

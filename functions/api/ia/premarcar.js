@@ -62,6 +62,8 @@ function sanear(puntos) {
 }
 
 export async function onRequestPost({ request, env }) {
+  // Apagado en la fase de validación (solo mediciones manuales).
+  if (env.IA_HABILITADA !== "true") return json({ error: "El premarcado con IA está desactivado durante la fase de validación." }, 503);
   const u = await usuarioAutorizado(request, env);
   if (u instanceof Response) return u;
 

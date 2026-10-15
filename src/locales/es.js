@@ -610,8 +610,9 @@ export default {
 
   // Sesión y funciones de IA
   "auth.titulo": "Entrar",
-  "auth.ayuda": "Solo para usuarios autorizados. La calculadora funciona sin cuenta; la sesión habilita las funciones de IA.",
+  "auth.ayuda": "Solo para usuarios autorizados. La calculadora funciona sin cuenta; la sesión permite guardar mediciones del estudio de validación.",
   "auth.correo": "Correo",
+  "auth.usuario": "Correo o usuario",
   "auth.contrasena": "Contraseña",
   "auth.entrar": "Entrar",
   "auth.salir": "Salir",
