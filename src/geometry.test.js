@@ -3,6 +3,7 @@ import {
   midpoint, distance, angleBetweenLines, angleAtVertex, angleFromHorizontal,
   angleFromVertical, computeSS, computePT, computePI, computeL1S1, computeL4S1,
   computeGT, computePA, computeVertebralTilt, computeAllAngles, linePairAngle,
+  computeSVAPx, anteriorSign,
 } from "./geometry";
 
 // Convención del módulo: coordenadas en el espacio de la imagen, eje Y HACIA ABAJO.
@@ -23,7 +24,10 @@ const CASO = [
 
 const GOLDEN = {
   pi: 50.4, ss: 35, pt: 15.4, l1s1: 46.3, l4s1: 18.3, gt: 17.7,
-  l1pa: 9.4, l1tilt: -6, t4pa: 14, t1tilt: -0.8, c2tilt: -0.3,
+  // C2 (x = 445) está 5 px por delante del eje bicoxofemoral (x = 440): su tilt
+  // es POSITIVO. Hasta 1.0.0-beta.3 este valor se congeló en −0.3 porque el
+  // signo se calculaba mal (véase «signos» más abajo).
+  l1pa: 9.4, l1tilt: -6, t4pa: 14, t1tilt: -0.8, c2tilt: 0.3,
   consistencyDelta: 0,
 };
 
@@ -151,6 +155,60 @@ describe("inclinación global (definición de Obeid 2016)", () => {
   it("computePA y computeVertebralTilt devuelven null si falta un punto", () => {
     expect(computePA(null, s1Mid, femMid, p3, p4)).toBeNull();
     expect(computeVertebralTilt(p12, femMid, null, p4)).toBeNull();
+  });
+});
+
+describe("signos (PT, tilts y SVA)", () => {
+  // Pelvis normal: hips en (0,0), S1 arriba y un poco detrás; anterior = +x.
+  const fem = { x: 0, y: 0 };
+  const s1p = { x: -40, y: -110 }, s1a = { x: 0, y: -80 }; // platillo inclinado ~37°
+
+  it("PT positiva cuando S1 queda detrás del eje bicoxofemoral", () => {
+    const mid = midpoint(s1p, s1a); // x = −20: posterior
+    expect(computePT(fem, mid, null, s1p, s1a)).toBeGreaterThan(0);
+  });
+
+  it("PT negativa en la pelvis antevertida (S1 por delante del eje)", () => {
+    const p3 = { x: -10, y: -110 }, p4 = { x: 30, y: -80 }; // punto medio x = +10
+    const mid = midpoint(p3, p4);
+    const pt = computePT(fem, mid, null, p3, p4);
+    expect(pt).toBeLessThan(0);
+    // Se conserva la identidad PI = PT + SS.
+    expect(computePI(p3, p4, fem)).toBeCloseTo(pt + computeSS(p3, p4), 6);
+  });
+
+  it("sin esquinas de S1, PT conserva la magnitud (compatibilidad)", () => {
+    const mid = midpoint(s1p, s1a);
+    expect(computePT(fem, mid)).toBeCloseTo(Math.abs(computePT(fem, mid, null, s1p, s1a)), 6);
+  });
+
+  it("un tilt anterior pequeño es positivo aunque el platillo de S1 esté muy inclinado", () => {
+    // Centroide 30 px por delante y 300 px arriba. El producto punto completo
+    // con p3→p4 daba negativo por la componente vertical del platillo.
+    const c = { x: 30, y: -300 };
+    expect(computeVertebralTilt(c, fem, s1p, s1a)).toBeGreaterThan(0);
+    expect(computeVertebralTilt({ x: -30, y: -300 }, fem, s1p, s1a)).toBeLessThan(0);
+  });
+
+  it("SVA positivo con C7 anterior a S1 y negativo con C7 posterior", () => {
+    expect(computeSVAPx({ x: 50, y: -600 }, s1p, s1a)).toBeCloseTo(90, 6);
+    expect(computeSVAPx({ x: -80, y: -600 }, s1p, s1a)).toBeCloseTo(-40, 6);
+  });
+
+  it("la imagen en espejo (paciente mirando a la izquierda) da los mismos valores", () => {
+    const espejo = CASO.map(p => p && { x: 1000 - p.x, y: p.y });
+    const a = computeAllAngles(CASO), b = computeAllAngles(espejo);
+    for (const k of ["pi", "ss", "pt", "l1s1", "l4s1", "gt", "l1pa", "t4pa", "l1tilt", "t1tilt", "c2tilt"]) {
+      expect(b[k]).toBeCloseTo(a[k], 6);
+    }
+    const sva = computeSVAPx(CASO[8], CASO[2], CASO[3]);
+    expect(computeSVAPx(espejo[8], espejo[2], espejo[3])).toBeCloseTo(sva, 6);
+  });
+
+  it("anteriorSign usa solo la componente horizontal", () => {
+    expect(anteriorSign({ x: 1, y: -1000 }, s1p, s1a)).toBe(1);
+    expect(anteriorSign({ x: -1, y: 1000 }, s1p, s1a)).toBe(-1);
+    expect(anteriorSign({ x: 0, y: -50 }, s1p, s1a)).toBe(0);
   });
 });
 

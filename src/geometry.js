@@ -60,9 +60,44 @@ export function computeSS(p3, p4, refH = null) {
   return angleFromHorizontal(p3, p4, refH);
 }
 
+// Signo de la posición horizontal de `v` respecto de la dirección anterior.
+// Solo cuentan las componentes sobre la horizontal real (refH o eje X): la
+// dirección anterior se toma del platillo de S1 (p3→p4), que está inclinado, y
+// su componente vertical no debe decidir el lado. +1 anterior, −1 posterior,
+// 0 si está exactamente sobre la vertical.
+export function anteriorSign(v, p3, p4, refH = null) {
+  const hx0 = refH ? refH.p2.x - refH.p1.x : 1;
+  const hy0 = refH ? refH.p2.y - refH.p1.y : 0;
+  const hl = Math.hypot(hx0, hy0) || 1;
+  const hx = hx0 / hl, hy = hy0 / hl;
+  const vh = v.x * hx + v.y * hy;
+  const ah = (p4.x - p3.x) * hx + (p4.y - p3.y) * hy;
+  const s = vh * ah;
+  return s > 0 ? 1 : s < 0 ? -1 : 0;
+}
+
 // Pelvic Tilt: ángulo del segmento femMid→s1Mid desde la vertical real.
-export function computePT(femMid, s1Mid, refH = null) {
-  return angleFromVertical(femMid, s1Mid, refH);
+// Con las esquinas de S1 (p3→p4 = posterior→anterior) lleva signo: positivo si
+// el punto medio de S1 queda posterior al eje bicoxofemoral (lo habitual) y
+// negativo si queda anterior (pelvis antevertida). Sin p3/p4, magnitud sola.
+export function computePT(femMid, s1Mid, refH = null, p3 = null, p4 = null) {
+  const ang = angleFromVertical(femMid, s1Mid, refH);
+  if (!p3 || !p4) return ang;
+  const v = { x: s1Mid.x - femMid.x, y: s1Mid.y - femMid.y };
+  return anteriorSign(v, p3, p4, refH) > 0 ? -ang : ang;
+}
+
+// SVA en pixeles, con signo: distancia horizontal (sobre refH o el eje X)
+// del centroide de C7 a la esquina posterosuperior de S1 (p3). Positivo si C7
+// queda anterior. Se convierte a milímetros con la calibración.
+export function computeSVAPx(c7, p3, p4, refH = null) {
+  if (!c7 || !p3 || !p4) return null;
+  const hx0 = refH ? refH.p2.x - refH.p1.x : 1;
+  const hy0 = refH ? refH.p2.y - refH.p1.y : 0;
+  const hl = Math.hypot(hx0, hy0) || 1;
+  const d = { x: c7.x - p3.x, y: c7.y - p3.y };
+  const mag = Math.abs((d.x * hx0 + d.y * hy0) / hl);
+  return anteriorSign(d, p3, p4, refH) < 0 ? -mag : mag;
 }
 
 // Pelvic Incidence: angle between perpendicular to S1 endplate (at s1Mid) and
@@ -120,8 +155,10 @@ export function computeVertebralTilt(centroid, femMid, p3, p4, refH = null) {
   if (!centroid || !femMid || !p3 || !p4) return null;
   const ang = angleFromVertical(femMid, centroid, refH); // 0–90°, sin signo
   const v = { x: centroid.x - femMid.x, y: centroid.y - femMid.y };
-  const ant = { x: p4.x - p3.x, y: p4.y - p3.y };
-  return ((v.x * ant.x + v.y * ant.y) >= 0) ? ang : -ang;
+  // Versiones ≤ 1.0.0-beta.3 usaban el producto punto completo con p3→p4; la
+  // componente vertical del platillo de S1 dominaba y un tilt anterior pequeño
+  // salía negativo. Ahora solo cuenta la posición horizontal.
+  return anteriorSign(v, p3, p4, refH) >= 0 ? ang : -ang;
 }
 
 // Compute all GAP + Hills angles from los landmarks ordenados.
@@ -138,7 +175,7 @@ export function computeAllAngles(landmarks, refH = null) {
   const l1Mid = midpoint(p7, p8); // centroide L1 derivado de las esquinas del platillo
   const pi = computePI(p3, p4, femMid);
   const ss = computeSS(p3, p4, refH);
-  const pt = computePT(femMid, s1Mid, refH);
+  const pt = computePT(femMid, s1Mid, refH, p3, p4);
   const l1s1 = computeL1S1(p7, p8, p3, p4);
   const l4s1 = computeL4S1(p5, p6, p3, p4);
   const gt = computeGT(p9, s1Mid, femMid);

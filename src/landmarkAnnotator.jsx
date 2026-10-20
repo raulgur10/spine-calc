@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, linePairAngle } from "./geometry";
+import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeSVAPx, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, linePairAngle } from "./geometry";
 import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
 import { useI18n } from "./i18n";
@@ -48,7 +48,7 @@ const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin }) {
+export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin, archivoInicial = null }) {
   const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
@@ -161,6 +161,14 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     }
   }, [open]);
 
+  // Estudio de validación: la placa del caso asignado llega ya descargada y se
+  // abre sola. loadFile se define más abajo (después del return temprano), por
+  // eso se alcanza a través de una referencia.
+  const loadFileRef = useRef(null);
+  useEffect(() => {
+    if (open && archivoInicial) loadFileRef.current?.(archivoInicial);
+  }, [open, archivoInicial]);
+
   // Deselecciona si el segmento seleccionado deja de existir
   useEffect(() => {
     if (selectedSegId && !freeSegs.some(s => s.id === selectedSegId)) {
@@ -247,7 +255,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     }
     if (p1 && p2 && p3 && p4) {
       out.pi = computePI(p3, p4, out.femMid);
-      out.pt = computePT(out.femMid, out.s1Mid, horizontalRef);
+      out.pt = computePT(out.femMid, out.s1Mid, horizontalRef, p3, p4);
       out.consistencyDelta = (out.pi !== undefined && out.pt !== undefined && out.ss !== undefined)
         ? out.pi - (out.pt + out.ss) : null;
     }
@@ -278,17 +286,9 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
 
     // SRS-Schwab — SVA: distancia horizontal entre C7 (p9) y esquina posterosuperior de S1 (p3).
     // Si hay línea horizontal definida, se proyecta sobre ella; si no, se usa el eje X de la imagen.
-    if (p9 && p3) {
-      const dx = p9.x - p3.x;
-      const dy = p9.y - p3.y;
-      if (horizontalRef) {
-        const hx = horizontalRef.p2.x - horizontalRef.p1.x;
-        const hy = horizontalRef.p2.y - horizontalRef.p1.y;
-        const hlen = Math.sqrt(hx * hx + hy * hy);
-        out.svaPx = hlen > 0 ? Math.abs((dx * hx + dy * hy) / hlen) : Math.abs(dx);
-      } else {
-        out.svaPx = Math.abs(dx);
-      }
+    // Con signo: positivo si C7 queda anterior (dirección anterior = S1 p3→p4).
+    if (p9 && p3 && p4) {
+      out.svaPx = computeSVAPx(p9, p3, p4, horizontalRef);
     }
     // SRS-Schwab — PI-LL mismatch
     if (out.pi !== undefined && out.l1s1 !== undefined) {
@@ -436,6 +436,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     };
     reader.readAsDataURL(file);
   };
+  loadFileRef.current = loadFile;
 
   const handleDrop = (e) => {
     e.preventDefault();
