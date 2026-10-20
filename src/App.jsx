@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import LandmarkAnnotator from "./landmarkAnnotator";
 import { REFERENCIAS, APP_VERSION } from "./constants";
 import { COLORS, FONT_SERIF, FONT_SANS, FONT_MONO, MOMENTOS } from "./theme";
@@ -13,7 +13,7 @@ import {
 import { buildPDF } from "./pdf";
 import { feedbackAvailable, sendFeedback } from "./feedback";
 import { MEASUREMENT_KEYS, detectManualEdits } from "./data/landmarks";
-import { esValidador as consultarValidador, guardarMedicion } from "./validacion";
+import { esValidador as consultarValidador, cargarEstudio, descargarImagenCaso, guardarMedicionAsignada, marcarNoMedible } from "./validacion";
 import {
   InputField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -38,15 +38,28 @@ export default function GAPCalculator() {
   // cuenta está dada de alta como validador.
   const [geomAplicada, setGeomAplicada] = useState(null);
   const [esValidador, setEsValidador] = useState(false);
-  const [folio, setFolio] = useState("");
   const [guardandoVal, setGuardandoVal] = useState(false);
-  const [guardadoVal, setGuardadoVal] = useState(null); // geometría ya guardada
+  // Estudio con asignaciones: el validador recibe su siguiente caso; no elige placa.
+  const [estudio, setEstudio] = useState(null);       // resumen de cargarEstudio()
+  const [estudioError, setEstudioError] = useState("");
+  const [archivoCaso, setArchivoCaso] = useState(null); // File de la placa asignada
+  const [abriendoCaso, setAbriendoCaso] = useState(false);
+  const [noMedibleAbierto, setNoMedibleAbierto] = useState(false);
+  const [motivoNoMedible, setMotivoNoMedible] = useState("");
   useEffect(() => {
     let vivo = true;
     if (!session) { setEsValidador(false); return; }
     consultarValidador(session.user?.id).then(v => { if (vivo) setEsValidador(v); });
     return () => { vivo = false; };
   }, [session]);
+  const recargarEstudio = useCallback(async () => {
+    setEstudioError("");
+    try { setEstudio(await cargarEstudio()); }
+    catch (err) { setEstudio(null); setEstudioError(err.message); }
+  }, []);
+  useEffect(() => {
+    if (esValidador) recargarEstudio(); else { setEstudio(null); setArchivoCaso(null); }
+  }, [esValidador, recargarEstudio]);
   const [fechaEstudio, setFechaEstudio] = useState(hoy());
   const [fechaCirugia, setFechaCirugia] = useState(hoy());
   const [age, setAge] = useState("");
@@ -977,44 +990,111 @@ export default function GAPCalculator() {
           <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0, lineHeight: 1.5 }}>🔒 {t("exportar.nota_local")}</p>
         </Card>
 
-        {/* Estudio de validación — solo con sesión */}
-        {session && (() => {
+        {/* Estudio de validación — solo validadores con sesión */}
+        {session && esValidador && (() => {
+          const caso = estudio?.caso || null;
           const g = geomAplicada;
-          const motivo = !esValidador ? t("val.no_validador")
-            : !g ? t("val.sin_trazo")
+          const motivo = !caso ? null
+            : !g ? t("est.sin_trazo")
             : g.iaAsistida ? t("val.ia")
             : !g.imageSha256 ? t("val.sin_huella")
-            : guardadoVal === g ? t("val.ya_guardado")
+            : g.imageSha256 !== caso.sha256 ? t("est.otra_imagen")
             : null;
           const editado = g ? detectManualEdits(g.applied, {
             pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, t1tiltDirect, l1tiltDirect, sva,
           }) : false;
+          const cerrarCaso = async (msg) => {
+            showToast(msg);
+            setGeomAplicada(null);
+            setArchivoCaso(null);
+            setNoMedibleAbierto(false);
+            setMotivoNoMedible("");
+            clearAll();
+            await recargarEstudio();
+          };
+          const abrirCaso = async () => {
+            setAbriendoCaso(true);
+            try {
+              setGeomAplicada(null);
+              clearAll();
+              setArchivoCaso(await descargarImagenCaso(caso));
+              setShowAnnotator(true);
+            } catch (err) {
+              showToast(t("val.error", { msg: err.message }), false);
+            } finally {
+              setAbriendoCaso(false);
+            }
+          };
           const guardar = async () => {
             setGuardandoVal(true);
             try {
-              await guardarMedicion({ geometry: g, folio: folio.trim(), editadoEnFormulario: editado });
-              setGuardadoVal(g);
-              setFolio("");
-              showToast(t("val.guardado"));
+              await guardarMedicionAsignada({ asignacionId: caso.asignacionId, geometry: g, editadoEnFormulario: editado });
+              await cerrarCaso(t("val.guardado"));
             } catch (err) {
               showToast(t("val.error", { msg: err.message }), false);
             } finally {
               setGuardandoVal(false);
             }
           };
-          const listo = !motivo && !guardandoVal;
+          const guardarNoMedible = async () => {
+            setGuardandoVal(true);
+            try {
+              await marcarNoMedible({ asignacionId: caso.asignacionId, motivo: motivoNoMedible });
+              await cerrarCaso(t("est.no_medible_guardado"));
+            } catch (err) {
+              showToast(t("val.error", { msg: err.message }), false);
+            } finally {
+              setGuardandoVal(false);
+            }
+          };
+          const listo = caso && !motivo && !guardandoVal;
+          const btn = (activo, fondo) => ({ width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: activo ? fondo : COLORS.inputHover, color: activo ? "#fff" : COLORS.textMuted, fontSize: 14, fontWeight: 700, cursor: activo ? "pointer" : "not-allowed", fontFamily: FONT_SANS });
+          const motivosNM = ["est.nm.femur", "est.nm.s1", "est.nm.c7", "est.nm.lumbar", "est.nm.calidad", "est.nm.otro"];
           return (
             <Card style={{ padding: 20 }}>
-              <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>🧪 {t("val.titulo")}</h2>
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>{t("val.ayuda")}</p>
-              <input value={folio} onChange={e => setFolio(e.target.value.slice(0, 40))} placeholder={t("val.folio")} disabled={!listo}
-                style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${COLORS.inputBorder}`, background: COLORS.inputBg, color: COLORS.text, fontSize: 13, fontFamily: FONT_SANS, marginBottom: 10, outline: "none" }} />
-              <button onClick={guardar} disabled={!listo}
-                style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "none", background: listo ? COLORS.accent : COLORS.inputHover, color: listo ? "#fff" : COLORS.textMuted, fontSize: 14, fontWeight: 700, cursor: listo ? "pointer" : "not-allowed", fontFamily: FONT_SANS }}>
-                {guardandoVal ? t("common.guardando") : `💾 ${t("val.boton")}`}
-              </button>
-              {motivo && <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "8px 0 0", textAlign: "center" }}>{motivo}</p>}
-              {!motivo && editado && <p style={{ fontSize: 11, color: COLORS.yellow, margin: "8px 0 0", textAlign: "center" }}>{t("val.editado")}</p>}
+              <h2 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 4px", color: COLORS.text }}>🧪 {t("est.titulo")}</h2>
+              {estudioError && <p style={{ fontSize: 12, color: COLORS.red, margin: "0 0 10px" }}>{t("val.error", { msg: estudioError })}</p>}
+              {!estudioError && !caso && (
+                <p style={{ fontSize: 12, color: COLORS.textMuted, margin: 0, lineHeight: 1.5 }}>{estudio?.terminado ? t("est.terminado") : t("est.sin_casos")}</p>
+              )}
+              {caso && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0 12px", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, color: COLORS.text }}>{estudio.ronda?.nombre} · {t("est.caso_de", { n: (estudio.ronda?.completadas ?? 0) + 1, total: estudio.ronda?.total ?? "?" })}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: COLORS.accentDark }}>{caso.codigo}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>{t("est.ayuda")}</p>
+                  <button onClick={abrirCaso} disabled={abriendoCaso || guardandoVal} style={{ ...btn(!abriendoCaso && !guardandoVal, COLORS.accentDark), marginBottom: 10 }}>
+                    {abriendoCaso ? t("est.abriendo") : `🩻 ${t("est.abrir")}`}
+                  </button>
+                  <button onClick={guardar} disabled={!listo} style={btn(listo, COLORS.accent)}>
+                    {guardandoVal ? t("common.guardando") : `💾 ${t("est.guardar")}`}
+                  </button>
+                  {motivo && <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "8px 0 0", textAlign: "center" }}>{motivo}</p>}
+                  {!motivo && editado && <p style={{ fontSize: 11, color: COLORS.yellow, margin: "8px 0 0", textAlign: "center" }}>{t("val.editado")}</p>}
+                  <div style={{ marginTop: 14, borderTop: `1px solid ${COLORS.cardBorder}`, paddingTop: 10 }}>
+                    {!noMedibleAbierto ? (
+                      <button onClick={() => setNoMedibleAbierto(true)} disabled={guardandoVal}
+                        style={{ background: "none", border: "none", color: COLORS.textDim, fontSize: 12, textDecoration: "underline", cursor: "pointer", padding: 0, fontFamily: FONT_SANS }}>
+                        {t("est.no_medible")}
+                      </button>
+                    ) : (
+                      <div>
+                        <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 8px", lineHeight: 1.5 }}>{t("est.no_medible_ayuda")}</p>
+                        <select value={motivoNoMedible} onChange={e => setMotivoNoMedible(e.target.value)}
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${COLORS.inputBorder}`, background: COLORS.inputBg, color: COLORS.text, fontSize: 13, fontFamily: FONT_SANS, marginBottom: 8 }}>
+                          <option value="">{t("est.nm.elegir")}</option>
+                          {motivosNM.map(k => <option key={k} value={t(k)}>{t(k)}</option>)}
+                        </select>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => { setNoMedibleAbierto(false); setMotivoNoMedible(""); }} style={{ ...btn(true, COLORS.textDim), flex: 1 }}>{t("common.cancelar")}</button>
+                          <button onClick={guardarNoMedible} disabled={!motivoNoMedible || guardandoVal} style={{ ...btn(Boolean(motivoNoMedible) && !guardandoVal, COLORS.red), flex: 2 }}>{t("est.no_medible_confirmar")}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </Card>
           );
         })()}
@@ -1152,6 +1232,7 @@ export default function GAPCalculator() {
 
       <LandmarkAnnotator
         open={showAnnotator}
+        archivoInicial={esValidador ? archivoCaso : null}
         session={session}
         onLogin={() => setShowLogin(true)}
         onClose={() => setShowAnnotator(false)}
