@@ -16,7 +16,7 @@ export function fmtDeg(v) {
 // este módulo vive fuera de React. `lang` fija el locale de las fechas.
 export function buildPDF(inputs, result, t, lang = "es") {
   const DATE_LOCALE = { es: "es-MX", en: "en-GB", fr: "fr-FR" }[lang] || "es-MX";
-  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult } = inputs;
+  const { age, pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, paciente, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult, objetivosResult } = inputs;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const W = 210, M = 18, CW = W - M * 2;
   let y = 18;
@@ -110,15 +110,16 @@ export function buildPDF(inputs, result, t, lang = "es") {
       { name: "SS", cur: Number(ss), ideal: result.idealSS },
       { name: "L1-S1", cur: Number(l1s1), ideal: result.idealLL },
       ...(hillsResult ? [{ name: "L1-S1 (Hills)", cur: Number(l1s1), ideal: hillsResult.idealLL_Hills, hills: true }] : []),
+      ...(objetivosResult?.mccarthyLL != null ? [{ name: "L1-S1 (McCarthy)", cur: Number(l1s1), ideal: objetivosResult.mccarthyLL, mccarthy: true }] : []),
       { name: "L4-S1", cur: Number(l4s1), ideal: idealL4S1 },
       { name: "GT", cur: Number(gt), ideal: result.idealGT }
     ];
-    planRows.forEach(({ name, cur, ideal, hills }, i) => {
+    planRows.forEach(({ name, cur, ideal, hills, mccarthy }, i) => {
       const corr = ideal - cur;
       const cc = Math.abs(corr) < 5 ? [21, 128, 61] : Math.abs(corr) < 15 ? [180, 83, 9] : [185, 28, 28];
       doc.setFillColor(i % 2 === 0 ? 250 : 244, i % 2 === 0 ? 247 : 241, i % 2 === 0 ? 242 : 236);
       doc.rect(M, y, CW, 7, "F");
-      if (hills) doc.setTextColor(109, 40, 217); else doc.setTextColor(17, 94, 89);
+      if (hills) doc.setTextColor(109, 40, 217); else if (mccarthy) doc.setTextColor(155, 59, 14); else doc.setTextColor(17, 94, 89);
       doc.setFont("helvetica", "bold"); doc.setFontSize(9);
       doc.text(name, colX[0] + 2, y + 4.8);
       doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
@@ -145,6 +146,76 @@ export function buildPDF(inputs, result, t, lang = "es") {
     doc.setFontSize(8);
     doc.text(faltantes.length ? t("pdf.faltan", { lista: faltantes.join(", ") }) : "", M + 3, y + 10.5);
     y += 18;
+  }
+
+  // Objetivos por PI y edad (Diebo 2024 · McCarthy 2024 · Lafage 2016)
+  if (objetivosResult) {
+    const { diebo, tpa, mccarthyLL } = objetivosResult;
+    const ccOf = (c) => Math.abs(c) < 5 ? [21, 128, 61] : Math.abs(c) < 15 ? [180, 83, 9] : [185, 28, 28];
+    const fmt = (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}°`;
+    ensureSpace(95); // la sección entera (~85 mm) va junta: la tira de segmentos no se separa de su tabla
+    y += 4;
+    doc.setFillColor(155, 59, 14); doc.rect(M, y, CW, 7, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9);
+    doc.text(`${t("pdf.objetivos")}  (Diebo JBJS 2024 · McCarthy GSJ 2024)`, M + 3, y + 4.8); y += 8;
+    doc.setFillColor(30, 41, 59); doc.rect(M, y, CW, 6, "F"); doc.setTextColor(255, 255, 255); doc.setFontSize(7.5);
+    [t("tabla.parametro"), t("tabla.actual"), t("tabla.ideal"), t("tabla.correccion")].forEach((c, i) => { doc.setFont("helvetica", "bold"); doc.text(c, colX[i] + (i === 0 ? 2 : 0), y + 4); });
+    y += 7;
+    // Filas: [nombre, actual|null, ideal (texto), corrección|null, color corrección]
+    const filas = [];
+    if (mccarthyLL != null) {
+      const cur = l1s1 === "" || l1s1 === null ? null : Number(l1s1);
+      filas.push([t("pdf.ll_mccarthy"), cur !== null ? `${cur.toFixed(1)}°` : "-", `${mccarthyLL.toFixed(1)}°`, cur !== null ? fmt(mccarthyLL - cur) : "-", cur !== null ? ccOf(mccarthyLL - cur) : [100, 116, 139]]);
+    }
+    if (tpa) {
+      filas.push([t("pdf.tpa_edad"), `${tpa.actual.toFixed(1)}°`, `${tpa.objetivo.toFixed(1)}° ±5`, `${fmt(tpa.diff)} ${tpa.enObjetivo ? t("pdf.en_objetivo") : t("pdf.fuera_objetivo")}`, tpa.enObjetivo ? [21, 128, 61] : [185, 28, 28]]);
+    }
+    [["L1-L4", diebo.actualL1L4, diebo.idealL1L4], ["L4-S1", diebo.actualL4S1, diebo.idealL4S1]].forEach(([n, a, i]) => {
+      filas.push([`${n} (Diebo)`, a != null ? `${a.toFixed(1)}°` : "-", `${i.toFixed(1)}°`, a != null ? fmt(i - a) : "-", a != null ? ccOf(i - a) : [100, 116, 139]]);
+    });
+    filas.push(["% L4-S1", diebo.actualPctL4S1 != null ? `${diebo.actualPctL4S1.toFixed(0)}%` : "-", `${diebo.idealPctL4S1.toFixed(0)}%`, "", [100, 116, 139]]);
+    filas.forEach(([n, a, i, c, cc], k) => {
+      doc.setFillColor(k % 2 === 0 ? 250 : 244, k % 2 === 0 ? 247 : 241, k % 2 === 0 ? 242 : 236);
+      doc.rect(M, y, CW, 6.5, "F");
+      doc.setTextColor(155, 59, 14); doc.setFont("helvetica", "bold"); doc.setFontSize(8);
+      doc.text(n, M + 2, y + 4.3);
+      doc.setTextColor(30, 41, 59); doc.setFont("helvetica", "normal");
+      doc.text(a, colX[1], y + 4.3);
+      doc.setTextColor(21, 128, 61);
+      doc.text(i, colX[2], y + 4.3);
+      doc.setTextColor(...cc); doc.setFont("helvetica", "bold");
+      doc.text(c, colX[3], y + 4.3);
+      y += 6.5;
+    });
+    if (mccarthyLL == null) {
+      doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+      doc.text(t("pdf.faltan_mccarthy"), M + 2, y + 3.5); y += 5;
+    }
+    // Lordosis segmentaria ideal: una fila con los seis segmentos de la Tabla I.
+    ensureSpace(22);
+    y += 2;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(30, 41, 59);
+    doc.text(t("pdf.segmentaria", { cat: diebo.categoria }), M + 2, y + 4); y += 6;
+    const segW = CW / diebo.segmentos.length;
+    diebo.segmentos.forEach((sg, k) => {
+      const x = M + k * segW;
+      doc.setFillColor(k % 2 === 0 ? 250 : 244, k % 2 === 0 ? 247 : 241, k % 2 === 0 ? 242 : 236);
+      doc.rect(x, y, segW, 11, "F");
+      doc.setTextColor(17, 94, 89); doc.setFont("helvetica", "bold"); doc.setFontSize(7.5);
+      doc.text(sg.name, x + segW / 2, y + 4, { align: "center" });
+      doc.setTextColor(21, 128, 61); doc.setFontSize(9);
+      doc.text(`${sg.ideal.toFixed(1)}°`, x + segW / 2, y + 9, { align: "center" });
+    });
+    y += 13;
+    doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(100, 116, 139);
+    if (diebo.fueraDeRango) {
+      doc.setTextColor(180, 83, 9);
+      doc.text(t("pdf.fuera_rango", { cat: diebo.categoria }), M + 2, y + 2); y += 4;
+      doc.setTextColor(100, 116, 139);
+    }
+    const nota = doc.splitTextToSize(t("pdf.objetivos_nota"), CW - 4);
+    ensureSpace(nota.length * 3.2 + 2);
+    doc.text(nota, M + 2, y + 2); y += nota.length * 3.2 + 2;
   }
 
   // Eje T4-L1-Cadera (Hills 2022)

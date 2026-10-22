@@ -11,6 +11,7 @@ import {
   roussoulyCurrentType, roussoulyIdealType,
 } from "./scoring";
 import { buildPDF } from "./pdf";
+import { dieboObjetivos, mccarthyLL, tpaEvaluacion } from "./objetivos";
 import { feedbackAvailable, sendFeedback } from "./feedback";
 import { MEASUREMENT_KEYS, detectManualEdits } from "./data/landmarks";
 import { esValidador as consultarValidador, cargarEstudio, descargarImagenCaso, guardarMedicionAsignada, marcarNoMedible } from "./validacion";
@@ -77,6 +78,8 @@ export default function GAPCalculator() {
   const [gt, setGT] = useState("");
   const [l1pa, setL1PA] = useState("");
   const [t4pa, setT4PA] = useState("");
+  const [tk, setTK] = useState("");
+  const [objetivosOpen, setObjetivosOpen] = useState(false);
   // Cards colapsables (Hills 2022) — secciones opcionales
   const [hillsOpen, setHillsOpen] = useState(false);
   const [tiltsOpen, setTiltsOpen] = useState(false);
@@ -161,7 +164,7 @@ export default function GAPCalculator() {
   const hasAnyMeasurement =
     spinopelvic.effPI !== null || spinopelvic.effSS !== null || spinopelvic.effPT !== null ||
     l1s1 !== "" || l4s1 !== "" || gt !== "" ||
-    l1pa !== "" || t4pa !== "" ||
+    l1pa !== "" || t4pa !== "" || tk !== "" ||
     c2tiltDirect !== "" || cpa !== "" ||
     t1tiltDirect !== "" || t1pa !== "" ||
     l1tiltDirect !== "";
@@ -193,6 +196,13 @@ export default function GAPCalculator() {
     }
     return { idealL1PA, l1paDiff, idealLL_Hills, idealLL_Hills_L4S1, ejeDiff, ejeStatus, ejeLabelKey };
   }, [spinopelvic, l1pa, t4pa]);
+
+  // Objetivos por PI y edad (Diebo 2024 · McCarthy 2024 · Lafage 2016) — no entran al GAP
+  const objetivosResult = useMemo(() => {
+    const diebo = dieboObjetivos(spinopelvic.effPI, l1s1, l4s1);
+    if (!diebo) return null;
+    return { diebo, mccarthyLL: mccarthyLL(spinopelvic.effPI, tk, age), tpa: tpaEvaluacion(t1pa, age) };
+  }, [spinopelvic, l1s1, l4s1, tk, age, t1pa]);
 
   // Tilts vertebrales C2/T1/L1 (Hills 2022) — opcionales
   // PT efectivo (de spinopelvic): PI − SS, o ingresado directo, o derivado de los otros dos.
@@ -311,7 +321,7 @@ export default function GAPCalculator() {
 
   const showToast = (msg, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3500); };
 
-  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult };
+  const inputs = { age, pi: spinopelvic.effPI ?? "", ss: spinopelvic.effSS ?? "", pt: spinopelvic.effPT ?? "", l1s1, l4s1, gt, l1pa, t4pa, tk, c2tiltDirect, cpa, t1tiltDirect, t1pa, l1tiltDirect, medico, cirugias, tipoEvaluacion, fechaEstudio, fechaCirugia, diffInfo, peso, talla, imc, hillsResult, tiltsResult, derivedKey: spinopelvic.derivedKey, sva, bmdTscore, schwabResult, roussoulyResult, gapbResult, objetivosResult };
 
   const addCirugia = () => setCirugias([...cirugias, { id: uid(), tipo: "", tipoCustom: "", segmentos: [] }]);
   const updateCirugia = (id, n) => setCirugias(cirugias.map(c => c.id === id ? n : c));
@@ -389,7 +399,7 @@ export default function GAPCalculator() {
   // arrastraban al siguiente paciente.
   const clearAll = () => {
     [setAge, setPeso, setTalla, setMedicoPublic,
-      setPI, setSS, setPT, setL1S1, setL4S1, setGT, setL1PA, setT4PA,
+      setPI, setSS, setPT, setL1S1, setL4S1, setGT, setL1PA, setT4PA, setTK,
       setC2TiltDirect, setCPA, setT1TiltDirect, setT1PA, setL1TiltDirect,
       setSVA, setNvl, setBmdTscore].forEach(set => set(""));
     setTipoEvaluacion("preoperatorio");
@@ -643,6 +653,106 @@ export default function GAPCalculator() {
                   {t("hills.faltan")}
                 </div>
               )}
+            </div>
+          )}
+        </Card>
+
+        {/* Objetivos por PI y edad (Diebo 2024 · McCarthy 2024) — colapsable, opcional */}
+        <Card>
+          <button
+            type="button"
+            onClick={() => setObjetivosOpen(o => !o)}
+            aria-expanded={objetivosOpen}
+            style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: COLORS.ink }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>📏 {t("objetivos.titulo")}</h2>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: 0 }}>
+                Diebo 2024 · McCarthy 2024 · <em>{t("comun.opcional_complementa")}</em>
+              </p>
+            </div>
+            <span aria-hidden="true" style={{ fontSize: 18, color: COLORS.textMuted, fontWeight: 700, transform: objetivosOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", lineHeight: 1, paddingTop: 4 }}>⌃</span>
+          </button>
+          {objetivosOpen && (
+            <div style={{ marginTop: 14 }}>
+              <InputField label={t("param.tk")} value={tk} onChange={setTK} min={0} max={100}
+                tooltip={t("tooltip.tk")} />
+              {!objetivosResult && (
+                <div style={{ padding: 12, borderRadius: 8, background: COLORS.inputHover, border: `1px dashed ${COLORS.inputBorder}`, fontSize: 11, color: COLORS.textMuted, textAlign: "center" }}>
+                  {t("objetivos.faltan_pi")}
+                </div>
+              )}
+              {objetivosResult && (() => {
+                const { diebo, tpa } = objetivosResult;
+                const ll = objetivosResult.mccarthyLL;
+                const corrColor = (c) => Math.abs(c) < 5 ? COLORS.green : Math.abs(c) < 15 ? COLORS.yellow : COLORS.red;
+                const fmt = (v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}°`;
+                const mono = { fontFamily: "'JetBrains Mono', monospace" };
+                const cell = { padding: "7px 10px", textAlign: "right", ...mono };
+                const regiones = [
+                  { name: "L1-L4", actual: diebo.actualL1L4, ideal: diebo.idealL1L4 },
+                  { name: "L4-S1", actual: diebo.actualL4S1, ideal: diebo.idealL4S1 },
+                ];
+                return (
+                  <div style={{ marginTop: 8 }}>
+                    {/* LL objetivo por edad (McCarthy 2024) */}
+                    <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.secondaryDim, border: `1px solid ${COLORS.secondary}44`, marginBottom: 10, fontSize: 12, color: COLORS.secondary, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span><strong>{t("objetivos.ll_mccarthy")}</strong> = PI + 0.3·TK − 0.5·{t("campo.edad")} + 10</span>
+                      {ll != null
+                        ? <span style={{ ...mono, fontWeight: 700 }}>
+                            {ll.toFixed(1)}°
+                            {l1s1 !== "" && <span style={{ color: corrColor(ll - Number(l1s1)), marginLeft: 8 }}>({t("tabla.correccion")} {fmt(ll - Number(l1s1))})</span>}
+                          </span>
+                        : <span style={{ fontSize: 11, fontStyle: "italic" }}>{t("objetivos.faltan_mccarthy")}</span>}
+                    </div>
+                    {/* TPA objetivo por edad (Lafage 2016) */}
+                    <div style={{ padding: "10px 14px", borderRadius: 8, background: tpa ? (tpa.enObjetivo ? COLORS.greenBg : COLORS.redBg) : COLORS.inputHover, border: `1px solid ${tpa ? (tpa.enObjetivo ? COLORS.green : COLORS.red) : COLORS.inputBorder}44`, marginBottom: 12, fontSize: 12, color: tpa ? (tpa.enObjetivo ? COLORS.green : COLORS.red) : COLORS.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span><strong>{t("objetivos.tpa")}</strong> = ({t("campo.edad")} − 55)/2 + 16 · ±5°</span>
+                      {tpa
+                        ? <span style={{ ...mono, fontWeight: 700 }}>{tpa.objetivo.toFixed(1)}° <span style={{ marginLeft: 8 }}>(T1PA {tpa.actual.toFixed(1)}°, Δ {fmt(tpa.diff)})</span></span>
+                        : <span style={{ fontSize: 11, fontStyle: "italic" }}>{t("objetivos.faltan_tpa")}</span>}
+                    </div>
+                    {/* Lordosis segmentaria ideal (Diebo 2024, Tabla I) */}
+                    <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textDim, marginBottom: 6 }}>
+                      {t("objetivos.segmentaria", { cat: diebo.categoria })}
+                    </div>
+                    {diebo.fueraDeRango && (
+                      <div style={{ padding: "8px 12px", borderRadius: 8, background: COLORS.yellowBg, color: COLORS.yellow, fontSize: 11, fontWeight: 600, marginBottom: 8 }}>
+                        ⚠ {t("objetivos.fuera_rango", { cat: diebo.categoria })}
+                      </div>
+                    )}
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead><tr style={{ borderBottom: `2px solid ${COLORS.cardBorder}` }}>{[t("tabla.segmento"), t("tabla.actual"), t("tabla.ideal"), t("tabla.correccion")].map((h, hi) => <th key={h} style={{ padding: "8px 10px", textAlign: hi === 0 ? "left" : "right", fontWeight: 700, color: COLORS.textDim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {diebo.segmentos.map(sg => (
+                          <tr key={sg.name} style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}>
+                            <td style={{ padding: "7px 10px", fontWeight: 700, color: COLORS.accentDark, ...mono }}>{sg.name}</td>
+                            <td style={{ ...cell, color: COLORS.textMuted }}>—</td>
+                            <td style={{ ...cell, color: COLORS.green, fontWeight: 600 }}>{sg.ideal.toFixed(1)}°</td>
+                            <td style={{ ...cell, color: COLORS.textMuted }}>—</td>
+                          </tr>
+                        ))}
+                        {regiones.map(r => (
+                          <tr key={r.name} style={{ borderBottom: `1px solid ${COLORS.cardBorder}`, background: COLORS.inputHover }}>
+                            <td style={{ padding: "7px 10px", fontWeight: 800, color: COLORS.accentDark, ...mono }}>{r.name}</td>
+                            <td style={cell}>{r.actual != null ? `${r.actual.toFixed(1)}°` : "—"}</td>
+                            <td style={{ ...cell, color: COLORS.green, fontWeight: 600 }}>{r.ideal.toFixed(1)}°</td>
+                            <td style={{ ...cell, fontWeight: 700, color: r.actual != null ? corrColor(r.ideal - r.actual) : COLORS.textMuted }}>{r.actual != null ? fmt(r.ideal - r.actual) : "—"}</td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td style={{ padding: "7px 10px", fontWeight: 800, color: COLORS.accentDark, ...mono }}>% L4-S1</td>
+                          <td style={cell}>{diebo.actualPctL4S1 != null ? `${diebo.actualPctL4S1.toFixed(0)}%` : "—"}</td>
+                          <td style={{ ...cell, color: COLORS.green, fontWeight: 600 }}>{diebo.idealPctL4S1.toFixed(0)}%</td>
+                          <td style={{ ...cell, color: COLORS.textMuted }}>—</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p style={{ fontSize: 10.5, color: COLORS.textMuted, margin: "10px 0 0", lineHeight: 1.5 }}>
+                      {t("objetivos.nota")}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </Card>
@@ -1155,13 +1265,14 @@ export default function GAPCalculator() {
             </Card>
             <Card>
               <h2 style={{ fontSize: 19, fontWeight: 600, margin: "0 0 4px", color: COLORS.ink, fontFamily: FONT_SERIF, fontVariationSettings: "'opsz' 36, 'SOFT' 50", letterSpacing: "-0.01em" }}>{t("planificacion.titulo")}</h2>
-              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{t("planificacion.nota")}{hillsResult && ` · ${t("planificacion.nota_hills")}`}</p>
+              <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 14px" }}>{t("planificacion.nota")}{hillsResult && ` · ${t("planificacion.nota_hills")}`}{objetivosResult?.mccarthyLL != null && ` · ${t("planificacion.nota_mccarthy")}`}</p>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead><tr style={{ borderBottom: `2px solid ${COLORS.cardBorder}` }}>{[t("tabla.parametro"), t("tabla.actual"), t("tabla.ideal"), t("tabla.correccion")].map((h, hi) => <th key={h} style={{ padding: "8px 10px", textAlign: hi === 0 ? "left" : "right", fontWeight: 700, color: COLORS.textDim, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>)}</tr></thead>
                 <tbody>{[
                   { name: "SS", current: ss, ideal: result.idealSS },
                   { name: "L1-S1", current: l1s1, ideal: result.idealLL },
                   ...(hillsResult ? [{ name: "L1-S1 (Hills)", current: l1s1, ideal: hillsResult.idealLL_Hills, accent: COLORS.purple }] : []),
+                  ...(objetivosResult?.mccarthyLL != null ? [{ name: "L1-S1 (McCarthy)", current: l1s1, ideal: objetivosResult.mccarthyLL, accent: COLORS.secondary }] : []),
                   { name: "L4-S1", current: l4s1, ideal: idealL4S1 },
                   { name: "GT", current: gt, ideal: result.idealGT }
                 ].map(r => { const corr = r.ideal - r.current; const nameColor = r.accent || COLORS.accentDark; return <tr key={r.name} style={{ borderBottom: `1px solid ${COLORS.cardBorder}` }}><td style={{ padding: "10px", fontWeight: 700, color: nameColor, fontFamily: "'JetBrains Mono', monospace" }}>{r.name}</td><td style={{ padding: "10px", textAlign: "right", fontFamily: "'JetBrains Mono', monospace" }}>{Number(r.current).toFixed(1)}°</td><td style={{ padding: "10px", textAlign: "right", fontFamily: "'JetBrains Mono', monospace", color: COLORS.green, fontWeight: 600 }}>{r.ideal.toFixed(1)}°</td><td style={{ padding: "10px", textAlign: "right", fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: Math.abs(corr) < 5 ? COLORS.green : Math.abs(corr) < 15 ? COLORS.yellow : COLORS.red }}>{corr >= 0 ? "+" : ""}{corr.toFixed(1)}°</td></tr>; })}</tbody>
