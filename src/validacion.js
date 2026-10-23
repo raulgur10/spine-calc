@@ -8,8 +8,8 @@ import { getClient } from "./auth";
 import { APP_VERSION } from "./constants";
 import { STUDY_LANDMARK_KEYS } from "./data/landmarks";
 
-// Solo los puntos que acepta la base del estudio; T2 y T12 se marcan para la TK
-// pero no son variables del protocolo y el CHECK de la base los rechazaría.
+// Solo los puntos que acepta la base del estudio (CHECK de validacion_landmark,
+// ampliado a los 16 en supabase/estudio.sql).
 export function puntosDelEstudio(points) {
   return (points || []).filter(({ key }) => STUDY_LANDMARK_KEYS.includes(key)).map(({ key, x, y }) => ({ key, x, y }));
 }
@@ -90,15 +90,20 @@ export function resumirEstudio(progreso, siguiente) {
   };
 }
 
-// Descarga la placa del caso como File. El anotador calcula su huella al
-// cargarla; el servidor rechaza el guardado si no coincide con la asignada.
-export async function descargarImagenCaso(caso) {
-  const sb = await getClient();
-  const { data, error } = await sb.storage.from("validacion").download(caso.archivo);
-  if (error) throw new Error(error.message);
-  const ext = (caso.archivo.split(".").pop() || "png").toLowerCase();
-  const tipo = data.type || (ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png");
-  return new File([data], `${caso.codigo}.${ext}`, { type: tipo });
+// Las imágenes no se suben a ningún servidor: cada evaluador las recibe en una
+// USB, en una carpeta por ronda, con el código del caso como nombre de archivo
+// (scripts/validacion/armar_usb.py). El panel le dice cuál abrir y la app
+// comprueba la huella antes de cargarla; el servidor vuelve a comprobarla al guardar.
+export const CARPETA_RONDA = { 0: "practica", 1: "ronda_1", 2: "ronda_2", 9: "verificacion" };
+
+export function archivoDelCaso(caso) {
+  const ext = ((caso.archivo || "").split(".").pop() || "png").toLowerCase();
+  return { carpeta: CARPETA_RONDA[caso.ronda] ?? `ronda_${caso.ronda}`, nombre: `${caso.codigo}.${ext}` };
+}
+
+export async function huellaArchivo(file) {
+  const d = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export async function guardarMedicionAsignada({ asignacionId, geometry, editadoEnFormulario }) {
@@ -115,7 +120,7 @@ export async function guardarMedicionAsignada({ asignacionId, geometry, editadoE
     horiz_p1x: h.p1x ?? null, horiz_p1y: h.p1y ?? null, horiz_p2x: h.p2x ?? null, horiz_p2y: h.p2y ?? null,
     pi: a.pi ?? null, ss: a.ss ?? null, pt: a.pt ?? null, l1s1: a.l1s1 ?? null, l4s1: a.l4s1 ?? null,
     gt: a.gt ?? null, l1pa: a.l1pa ?? null, t4pa: a.t4pa ?? null, c2tilt: a.c2tilt ?? null,
-    t1tilt: a.t1tilt ?? null, l1tilt: a.l1tilt ?? null, sva_cm: a.sva ?? null,
+    t1tilt: a.t1tilt ?? null, l1tilt: a.l1tilt ?? null, sva_cm: a.sva ?? null, tk: a.tk ?? null,
     duracion_s: geometry.duracionS,
     editado_en_formulario: Boolean(editadoEnFormulario),
     ia_asistida: Boolean(geometry.iaAsistida),

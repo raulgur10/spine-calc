@@ -6,12 +6,13 @@
 -- idempotente.
 --
 -- Cómo funciona:
---   · Cada radiografía anonimizada se sube al bucket privado «validacion» con
---     el nombre <sha256>.<ext>. La huella SHA-256 del archivo es su identidad.
+--   · Las radiografías NO se suben a ningún servidor: cada evaluador las recibe
+--     en una USB, una carpeta por ronda, con el código del caso como nombre
+--     (scripts/validacion/armar_usb.py). La huella SHA-256 del archivo es su
+--     identidad; aquí solo se registra la huella, nunca la imagen.
 --   · estudio_asignacion dice qué placa mide cada validador, en qué ronda y en
 --     qué orden. La genera el investigador que no mide (scripts/validacion).
---   · El validador solo ve sus casos PENDIENTES de las rondas ABIERTAS, y solo
---     puede descargar la imagen de un caso pendiente suyo.
+--   · El validador solo ve sus casos PENDIENTES de las rondas ABIERTAS.
 --   · El guardado pasa por guardar_medicion_asignada(), que comprueba que la
 --     huella de la imagen marcada sea la de la asignación y cierra el caso.
 --   · Cegamiento: el validador ya no puede leer mediciones guardadas (ni las
@@ -40,7 +41,7 @@ grant select on public.estudio_ronda to authenticated;
 -- ─── Imágenes ───────────────────────────────────────────────────────────────
 create table if not exists public.estudio_imagen (
   sha256    text primary key check (sha256 ~ '^[0-9a-f]{64}$'),
-  archivo   text not null unique,            -- nombre del objeto en el bucket
+  archivo   text not null unique,            -- <sha256>.<ext>; solo se usa la extensión
   tipo      text not null check (tipo in ('estudio', 'practica', 'verificacion')),
   creado_en timestamptz not null default now()
 );
@@ -107,20 +108,19 @@ $$;
 revoke all on function public.progreso_estudio() from public, anon;
 grant execute on function public.progreso_estudio() to authenticated;
 
--- ─── Bucket privado de imágenes ─────────────────────────────────────────────
-insert into storage.buckets (id, name, public)
-values ('validacion', 'validacion', false)
-on conflict (id) do update set public = false;
-
+-- ─── Sin imágenes en el servidor ────────────────────────────────────────────
+-- Versiones anteriores de este archivo creaban un bucket privado «validacion».
+-- Las imágenes ahora viajan en USB; si esa política quedó de una ejecución
+-- previa, se retira (el bucket, si existe y está vacío, puede borrarse a mano).
 drop policy if exists validacion_descargar_asignada on storage.objects;
-create policy validacion_descargar_asignada on storage.objects
-  for select to authenticated using (
-    bucket_id = 'validacion'
-    and exists (select 1 from public.estudio_asignacion a
-                join public.estudio_imagen i on i.sha256 = a.imagen_sha256
-                join public.estudio_ronda r on r.numero = a.ronda and r.abierta
-                where i.archivo = objects.name and a.user_id = (select auth.uid()) and a.completada_en is null)
-  );
+
+-- ─── Variables añadidas al protocolo: cifosis T2-T12 ────────────────────────
+-- Cuatro puntos opcionales (platillo superior de T2 e inferior de T12) y la TK.
+alter table public.validacion_medicion add column if not exists tk numeric;
+alter table public.validacion_landmark drop constraint if exists validacion_landmark_clave_check;
+alter table public.validacion_landmark add constraint validacion_landmark_clave_check
+  check (clave in ('femL','femR','s1Post','s1Ant','l4Post','l4Ant','l1Post','l1Ant','c7','t4','t1','c2',
+                   't2Post','t2Ant','t12Post','t12Ant'));
 
 -- ─── Cegamiento: los validadores ya no leen mediciones guardadas ────────────
 drop policy if exists medicion_ver_propia on public.validacion_medicion;
@@ -179,7 +179,7 @@ begin
   insert into public.validacion_medicion (
     user_id, asignacion_id, ronda, folio, imagen_sha256, imagen_ancho, imagen_alto, mm_por_px, calib_ref_mm,
     horiz_p1x, horiz_p1y, horiz_p2x, horiz_p2y,
-    pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tilt, t1tilt, l1tilt, sva_cm,
+    pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tilt, t1tilt, l1tilt, sva_cm, tk,
     duracion_s, editado_en_formulario, anotador_version, app_version
   ) values (
     uid, asg.id, asg.ronda, asg.codigo, asg.imagen_sha256,
@@ -189,6 +189,7 @@ begin
     (p->>'pi')::numeric, (p->>'ss')::numeric, (p->>'pt')::numeric, (p->>'l1s1')::numeric,
     (p->>'l4s1')::numeric, (p->>'gt')::numeric, (p->>'l1pa')::numeric, (p->>'t4pa')::numeric,
     (p->>'c2tilt')::numeric, (p->>'t1tilt')::numeric, (p->>'l1tilt')::numeric, (p->>'sva_cm')::numeric,
+    (p->>'tk')::numeric,
     (p->>'duracion_s')::integer, coalesce((p->>'editado_en_formulario')::boolean, false),
     p->>'anotador_version', p->>'app_version'
   ) returning id into nuevo;

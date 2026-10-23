@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resumirEstudio, puntosDelEstudio } from "./validacion";
+import { resumirEstudio, puntosDelEstudio, archivoDelCaso } from "./validacion";
 
 const prog = [
   { ronda: 0, nombre: "Práctica", total: 3, completadas: 3 },
@@ -33,16 +33,22 @@ describe("resumirEstudio", () => {
 });
 
 describe("puntosDelEstudio", () => {
-  it("deja fuera T2 y T12, que la base del estudio no acepta", () => {
+  it("envía los 16 puntos, incluidos T2 y T12 (variables del protocolo)", () => {
     const pts = [
-      { key: "femL", idx: 0, x: 1, y: 2 }, { key: "c2", idx: 11, x: 3, y: 4 },
-      { key: "t2Post", idx: 12, x: 5, y: 6 }, { key: "t12Ant", idx: 15, x: 7, y: 8 },
+      { key: "femL", idx: 0, x: 1, y: 2 }, { key: "t2Post", idx: 12, x: 5, y: 6 }, { key: "t12Ant", idx: 15, x: 7, y: 8 },
     ];
-    expect(puntosDelEstudio(pts)).toEqual([{ key: "femL", x: 1, y: 2 }, { key: "c2", x: 3, y: 4 }]);
+    expect(puntosDelEstudio(pts)).toEqual([{ key: "femL", x: 1, y: 2 }, { key: "t2Post", x: 5, y: 6 }, { key: "t12Ant", x: 7, y: 8 }]);
   });
-  it("las 12 claves del estudio son las que permite el CHECK de supabase/validacion.sql", () => {
-    expect(puntosDelEstudio([
-      "femL", "femR", "s1Post", "s1Ant", "l4Post", "l4Ant", "l1Post", "l1Ant", "c7", "t4", "t1", "c2",
-    ].map((key) => ({ key, x: 0, y: 0 })))).toHaveLength(12);
+  it("descarta claves que el CHECK de la base no admite", () => {
+    expect(puntosDelEstudio([{ key: "rodilla", x: 0, y: 0 }])).toEqual([]);
+  });
+});
+
+describe("archivoDelCaso", () => {
+  it("nombra el archivo con el código del caso en la carpeta de su ronda (= armar_usb.py)", () => {
+    expect(archivoDelCaso({ ronda: 1, codigo: "R1-07", archivo: "ab.png" })).toEqual({ carpeta: "ronda_1", nombre: "R1-07.png" });
+    expect(archivoDelCaso({ ronda: 2, codigo: "R2-15", archivo: "ab.JPG" })).toEqual({ carpeta: "ronda_2", nombre: "R2-15.jpg" });
+    expect(archivoDelCaso({ ronda: 0, codigo: "P-01", archivo: null })).toEqual({ carpeta: "practica", nombre: "P-01.png" });
+    expect(archivoDelCaso({ ronda: 9, codigo: "V-03", archivo: "x.png" }).carpeta).toBe("verificacion");
   });
 });

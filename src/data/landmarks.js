@@ -27,11 +27,11 @@ export const LANDMARK_KEYS = [
 // T4PA, los tilts de T1 y C2 ni la cifosis torácica T2-T12.
 export const OPTIONAL_LANDMARK_KEYS = ["t4", "t1", "c2", "t2Post", "t2Ant", "t12Post", "t12Ant"];
 
-// Puntos que acepta la base del estudio de validación (supabase/validacion.sql
-// los restringe con un CHECK). Los de T2 y T12 llegaron después de congelar el
-// protocolo y no son variables del estudio: se quedan fuera del envío para que
-// un evaluador que los marque no vea rechazado su guardado.
-export const STUDY_LANDMARK_KEYS = LANDMARK_KEYS.slice(0, 12);
+// Puntos que acepta la base del estudio de validación. supabase/validacion.sql
+// los restringía a 12 con un CHECK; supabase/estudio.sql lo amplía a los 16
+// porque la cifosis T2-T12 es variable secundaria del protocolo. Cualquier
+// punto nuevo tiene que entrar aquí Y en ese CHECK, o el guardado se rechaza.
+export const STUDY_LANDMARK_KEYS = [...LANDMARK_KEYS];
 
 // Versión de la convención de marcado. Súbela si cambia lo que significa un
 // punto; sin ella, un trazo guardado no se puede reinterpretar más adelante.

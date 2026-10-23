@@ -716,4 +716,10 @@ export default {
   "landmark.t12Ant.donde": "Coin antérieur du plateau inférieur de T12. La ligne entre les deux points de T12 doit suivre le bord inférieur du corps.",
   "angulo.tk.nombre": "Cyphose thoracique T2-T12 (TK)",
   "angulo.tk.explicacion": "Angle de Cobb entre le plateau supérieur de T2 et le plateau inférieur de T12, en valeur positive. Il remplit le champ TK des « Objectifs selon la PI et l'âge » et alimente la formule de McCarthy 2024.",
+  "est.ayuda": "Ouvrez le fichier du cas depuis votre clé USB : l'application vérifie que c'est le bon et le charge dans l'annotateur. Marquez les points, cliquez sur « Appliquer » et enregistrez. Les points et les angles sont enregistrés, jamais l'image.",
+  "est.abrir": "Ouvrir le fichier du cas depuis la clé USB",
+  "est.abriendo": "Vérification du fichier...",
+  "est.archivo": "Fichier :",
+  "est.archivo_incorrecto": "Ce fichier n'est pas celui du cas {codigo}. Ouvrez {carpeta}/{nombre} depuis votre clé USB.",
+  "est.otra_imagen": "L'image marquée n'est pas celle du cas assigné. Rouvrez le fichier du cas depuis la clé USB.",
 };

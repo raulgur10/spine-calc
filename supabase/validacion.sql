@@ -65,7 +65,8 @@ create index if not exists validacion_medicion_user on public.validacion_medicio
 -- ─── Un renglón por landmark ────────────────────────────────────────────────
 create table if not exists public.validacion_landmark (
   medicion_id uuid not null references public.validacion_medicion(id) on delete cascade,
-  clave       text not null check (clave in ('femL','femR','s1Post','s1Ant','l4Post','l4Ant','l1Post','l1Ant','c7','t4','t1','c2')),
+  clave       text not null check (clave in ('femL','femR','s1Post','s1Ant','l4Post','l4Ant','l1Post','l1Ant','c7','t4','t1','c2',
+                                                      't2Post','t2Ant','t12Post','t12Ant')),
   x           numeric not null,
   y           numeric not null,
   primary key (medicion_id, clave)

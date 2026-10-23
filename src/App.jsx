@@ -14,7 +14,7 @@ import { buildPDF } from "./pdf";
 import { dieboObjetivos, mccarthyLL, tpaEvaluacion } from "./objetivos";
 import { feedbackAvailable, sendFeedback } from "./feedback";
 import { MEASUREMENT_KEYS, detectManualEdits } from "./data/landmarks";
-import { esValidador as consultarValidador, cargarEstudio, descargarImagenCaso, guardarMedicionAsignada, marcarNoMedible } from "./validacion";
+import { esValidador as consultarValidador, cargarEstudio, archivoDelCaso, huellaArchivo, guardarMedicionAsignada, marcarNoMedible } from "./validacion";
 import {
   InputField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -1111,7 +1111,7 @@ export default function GAPCalculator() {
             : g.imageSha256 !== caso.sha256 ? t("est.otra_imagen")
             : null;
           const editado = g ? detectManualEdits(g.applied, {
-            pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, t1tiltDirect, l1tiltDirect, sva,
+            pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, t1tiltDirect, l1tiltDirect, sva, tk,
           }) : false;
           const cerrarCaso = async (msg) => {
             showToast(msg);
@@ -1122,12 +1122,22 @@ export default function GAPCalculator() {
             clearAll();
             await recargarEstudio();
           };
-          const abrirCaso = async () => {
+          const esperado = caso ? archivoDelCaso(caso) : null;
+          // El evaluador elige el archivo en su USB; solo se acepta si su huella
+          // es la del caso asignado, para que nadie mida la placa equivocada.
+          const abrirCaso = async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
             setAbriendoCaso(true);
             try {
+              if ((await huellaArchivo(file)) !== caso.sha256) {
+                showToast(t("est.archivo_incorrecto", { codigo: caso.codigo, nombre: esperado.nombre, carpeta: esperado.carpeta }), false);
+                return;
+              }
               setGeomAplicada(null);
               clearAll();
-              setArchivoCaso(await descargarImagenCaso(caso));
+              setArchivoCaso(file);
               setShowAnnotator(true);
             } catch (err) {
               showToast(t("val.error", { msg: err.message }), false);
@@ -1173,10 +1183,14 @@ export default function GAPCalculator() {
                     <span style={{ fontSize: 13, color: COLORS.text }}>{estudio.ronda?.nombre} · {t("est.caso_de", { n: (estudio.ronda?.completadas ?? 0) + 1, total: estudio.ronda?.total ?? "?" })}</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: COLORS.accentDark }}>{caso.codigo}</span>
                   </div>
-                  <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 12px", lineHeight: 1.5 }}>{t("est.ayuda")}</p>
-                  <button onClick={abrirCaso} disabled={abriendoCaso || guardandoVal} style={{ ...btn(!abriendoCaso && !guardandoVal, COLORS.accentDark), marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, color: COLORS.textMuted, margin: "0 0 8px", lineHeight: 1.5 }}>{t("est.ayuda")}</p>
+                  <p style={{ fontSize: 12, color: COLORS.text, margin: "0 0 12px" }}>
+                    {t("est.archivo")} <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{esperado.carpeta}/{esperado.nombre}</span>
+                  </p>
+                  <label style={{ ...btn(!abriendoCaso && !guardandoVal, COLORS.accentDark), display: "block", textAlign: "center", boxSizing: "border-box", marginBottom: 10 }}>
                     {abriendoCaso ? t("est.abriendo") : `🩻 ${t("est.abrir")}`}
-                  </button>
+                    <input type="file" accept="image/png,image/jpeg" onChange={abrirCaso} disabled={abriendoCaso || guardandoVal} style={{ display: "none" }} />
+                  </label>
                   <button onClick={guardar} disabled={!listo} style={btn(listo, COLORS.accent)}>
                     {guardandoVal ? t("common.guardando") : `💾 ${t("est.guardar")}`}
                   </button>
