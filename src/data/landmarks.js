@@ -19,11 +19,19 @@ export const LANDMARK_KEYS = [
   "l1Post", "l1Ant",      // 6-7  platillo superior de L1
   "c7",                   // 8    centroide de C7
   "t4", "t1", "c2",       // 9-11 centroides opcionales (Hills 2022)
+  "t2Post", "t2Ant",      // 12-13 platillo superior de T2 (opcional, cifosis T2-T12)
+  "t12Post", "t12Ant",    // 14-15 platillo inferior de T12 (opcional, cifosis T2-T12)
 ];
 
-// Los tres últimos son opcionales: sin ellos se calcula el GAP completo pero no
-// T4PA ni los tilts de T1 y C2.
-export const OPTIONAL_LANDMARK_KEYS = ["t4", "t1", "c2"];
+// Los últimos siete son opcionales: sin ellos se calcula el GAP completo pero no
+// T4PA, los tilts de T1 y C2 ni la cifosis torácica T2-T12.
+export const OPTIONAL_LANDMARK_KEYS = ["t4", "t1", "c2", "t2Post", "t2Ant", "t12Post", "t12Ant"];
+
+// Puntos que acepta la base del estudio de validación (supabase/validacion.sql
+// los restringe con un CHECK). Los de T2 y T12 llegaron después de congelar el
+// protocolo y no son variables del estudio: se quedan fuera del envío para que
+// un evaluador que los marque no vea rechazado su guardado.
+export const STUDY_LANDMARK_KEYS = LANDMARK_KEYS.slice(0, 12);
 
 // Versión de la convención de marcado. Súbela si cambia lo que significa un
 // punto; sin ella, un trazo guardado no se puede reinterpretar más adelante.
@@ -33,7 +41,7 @@ export const ANNOTATOR_VERSION = "1";
 // distinguirlos del resto de la carga útil al contar mediciones aplicadas.
 export const MEASUREMENT_KEYS = [
   "pi", "ss", "pt", "l1s1", "l4s1", "gt",
-  "l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt", "sva",
+  "l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt", "sva", "tk",
 ];
 
 /** Array de 12 posiciones (con huecos en null) → lista de puntos marcados. */

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   midpoint, distance, angleBetweenLines, angleAtVertex, angleFromHorizontal,
-  angleFromVertical, computeSS, computePT, computePI, computeL1S1, computeL4S1,
+  angleFromVertical, computeSS, computePT, computePI, computeL1S1, computeL4S1, computeTK,
   computeGT, computePA, computeVertebralTilt, computeAllAngles, linePairAngle,
   computeSVAPx, anteriorSign,
 } from "./geometry";
@@ -365,5 +365,31 @@ describe("linePairAngle · ángulo entre dos rectas independientes", () => {
 
   it("un segmento degenerado no produce medición", () => {
     expect(linePairAngle({ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 0, y: 0 }, { x: 1, y: 1 })).toBeNull();
+  });
+});
+
+describe("cifosis torácica T2-T12", () => {
+  // Platillo de T2 inclinado 20° hacia un lado y el de T12 25° hacia el otro: 45°.
+  const rad = (d) => (d * Math.PI) / 180;
+  const linea = (cx, cy, deg) => [
+    { x: cx - 30 * Math.cos(rad(deg)), y: cy - 30 * Math.sin(rad(deg)) },
+    { x: cx + 30 * Math.cos(rad(deg)), y: cy + 30 * Math.sin(rad(deg)) },
+  ];
+  it("es el Cobb entre ambos platillos", () => {
+    const [a, b] = linea(500, 300, 20), [c, d] = linea(520, 900, -25);
+    expect(computeTK(a, b, c, d)).toBeCloseTo(45, 6);
+  });
+  it("no depende del orden de las esquinas", () => {
+    const [a, b] = linea(500, 300, 20), [c, d] = linea(520, 900, -25);
+    expect(computeTK(b, a, d, c)).toBeCloseTo(45, 6);
+  });
+  it("computeAllAngles la emite solo con los cuatro puntos", () => {
+    const [a, b] = linea(500, 300, 20), [c, d] = linea(520, 900, -25);
+    const con = [...CASO.slice(0, 12), a, b, c, d];
+    expect(computeAllAngles(con).tk).toBeCloseTo(45, 1);
+    expect(computeAllAngles([...CASO.slice(0, 12), a, b, c, null]).tk).toBeUndefined();
+    expect(computeAllAngles(CASO).tk).toBeUndefined();
+    // Los valores congelados no cambian por agregar T2 y T12.
+    for (const [k, v] of Object.entries(GOLDEN)) expect(computeAllAngles(con)[k], k).toBeCloseTo(v, 1);
   });
 });

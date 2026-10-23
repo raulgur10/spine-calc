@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Definiciones de los 12 landmarks
+// Definiciones de los 16 landmarks
 // ═══════════════════════════════════════════════════════════════════════════
 // Qué es cada punto, dónde se marca y con qué figura se ilustra. Vive fuera del
 // componente para que el anotador siga siendo solo componentes (fast refresh) y
@@ -94,6 +94,34 @@ const DEFS = [
     label: "Centro del cuerpo vertebral de C2",
     que: "Centroide del cuerpo de C2 (Hills 2022). Necesario para calcular el C2 tilt directo desde la radiografía. Opcional — solo si quieres C2 tilt.",
     donde: "C2 es la segunda vértebra cervical (axis), debajo del atlas. Tiene una apófisis odontoides característica. Marca el centro del cuadrilátero del cuerpo vertebral por debajo de la odontoides.",
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/columna_completa.png`
+  },
+  {
+    idx: 12, short: "T2 post. (opc.)", color: "#0d9488", optional: true,
+    label: "Esquina posterior del platillo superior de T2",
+    que: "Inicio de la cifosis torácica T2-T12. La línea T2 post → T2 ant es el platillo superior de T2. Opcional — solo si quieres la TK para la fórmula de McCarthy.",
+    donde: "Cuenta 2 vértebras debajo de C7 (C7 → T1 → T2). Marca la esquina trasera del platillo superior de T2. Si los hombros tapan la región, déjalo sin marcar.",
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/columna_completa.png`
+  },
+  {
+    idx: 13, short: "T2 ant. (opc.)", color: "#0d9488", optional: true,
+    label: "Esquina anterior del platillo superior de T2",
+    que: "Cierra el platillo superior de T2.",
+    donde: "Esquina delantera del platillo superior de T2. La línea entre los dos puntos de T2 debe seguir el borde superior del cuerpo.",
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/columna_completa.png`
+  },
+  {
+    idx: 14, short: "T12 post. (opc.)", color: "#0d9488", optional: true,
+    label: "Esquina posterior del platillo inferior de T12",
+    que: "Final de la cifosis torácica T2-T12. Ojo: es el platillo INFERIOR de T12, no el superior.",
+    donde: "T12 es la última vértebra con costilla, justo encima de L1. Marca la esquina trasera de su platillo inferior (el que mira al disco T12-L1).",
+    figureSrc: `${import.meta.env.BASE_URL}landmarks/columna_completa.png`
+  },
+  {
+    idx: 15, short: "T12 ant. (opc.)", color: "#0d9488", optional: true,
+    label: "Esquina anterior del platillo inferior de T12",
+    que: "Cierra el platillo inferior de T12. El ángulo entre el platillo de T2 y este es la cifosis T2-T12.",
+    donde: "Esquina delantera del platillo inferior de T12. La línea entre los dos puntos de T12 debe seguir el borde inferior del cuerpo.",
     figureSrc: `${import.meta.env.BASE_URL}landmarks/columna_completa.png`
   }
 ];

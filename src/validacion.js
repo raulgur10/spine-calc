@@ -6,6 +6,13 @@
 // placa se identifica por su huella SHA-256.
 import { getClient } from "./auth";
 import { APP_VERSION } from "./constants";
+import { STUDY_LANDMARK_KEYS } from "./data/landmarks";
+
+// Solo los puntos que acepta la base del estudio; T2 y T12 se marcan para la TK
+// pero no son variables del protocolo y el CHECK de la base los rechazaría.
+export function puntosDelEstudio(points) {
+  return (points || []).filter(({ key }) => STUDY_LANDMARK_KEYS.includes(key)).map(({ key, x, y }) => ({ key, x, y }));
+}
 
 export async function esValidador(userId) {
   const sb = await getClient();
@@ -36,7 +43,7 @@ export async function guardarMedicion({ geometry, folio, editadoEnFormulario }) 
     ia_asistida: Boolean(geometry.iaAsistida),
     anotador_version: geometry.annotatorVersion,
     app_version: APP_VERSION,
-    landmarks: geometry.points.map(({ key, x, y }) => ({ key, x, y })),
+    landmarks: puntosDelEstudio(geometry.points),
   };
   const { data, error } = await sb.rpc("guardar_medicion_validacion", { p: payload });
   if (error) throw new Error(error.message);
@@ -114,7 +121,7 @@ export async function guardarMedicionAsignada({ asignacionId, geometry, editadoE
     ia_asistida: Boolean(geometry.iaAsistida),
     anotador_version: geometry.annotatorVersion,
     app_version: APP_VERSION,
-    landmarks: geometry.points.map(({ key, x, y }) => ({ key, x, y })),
+    landmarks: puntosDelEstudio(geometry.points),
   };
   const { data, error } = await sb.rpc("guardar_medicion_asignada", { p: payload });
   if (error) throw new Error(error.message);

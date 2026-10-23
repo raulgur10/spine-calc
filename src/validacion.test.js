@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resumirEstudio } from "./validacion";
+import { resumirEstudio, puntosDelEstudio } from "./validacion";
 
 const prog = [
   { ronda: 0, nombre: "Práctica", total: 3, completadas: 3 },
@@ -29,5 +29,20 @@ describe("resumirEstudio", () => {
   it("no se rompe si la imagen no viene en la consulta", () => {
     const r = resumirEstudio(prog, { id: "a2", ronda: 1, orden: 1, codigo: "R1-01", imagen_sha256: "0".repeat(64) });
     expect(r.caso.archivo).toBeNull();
+  });
+});
+
+describe("puntosDelEstudio", () => {
+  it("deja fuera T2 y T12, que la base del estudio no acepta", () => {
+    const pts = [
+      { key: "femL", idx: 0, x: 1, y: 2 }, { key: "c2", idx: 11, x: 3, y: 4 },
+      { key: "t2Post", idx: 12, x: 5, y: 6 }, { key: "t12Ant", idx: 15, x: 7, y: 8 },
+    ];
+    expect(puntosDelEstudio(pts)).toEqual([{ key: "femL", x: 1, y: 2 }, { key: "c2", x: 3, y: 4 }]);
+  });
+  it("las 12 claves del estudio son las que permite el CHECK de supabase/validacion.sql", () => {
+    expect(puntosDelEstudio([
+      "femL", "femR", "s1Post", "s1Ant", "l4Post", "l4Ant", "l1Post", "l1Ant", "c7", "t4", "t1", "c2",
+    ].map((key) => ({ key, x: 0, y: 0 })))).toHaveLength(12);
   });
 });

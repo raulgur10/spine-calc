@@ -1366,6 +1366,7 @@ export default function GAPCalculator() {
           if (v.c2tilt !== undefined) setC2TiltDirect(v.c2tilt);
           if (v.t1tilt !== undefined) setT1TiltDirect(v.t1tilt);
           if (v.l1tilt !== undefined) setL1TiltDirect(v.l1tilt);
+          if (v.tk !== undefined) setTK(v.tk);
           if (v.sva !== undefined) setSVA(v.sva);
           setGeomAplicada(v.geometry ? { ...v.geometry, appliedAt: new Date().toISOString() } : null);
           // Contar por lista explícita: `geometry` no es una medición y con

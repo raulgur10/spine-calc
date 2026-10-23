@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeSVAPx, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, linePairAngle } from "./geometry";
+import { midpoint, distance, angleAtVertex, computePI, computeSS, computePT, computeSVAPx, computeL1S1, computeL4S1, computeGT, computePA, computeVertebralTilt, computeTK, linePairAngle } from "./geometry";
 import { makeGeometry, MEASUREMENT_KEYS } from "./data/landmarks";
 import { LANDMARK_DEFS } from "./landmarkDefs";
 import { useI18n } from "./i18n";
@@ -37,7 +37,8 @@ const HILLS_DEFS = {
   t4pa:   { label: "T4PA",    figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
   c2tilt: { label: "C2 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
   t1tilt: { label: "T1 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/cervical_t4.png` },
-  l1tilt: { label: "L1 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png` }
+  l1tilt: { label: "L1 tilt", figureSrc: `${import.meta.env.BASE_URL}landmarks/angulo_l1s1.png` },
+  tk:     { label: "TK T2–T12", figureSrc: null }
 };
 
 // El nombre completo y la explicación de cada ángulo viven en el diccionario:
@@ -246,7 +247,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
   // ─── Hooks de cálculo (deben ir antes de cualquier early return para
   // respetar Rules of Hooks) ──────────────────────────────────────────────
   const partial = useMemo(() => {
-    const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12] = landmarks;
+    const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16] = landmarks;
     const out = {};
     if (p1 && p2) out.femMid = midpoint(p1, p2);
     if (p3 && p4) {
@@ -283,6 +284,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     if (p1 && p2 && p3 && p4 && p12) {
       out.c2tilt = computeVertebralTilt(p12, out.femMid, p3, p4, horizontalRef);
     }
+    // Cifosis torácica T2-T12 — no depende de la pelvis, solo de los dos platillos.
+    if (p13 && p14 && p15 && p16) out.tk = computeTK(p13, p14, p15, p16);
 
     // SRS-Schwab — SVA: distancia horizontal entre C7 (p9) y esquina posterosuperior de S1 (p3).
     // Si hay línea horizontal definida, se proyecta sobre ella; si no, se usa el eje X de la imagen.
@@ -780,6 +783,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     if (partial.c2tilt !== undefined) out.c2tilt = round1(partial.c2tilt);
     if (partial.t1tilt !== undefined) out.t1tilt = round1(partial.t1tilt);
     if (partial.l1tilt !== undefined) out.l1tilt = round1(partial.l1tilt);
+    if (partial.tk !== undefined) out.tk = round1(partial.tk);
     // SRS-Schwab: SVA en cm (requiere calibración)
     if (partial.svaPx !== undefined && calibration) {
       out.sva = round1(partial.svaPx * calibration.mmPerPx / 10);
@@ -801,7 +805,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
     onApply(out);
     onClose();
   };
-  const anyAngle = ["pi", "ss", "pt", "l1s1", "l4s1", "gt", "l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt"].some(k => partial[k] !== undefined);
+  const anyAngle = ["pi", "ss", "pt", "l1s1", "l4s1", "gt", "l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt", "tk"].some(k => partial[k] !== undefined);
 
   const fmtDist = (px) => calibration ? `${(px * calibration.mmPerPx).toFixed(1)} mm` : `${Math.round(px)} px`;
 
@@ -850,6 +854,8 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
   if (landmarks[2] && landmarks[3]) gapLines.push({ p1: landmarks[2], p2: landmarks[3], color: "#0891b2" });
   if (landmarks[4] && landmarks[5]) gapLines.push({ p1: landmarks[4], p2: landmarks[5], color: "#16a34a" });
   if (landmarks[6] && landmarks[7]) gapLines.push({ p1: landmarks[6], p2: landmarks[7], color: "#7c3aed" });
+  if (landmarks[12] && landmarks[13]) gapLines.push({ p1: landmarks[12], p2: landmarks[13], color: "#0d9488" });
+  if (landmarks[14] && landmarks[15]) gapLines.push({ p1: landmarks[14], p2: landmarks[15], color: "#0d9488" });
   let ptOverlay = null;
   if (partial.femMid && partial.s1Mid) ptOverlay = { p1: partial.femMid, p2: partial.s1Mid };
   let gtOverlay = null;
@@ -1461,10 +1467,10 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
               </div>
             )}
             {/* Hills 2022 — opcionales (L1PA y L1 tilt salen "gratis" del platillo L1) */}
-            {(partial.l1pa !== undefined || partial.t4pa !== undefined || partial.c2tilt !== undefined || partial.t1tilt !== undefined || partial.l1tilt !== undefined) && (
+            {(partial.l1pa !== undefined || partial.t4pa !== undefined || partial.c2tilt !== undefined || partial.t1tilt !== undefined || partial.l1tilt !== undefined || partial.tk !== undefined) && (
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${COLORS.panelLight}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022</div>
-                {["l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt"].map(key => {
+                <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Hills 2022 · TK</div>
+                {["l1pa", "t4pa", "c2tilt", "t1tilt", "l1tilt", "tk"].map(key => {
                   const v = partial[key];
                   if (v === undefined) return null;
                   const def = HILLS_DEFS[key];

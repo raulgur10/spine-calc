@@ -117,6 +117,13 @@ export function computeL4S1(p5, p6, p3, p4) {
   return angleBetweenLines(p5, p6, p3, p4);
 }
 
+// Cifosis torácica T2-T12 (Cobb): platillo superior de T2 contra platillo
+// inferior de T12. Misma construcción y convención (0-90°, sin signo) que la
+// lordosis L1-S1. La usa la fórmula de McCarthy 2024.
+export function computeTK(t2Post, t2Ant, t12Post, t12Ant) {
+  return angleBetweenLines(t2Post, t2Ant, t12Post, t12Ant);
+}
+
 // Global Tilt (Obeid 2016; usado por el GAP de Yilgor 2017): ángulo con vértice
 // en el punto medio del platillo de S1, entre la recta C7→S1 y la recta
 // S1→centro bicoxofemoral. 0° cuando C7, S1 mid y el eje bicoxofemoral son
@@ -168,7 +175,7 @@ export function computeVertebralTilt(centroid, femMid, p3, p4, refH = null) {
 // Returns null si los landmarks GAP (0–8) no están todos presentes.
 export function computeAllAngles(landmarks, refH = null) {
   if (!Array.isArray(landmarks) || landmarks.length < 9) return null;
-  const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12] = landmarks;
+  const [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16] = landmarks;
   if (!p1 || !p2 || !p3 || !p4 || !p5 || !p6 || !p7 || !p8 || !p9) return null;
   const femMid = midpoint(p1, p2);
   const s1Mid = midpoint(p3, p4);
@@ -197,6 +204,7 @@ export function computeAllAngles(landmarks, refH = null) {
   if (p10) out.t4pa = round1(computePA(p10, s1Mid, femMid, p3, p4));
   if (p11) out.t1tilt = round1(computeVertebralTilt(p11, femMid, p3, p4, refH));
   if (p12) out.c2tilt = round1(computeVertebralTilt(p12, femMid, p3, p4, refH));
+  if (p13 && p14 && p15 && p16) out.tk = round1(computeTK(p13, p14, p15, p16));
   return out;
 }
 

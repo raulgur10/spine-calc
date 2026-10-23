@@ -25,10 +25,10 @@ const ESTADO_ANOTADOR = {
 };
 
 describe("contrato de los landmarks", () => {
-  it("son 12 claves y las tres últimas son las opcionales de Hills", () => {
-    expect(LANDMARK_KEYS).toHaveLength(12);
+  it("son 16 claves y las siete últimas son opcionales (Hills y T2-T12)", () => {
+    expect(LANDMARK_KEYS).toHaveLength(16);
     expect(LANDMARK_KEYS.slice(9)).toEqual(OPTIONAL_LANDMARK_KEYS);
-    expect(new Set(LANDMARK_KEYS).size).toBe(12);   // sin repetidos
+    expect(new Set(LANDMARK_KEYS).size).toBe(16);   // sin repetidos
   });
 
   it("el orden está congelado: los índices se persisten con cada punto", () => {
@@ -36,6 +36,7 @@ describe("contrato de los landmarks", () => {
     expect(LANDMARK_KEYS).toEqual([
       "femL", "femR", "s1Post", "s1Ant", "l4Post", "l4Ant",
       "l1Post", "l1Ant", "c7", "t4", "t1", "c2",
+      "t2Post", "t2Ant", "t12Post", "t12Ant",
     ]);
   });
 
@@ -55,11 +56,11 @@ describe("pointsFromArray / pointsToArray", () => {
     expect(pts.some(p => OPTIONAL_LANDMARK_KEYS.includes(p.key))).toBe(false);
   });
 
-  it("el ida y vuelta reconstruye el array de 12 con sus huecos", () => {
+  it("el ida y vuelta reconstruye el array de 16 con sus huecos", () => {
     const back = pointsToArray(pointsFromArray(PUNTOS));
-    expect(back).toHaveLength(12);
+    expect(back).toHaveLength(16);
     expect(back.slice(0, 9)).toEqual(PUNTOS.slice(0, 9));
-    expect(back.slice(9)).toEqual([null, null, null]);
+    expect(back.slice(9)).toEqual(Array(7).fill(null));
   });
 
   it("reconstruye también a partir de la clave, sin índice", () => {
@@ -69,7 +70,7 @@ describe("pointsFromArray / pointsToArray", () => {
 
   it("tolera entradas basura", () => {
     expect(pointsFromArray(null)).toEqual([]);
-    expect(pointsToArray(null)).toHaveLength(12);
+    expect(pointsToArray(null)).toHaveLength(16);
   });
 });
 
