@@ -58,15 +58,13 @@ const recursos = [
 
     <div class="head-actions">
       <LanguageSwitcher />
-      <button
-        type="button"
+      <a
         class="btn btn--ghost btn--sm"
-        data-soon-msg={t('soon.login')}
-        data-soon-title={t('nav.login')}
+        href={calcPath(lang) + (calcPath(lang).includes('?') ? '&' : '?') + 'entrar=1'}
         aria-label={t('nav.loginAria')}
       >
         {t('nav.login')}
-      </button>
+      </a>
       <a class="btn btn--primary btn--sm" href={calcPath(lang)}>{t('nav.openCalc')}</a>
     </div>
   </div>

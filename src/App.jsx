@@ -34,7 +34,21 @@ export default function GAPCalculator() {
   const [tipoEvaluacion, setTipoEvaluacion] = useState("preoperatorio");
   // Sesión: solo habilita las funciones de IA; la calculadora no la necesita.
   const { session, needsPassword, setNeedsPassword, refresh: refreshSession } = useSession();
-  const [showLogin, setShowLogin] = useState(false);
+  // «?entrar=1» (botón Entrar de la landing) abre el cuadro de acceso al cargar.
+  const [showLogin, setShowLogin] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("entrar") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.has("entrar")) {
+        q.delete("entrar");
+        const qs = q.toString();
+        window.history.replaceState(null, "", window.location.pathname + (qs ? "?" + qs : "") + window.location.hash);
+      }
+    } catch { /* sin history: no pasa nada */ }
+  }, []);
+  useEffect(() => { if (session) setShowLogin(false); }, [session]);
   // Estudio de validación: último trazo aplicado desde el anotador y si la
   // cuenta está dada de alta como validador.
   const [geomAplicada, setGeomAplicada] = useState(null);
