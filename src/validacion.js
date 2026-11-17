@@ -6,12 +6,18 @@
 // placa se identifica por su huella SHA-256.
 import { getClient } from "./auth";
 import { APP_VERSION } from "./constants";
-import { STUDY_LANDMARK_KEYS } from "./data/landmarks";
+import { STUDY_LANDMARK_KEYS, REQUIRED_LANDMARK_KEYS } from "./data/landmarks";
 
 // Solo los puntos que acepta la base del estudio (CHECK de validacion_landmark,
 // ampliado a los 16 en supabase/estudio.sql).
 export function puntosDelEstudio(points) {
   return (points || []).filter(({ key }) => STUDY_LANDMARK_KEYS.includes(key)).map(({ key, x, y }) => ({ key, x, y }));
+}
+
+// Claves de los puntos obligatorios que aún no están colocados.
+export function puntosObligatoriosFaltantes(points) {
+  const puestos = new Set((points || []).map((p) => p.key));
+  return REQUIRED_LANDMARK_KEYS.filter((k) => !puestos.has(k));
 }
 
 export async function esValidador(userId) {

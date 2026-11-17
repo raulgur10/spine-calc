@@ -14,7 +14,7 @@ import { buildPDF } from "./pdf";
 import { dieboObjetivos, mccarthyLL, tpaEvaluacion } from "./objetivos";
 import { feedbackAvailable, sendFeedback } from "./feedback";
 import { MEASUREMENT_KEYS, detectManualEdits } from "./data/landmarks";
-import { esValidador as consultarValidador, cargarEstudio, archivoDelCaso, huellaArchivo, guardarMedicionAsignada, marcarNoMedible } from "./validacion";
+import { esValidador as consultarValidador, cargarEstudio, archivoDelCaso, huellaArchivo, guardarMedicionAsignada, marcarNoMedible, puntosObligatoriosFaltantes } from "./validacion";
 import {
   InputField, TipoEvaluacionToggle, DiffInfoBox, IMCBadge,
   CirugiaCard, ParamRow, ShareButton, MomentoBadge, Card,
@@ -1118,11 +1118,14 @@ export default function GAPCalculator() {
         {session && esValidador && (() => {
           const caso = estudio?.caso || null;
           const g = geomAplicada;
+          const faltantes = g ? puntosObligatoriosFaltantes(g.points) : [];
           const motivo = !caso ? null
             : !g ? t("est.sin_trazo")
             : g.iaAsistida ? t("val.ia")
             : !g.imageSha256 ? t("val.sin_huella")
             : g.imageSha256 !== caso.sha256 ? t("est.otra_imagen")
+            : faltantes.length ? t("est.faltan_puntos", { lista: faltantes.map((k) => t(`landmark.${k}.short`)).join(", ") })
+            : (caso.ronda === 9 && g.mmPerPx == null) ? t("est.sin_calibracion")
             : null;
           const editado = g ? detectManualEdits(g.applied, {
             pi, ss, pt, l1s1, l4s1, gt, l1pa, t4pa, c2tiltDirect, t1tiltDirect, l1tiltDirect, sva, tk,
@@ -1372,6 +1375,7 @@ export default function GAPCalculator() {
       <LandmarkAnnotator
         open={showAnnotator}
         archivoInicial={esValidador ? archivoCaso : null}
+        modoEstudio={Boolean(esValidador && estudio?.caso)}
         session={session}
         onLogin={() => setShowLogin(true)}
         onClose={() => setShowAnnotator(false)}

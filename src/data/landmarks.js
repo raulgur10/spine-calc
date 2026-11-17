@@ -27,6 +27,10 @@ export const LANDMARK_KEYS = [
 // T4PA, los tilts de T1 y C2 ni la cifosis torácica T2-T12.
 export const OPTIONAL_LANDMARK_KEYS = ["t4", "t1", "c2", "t2Post", "t2Ant", "t12Post", "t12Ant"];
 
+// Los nueve restantes (cabezas femorales, S1, L4, L1 y C7) son obligatorios en el estudio
+// de validación: sin ellos no hay PI, el desenlace primario.
+export const REQUIRED_LANDMARK_KEYS = LANDMARK_KEYS.filter((k) => !OPTIONAL_LANDMARK_KEYS.includes(k));
+
 // Puntos que acepta la base del estudio de validación. supabase/validacion.sql
 // los restringía a 12 con un CHECK; supabase/estudio.sql lo amplía a los 16
 // porque la cifosis T2-T12 es variable secundaria del protocolo. Cualquier

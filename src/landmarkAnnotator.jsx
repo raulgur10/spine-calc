@@ -49,7 +49,7 @@ const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin, archivoInicial = null }) {
+export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin, archivoInicial = null, modoEstudio = false }) {
   const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
@@ -1363,6 +1363,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
           {/* GAP landmarks (clickeables para saltar) */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textDim, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{t("anot.puntos_gap")}</div>
+            {modoEstudio && <div style={{ fontSize: 11, color: COLORS.textDim, marginBottom: 8 }}>{t("anot.obligatorio_nota")}</div>}
             {pendientesIA > 0 && (
               <div style={{ border: "1.5px solid #a78bfa88", background: "#a78bfa1a", borderRadius: 8, padding: "9px 10px", marginBottom: 10, fontSize: 11.5, lineHeight: 1.5, color: COLORS.text }}>
                 <div style={{ fontWeight: 800, color: "#a78bfa", marginBottom: 4 }}>✨ {t("ia.pendientes", { n: pendientesIA })}</div>
@@ -1381,7 +1382,7 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
                   <span style={{ width: 18, height: 18, borderRadius: "50%", background: placed ? d.color : "transparent", border: `2px solid ${d.color}`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, fontFamily: "monospace", flexShrink: 0 }}>
                     {placed ? "✓" : d.idx + 1}
                   </span>
-                  <span style={{ color: placed ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{t(d.shortKey)}</span>
+                  <span style={{ color: placed ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{t(d.shortKey)}{modoEstudio && !d.optional && <b style={{ color: COLORS.red ?? "#e5484d", marginLeft: 3 }}>*</b>}</span>
                   {landmarks[d.idx]?.ia && (
                     <span onClick={(e) => { e.stopPropagation(); confirmarIA(d.idx); }} title={t("ia.confirmar_punto")}
                       style={{ color: "#a78bfa", fontSize: 10, fontWeight: 800, padding: "1px 6px", border: "1px solid #a78bfa", borderRadius: 4, cursor: "pointer" }}>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resumirEstudio, puntosDelEstudio, archivoDelCaso } from "./validacion";
+import { resumirEstudio, puntosDelEstudio, archivoDelCaso, puntosObligatoriosFaltantes } from "./validacion";
 
 const prog = [
   { ronda: 0, nombre: "Práctica", total: 3, completadas: 3 },
@@ -50,5 +50,23 @@ describe("archivoDelCaso", () => {
     expect(archivoDelCaso({ ronda: 2, codigo: "R2-15", archivo: "ab.JPG" })).toEqual({ carpeta: "ronda_2", nombre: "R2-15.jpg" });
     expect(archivoDelCaso({ ronda: 0, codigo: "P-01", archivo: null })).toEqual({ carpeta: "practica", nombre: "P-01.png" });
     expect(archivoDelCaso({ ronda: 9, codigo: "V-03", archivo: "x.png" }).carpeta).toBe("verificacion");
+  });
+});
+
+describe("puntosObligatoriosFaltantes", () => {
+  const nueve = ["femL", "femR", "s1Post", "s1Ant", "l4Post", "l4Ant", "l1Post", "l1Ant", "c7"].map((key) => ({ key, x: 1, y: 1 }));
+  it("sin puntos faltan los nueve obligatorios", () => {
+    expect(puntosObligatoriosFaltantes([])).toHaveLength(9);
+    expect(puntosObligatoriosFaltantes(null)).toHaveLength(9);
+  });
+  it("los nueve obligatorios bastan; los opcionales no se exigen", () => {
+    expect(puntosObligatoriosFaltantes(nueve)).toEqual([]);
+  });
+  it("señala las cabezas femorales que faltan", () => {
+    expect(puntosObligatoriosFaltantes(nueve.filter((p) => !p.key.startsWith("fem")))).toEqual(["femL", "femR"]);
+  });
+  it("T4, T1 y C2 solos no cuentan como obligatorios", () => {
+    const solo = [{ key: "t4" }, { key: "t1" }, { key: "c2" }];
+    expect(puntosObligatoriosFaltantes(solo)).toHaveLength(9);
   });
 });

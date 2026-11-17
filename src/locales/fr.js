@@ -722,4 +722,7 @@ export default {
   "est.archivo": "Fichier :",
   "est.archivo_incorrecto": "Ce fichier n'est pas celui du cas {codigo}. Ouvrez {carpeta}/{nombre} depuis votre clé USB.",
   "est.otra_imagen": "L'image marquée n'est pas celle du cas assigné. Rouvrez le fichier du cas depuis la clé USB.",
+  "est.faltan_puntos": "Points obligatoires manquants : {lista}.",
+  "est.sin_calibracion": "Calibrez sur la règle de 100 mm avant d'enregistrer.",
+  "anot.obligatorio_nota": "* obligatoire",
 };
