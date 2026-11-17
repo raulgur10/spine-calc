@@ -725,4 +725,5 @@ export default {
   "est.faltan_puntos": "Points obligatoires manquants : {lista}.",
   "est.sin_calibracion": "Calibrez sur la règle de 100 mm avant d'enregistrer.",
   "anot.obligatorio_nota": "* obligatoire",
+  "anot.calib_obligatoria": "Calibrage (règle 100 mm)",
 };

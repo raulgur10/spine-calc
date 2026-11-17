@@ -1376,6 +1376,7 @@ export default function GAPCalculator() {
         open={showAnnotator}
         archivoInicial={esValidador ? archivoCaso : null}
         modoEstudio={Boolean(esValidador && estudio?.caso)}
+        calibracionObligatoria={Boolean(esValidador && estudio?.caso?.ronda === 9)}
         session={session}
         onLogin={() => setShowLogin(true)}
         onClose={() => setShowAnnotator(false)}

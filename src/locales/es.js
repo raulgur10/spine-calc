@@ -686,6 +686,7 @@ export default {
   "est.faltan_puntos": "Faltan puntos obligatorios: {lista}.",
   "est.sin_calibracion": "Calibra sobre la regla de 100 mm antes de guardar.",
   "anot.obligatorio_nota": "* obligatorio",
+  "anot.calib_obligatoria": "Calibración (regla 100 mm)",
   "est.no_medible": "Este caso no se puede medir",
   "est.no_medible_ayuda": "Úsalo solo si un punto indispensable no es identificable. No adivines: el caso se cierra sin medición, con el motivo.",
   "est.no_medible_confirmar": "Cerrar como no medible",

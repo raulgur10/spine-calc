@@ -49,7 +49,7 @@ const angleExplainKey = (key) => `angulo.${key}.explicacion`;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const round1 = (n) => Math.round(n * 10) / 10;
 
-export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin, archivoInicial = null, modoEstudio = false }) {
+export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnotated, session, onLogin, archivoInicial = null, modoEstudio = false, calibracionObligatoria = false }) {
   const { t } = useI18n();
   const [imageSrc, setImageSrc] = useState(null);
   const [imageDims, setImageDims] = useState({ w: 0, h: 0 });
@@ -1373,6 +1373,15 @@ export default function LandmarkAnnotator({ open, onClose, onApply, onSaveAnnota
                   {t("ia.aceptar_todas")}
                 </button>
               </div>
+            )}
+            {calibracionObligatoria && (
+              <button onClick={() => { setTool("calibrate"); setPendingPtId(null); }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", borderRadius: 6, background: tool === "calibrate" ? COLORS.green + "33" : "transparent", marginBottom: 6, border: "none", cursor: "pointer", textAlign: "left", fontSize: 12.5, fontFamily: "inherit" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: calibration ? COLORS.green : "transparent", border: `2px solid ${COLORS.green}`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>
+                  {calibration ? "✓" : 0}
+                </span>
+                <span style={{ color: calibration ? COLORS.text : COLORS.textDim, lineHeight: 1.3, flex: 1 }}>{t("anot.calib_obligatoria")}<b style={{ color: COLORS.red ?? "#e5484d", marginLeft: 3 }}>*</b></span>
+              </button>
             )}
             {LANDMARK_DEFS.map(d => {
               const placed = landmarks[d.idx] !== null;

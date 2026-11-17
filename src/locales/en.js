@@ -685,6 +685,7 @@ export default {
   "est.faltan_puntos": "Required points missing: {lista}.",
   "est.sin_calibracion": "Calibrate on the 100 mm ruler before saving.",
   "anot.obligatorio_nota": "* required",
+  "anot.calib_obligatoria": "Calibration (100 mm ruler)",
   "est.no_medible": "This case cannot be measured",
   "est.no_medible_ayuda": "Use only if an essential landmark cannot be identified. Do not guess: the case is closed without a measurement, with the reason.",
   "est.no_medible_confirmar": "Close as not measurable",
